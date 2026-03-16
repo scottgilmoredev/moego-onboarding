@@ -1,0 +1,12 @@
+# Controls whether contributors can open a blank issue without selecting a template.
+# Setting to false ensures all issues use a template, keeping quality and triage consistent.
+blank_issues_enabled: false
+
+# contact_links appear alongside templates in the issue chooser UI.
+# Use them to route reporters to the right place for topics that should not be public issues.
+contact_links:
+  - name: Security Vulnerability
+    # Routes to GitHub's private security advisory feature.
+    # Prevents vulnerabilities from being publicly disclosed before a fix is in place.
+    url: https://github.com/<username>/<repo>/security/advisories/new
+    about: Please report security vulnerabilities privately via GitHub's security advisory feature rather than opening a public issue.
