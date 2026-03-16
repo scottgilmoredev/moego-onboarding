@@ -37,12 +37,14 @@ Automates the client onboarding process for MoeGo-based pet service businesses. 
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/<your-username>/moego-onboarding.git
    cd moego-onboarding
    ```
 
 2. Install dependencies:
+
    ```bash
    pnpm install
    ```

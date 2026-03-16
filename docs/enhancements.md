@@ -10,7 +10,7 @@ Rather than emailing the business owner for review and manual distribution, deli
 
 MoeGo's API does not appear to expose a messaging endpoint. A third-party SMS provider such as Twilio would likely be required. MoeGo API messaging capabilities should be confirmed before committing to an implementation approach.
 
-*Note: URL shortening for SMS delivery is already handled in the current implementation via the Bitly integration.*
+_Note: URL shortening for SMS delivery is already handled in the current implementation via the Bitly integration._
 
 ---
 

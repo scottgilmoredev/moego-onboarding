@@ -19,8 +19,8 @@
 
 ## Performance Metrics
 
-| Metric | Before | After |
-|---|---|---|
+| Metric   | Before  | After   |
+| -------- | ------- | ------- |
 | <metric> | <value> | <value> |
 
 <!-- Include benchmark results, profiler output, Lighthouse scores, or other measurable evidence. -->

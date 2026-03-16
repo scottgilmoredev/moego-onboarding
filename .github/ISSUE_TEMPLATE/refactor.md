@@ -1,9 +1,9 @@
 ---
 name: Refactor
 about: Propose code restructuring with no behavior change
-title: "[refactor] "
+title: '[refactor] '
 labels: refactor
-assignees: ""
+assignees: ''
 ---
 
 ## Description
