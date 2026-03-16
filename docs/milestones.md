@@ -9,6 +9,7 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 **Goal:** Establish the project scaffold and development environment.
 
 **Planned issues:**
+
 - Initialize NodeNext TypeScript project
 - Configure Vitest
 - Configure ESLint with Airbnb config
@@ -24,6 +25,7 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 **Goal:** Implement and validate the MoeGo webhook receiver.
 
 **Planned issues:**
+
 - Implement webhook payload receiver
 - Implement payload validation (event type, required customer fields)
 - Unit tests: valid payload, missing fields, wrong event type, malformed JSON
@@ -35,6 +37,7 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 **Goal:** Implement authenticated MoeGo API client and retrieve all required per-client links.
 
 **Planned issues:**
+
 - Implement MoeGo API authentication
 - Implement Service Agreement sign link retrieval
 - Implement SMS Agreement sign link retrieval
@@ -48,6 +51,7 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 **Goal:** Implement pre-filled Google Form URL construction from customer data and retrieved links.
 
 **Planned issues:**
+
 - Implement pre-filled Google Form URL builder
 - Unit tests: all fields present, partial fields (each failure combination), empty/missing values
 
@@ -58,6 +62,7 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 **Goal:** Implement Bitly API integration for URL shortening with full URL fallback.
 
 **Planned issues:**
+
 - Implement Bitly API client
 - Implement full URL fallback on Bitly failure
 - Unit tests: successful shortening, Bitly API failure with fallback
@@ -69,6 +74,7 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 **Goal:** Implement email composition and delivery to the business owner for all cases.
 
 **Planned issues:**
+
 - Implement success email composition and delivery via `GmailApp`
 - Implement partial failure email composition and delivery
 - Implement full failure email composition and delivery
@@ -82,6 +88,7 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 **Goal:** Wire all modules together into the Apps Script `doPost` entrypoint and validate the full onboarding flow end-to-end.
 
 **Planned issues:**
+
 - Implement `doPost` entrypoint
 - Wire all modules into the full onboarding flow
 - Integration tests with mocked globals and stubbed API responses

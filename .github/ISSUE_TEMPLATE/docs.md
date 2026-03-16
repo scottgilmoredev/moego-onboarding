@@ -1,9 +1,9 @@
 ---
 name: Documentation
 about: Report missing, incorrect, or outdated documentation
-title: "[docs] "
+title: '[docs] '
 labels: docs
-assignees: ""
+assignees: ''
 ---
 
 ## Description

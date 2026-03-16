@@ -1,9 +1,9 @@
 ---
 name: Performance
 about: Report a performance problem or propose an improvement
-title: "[perf] "
+title: '[perf] '
 labels: perf
-assignees: ""
+assignees: ''
 ---
 
 ## Description

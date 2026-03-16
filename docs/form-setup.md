@@ -15,15 +15,15 @@ Form URL: `<placeholder>`
 3. Name the form `moego-onboarding`
 4. Add the following fields in order:
 
-| Field | Type | Required |
-|---|---|---|
-| First Name | Short answer | Yes |
-| Last Name | Short answer | Yes |
-| Phone Number | Short answer | Yes |
-| Service Agreement | Short answer | Yes |
-| SMS Agreement | Short answer | Yes |
-| Card on File | Short answer | Yes |
-| Rabies Vaccination Record | File upload | Yes |
+| Field                     | Type         | Required |
+| ------------------------- | ------------ | -------- |
+| First Name                | Short answer | Yes      |
+| Last Name                 | Short answer | Yes      |
+| Phone Number              | Short answer | Yes      |
+| Service Agreement         | Short answer | Yes      |
+| SMS Agreement             | Short answer | Yes      |
+| Card on File              | Short answer | Yes      |
+| Rabies Vaccination Record | File upload  | Yes      |
 
 5. Once the form is complete, click **Send** and copy the form URL — you will need this in the Configuration step
 

@@ -1,9 +1,9 @@
 ---
 name: Chore
 about: Maintenance, dependency updates, tooling, or technical debt
-title: "[chore] "
+title: '[chore] '
 labels: chore
-assignees: ""
+assignees: ''
 ---
 
 ## Description

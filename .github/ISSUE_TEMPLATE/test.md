@@ -1,7 +1,7 @@
 ---
 name: Test
 about: Add, update, or improve tests
-title: "[test] "
+title: '[test] '
 labels: test
 assignees: ''
 ---
