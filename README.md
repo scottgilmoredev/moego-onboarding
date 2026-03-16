@@ -28,7 +28,7 @@ Automates the client onboarding process for MoeGo-based pet service businesses. 
 ### Prerequisites
 
 - Node.js >= 20
-- npm >= 9
+- pnpm >= 9
 - A Google account with Apps Script access and the Apps Script API enabled
 - Clasp installed and configured — see [Clasp Setup](docs/clasp-setup.md)
 - A MoeGo account with API access and a Customer Success Manager-issued API key
@@ -44,7 +44,7 @@ Automates the client onboarding process for MoeGo-based pet service businesses. 
 
 2. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. Set up Clasp — see [Clasp Setup](docs/clasp-setup.md)
@@ -52,19 +52,19 @@ Automates the client onboarding process for MoeGo-based pet service businesses. 
 ### Running Tests
 
 ```bash
-npm run test
+pnpm run test
 ```
 
 ### Development Build
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 ### Local Dev Server
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## Project Structure
