@@ -4,6 +4,14 @@ This document captures planned and potential post-MVP enhancements. Items here a
 
 ---
 
+**Automated Clasp Deployment via CI**
+
+The current deployment process requires manual execution of clasp push and clasp deploy from a local machine. Automating this via GitHub Actions would deploy the Apps Script web app automatically when changes are merged to main.
+
+This requires service account authentication for Clasp in a non-interactive CI environment — see gas-clasp-setup.md for context. A service account with the appropriate Google APIs enabled would need to be configured and its credentials stored as GitHub Actions secrets.
+
+---
+
 **Automated SMS Delivery to Client**
 
 Rather than emailing the business owner for review and manual distribution, deliver the pre-filled onboarding form URL directly to the client via SMS upon receiving the `CUSTOMER_CREATED` webhook event.
