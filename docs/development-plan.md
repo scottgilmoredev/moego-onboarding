@@ -28,15 +28,15 @@ On failure: any failed API call results in an email to the business owner contai
 
 ## 3. Technical Stack
 
-| Layer          | Technology                   | Notes                                   |
-| -------------- | ---------------------------- | --------------------------------------- |
-| Runtime        | Node.js >= 20                | LTS — stable for production             |
-| Language       | TypeScript                   | Strict mode, NodeNext modules           |
-| Testing        | Vitest                       | ESM-native, compatible with TypeScript  |
-| Apps Script    | Google Apps Script via Clasp | Standalone web app, `doPost` entrypoint |
-| Linting        | ESLint                       | Airbnb config                           |
-| CI/CD          | GitHub Actions               | See `.github/workflows/ci.yml`          |
-| URL Shortening | Bitly API                    | Free tier — 1,000 short links/month     |
+| Layer          | Technology                       | Notes                                                                                         |
+| -------------- | -------------------------------- | --------------------------------------------------------------------------------------------- |
+| Runtime        | Node.js >= 20                    | LTS — stable for production                                                                   |
+| Language       | TypeScript                       | Strict mode, NodeNext modules for Node.js/Vitest; compiled to CJS via esbuild for GAS runtime |
+| Testing        | Vitest                           | ESM-native, compatible with TypeScript                                                        |
+| Apps Script    | Google Apps Script via Clasp 3.x | Standalone web app, `doPost` entrypoint; esbuild handles TypeScript compilation               |
+| Linting        | ESLint                           | Airbnb config                                                                                 |
+| CI/CD          | GitHub Actions                   | See `.github/workflows/ci.yml`                                                                |
+| URL Shortening | Bitly API                        | Free tier — 1,000 short links/month                                                           |
 
 ---
 
