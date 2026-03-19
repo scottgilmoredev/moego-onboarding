@@ -43,6 +43,9 @@
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   },
+  "imports": {
+    "#/*": "./src/*.js"
+  },
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix",
