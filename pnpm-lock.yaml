@@ -16,6 +16,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.0.3(jiti@2.6.1))
+      '@types/google-apps-script':
+        specifier: ^2.0.8
+        version: 2.0.8
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
@@ -841,6 +844,12 @@ packages:
     resolution:
       {
         integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==,
+      }
+
+  '@types/google-apps-script@2.0.8':
+    resolution:
+      {
+        integrity: sha512-mGPmzzdgBu1DlwrjOhFQ8u0se6AF/z4OpaTzOGwNKxwXZjE7J+IssfE3oL24j/S/p6aFiSTIptHZvbyqeZD8vA==,
       }
 
   '@types/json-schema@7.0.15':
@@ -3787,6 +3796,8 @@ snapshots:
   '@types/esrecurse@4.3.1': {}
 
   '@types/estree@1.0.8': {}
+
+  '@types/google-apps-script@2.0.8': {}
 
   '@types/json-schema@7.0.15': {}
 

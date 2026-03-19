@@ -17,6 +17,11 @@ export default [
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
+      globals: {
+        ContentService: 'readonly',
+        GoogleAppsScript: 'readonly',
+        console: 'readonly',
+      },
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
