@@ -3,7 +3,7 @@ import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-plugin-prettier';
 import prettierConfig from 'eslint-config-prettier';
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from 'eslint-plugin-import-x';
 
 export default [
   js.configs.recommended,
@@ -21,7 +21,7 @@ export default [
     plugins: {
       '@typescript-eslint': tsPlugin,
       prettier,
-      import: importPlugin,
+      'import-x': importPlugin,
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
@@ -32,7 +32,7 @@ export default [
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
-      'import/order': ['error', { 'newlines-between': 'always' }],
+      'import-x/order': ['error', { 'newlines-between': 'always' }],
     },
   },
   {
