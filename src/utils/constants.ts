@@ -8,11 +8,17 @@
 import { MoeGoEventType } from '#/types/moego.js';
 
 /**
- * The MoeGo webhook event type this application handles.
+ * Whether the current runtime is Google Apps Script.
+ * Detected by checking for the presence of the PropertiesService global.
  */
-export const SUPPORTED_EVENT_TYPE = MoeGoEventType.CUSTOMER_CREATED;
+export const IS_GAS_RUNTIME = typeof PropertiesService !== 'undefined';
 
 /**
  * Required fields on the customer object in a CUSTOMER_CREATED payload.
  */
 export const REQUIRED_CUSTOMER_FIELDS = ['id', 'firstName', 'lastName', 'phone'] as const;
+
+/**
+ * The MoeGo webhook event type this application handles.
+ */
+export const SUPPORTED_EVENT_TYPE = MoeGoEventType.CUSTOMER_CREATED;
