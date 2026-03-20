@@ -7,10 +7,15 @@
  * sign link retrieval, and card-on-file link retrieval.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { buildAuthHeader } from './moego.js';
+import { buildAuthHeader, fetchFromMoeGo, getAgreementSignLink } from './moego.js';
 
+/**
+ * buildAuthHeader
+ *
+ * @description Tests for authentication header construction.
+ */
 describe('buildAuthHeader', () => {
   /**
    * @test
@@ -33,5 +38,162 @@ describe('buildAuthHeader', () => {
     const header2 = buildAuthHeader('key-two');
 
     expect(header1).not.toBe(header2);
+  });
+});
+
+/**
+ * fetchFromMoeGo
+ *
+ * @description Tests for the shared MoeGo API request utility. Covers
+ * successful response parsing, non-200 error handling, and network errors.
+ */
+describe('fetchFromMoeGo', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms a successful request returns the parsed response body.
+   */
+  it('returns parsed response body on success', async () => {
+    vi.stubGlobal('UrlFetchApp', {
+      fetch: vi.fn().mockReturnValue({
+        getResponseCode: () => 200,
+        getContentText: () =>
+          JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
+      }),
+    });
+
+    const result = await fetchFromMoeGo<{ signUrl: string }>({
+      path: '/v1/agreements/agr_001/sign_link',
+      params: { customer_id: 'cus_001', business_id: 'biz_001' },
+      apiKey: 'test-api-key',
+    });
+
+    expect(result.signUrl).toBe('https://client.moego.pet/agreement/sign/abc123');
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown on a non-200 response.
+   */
+  it('throws on non-200 response', async () => {
+    vi.stubGlobal('UrlFetchApp', {
+      fetch: vi.fn().mockReturnValue({
+        getResponseCode: () => 404,
+        getContentText: () => JSON.stringify({ message: 'Not found' }),
+      }),
+    });
+
+    await expect(
+      fetchFromMoeGo({
+        path: '/v1/agreements/agr_001/sign_link',
+        params: { customer_id: 'cus_001', business_id: 'biz_001' },
+        apiKey: 'test-api-key',
+      })
+    ).rejects.toThrow();
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown on a network error.
+   */
+  it('throws on network error', async () => {
+    vi.stubGlobal('UrlFetchApp', {
+      fetch: vi.fn().mockImplementation(() => {
+        throw new Error('Network error');
+      }),
+    });
+
+    await expect(
+      fetchFromMoeGo({
+        path: '/v1/agreements/agr_001/sign_link',
+        params: { customer_id: 'cus_001', business_id: 'biz_001' },
+        apiKey: 'test-api-key',
+      })
+    ).rejects.toThrow();
+  });
+});
+
+/**
+ * getAgreementSignLink
+ *
+ * @description Tests for Service Agreement sign link retrieval. Covers
+ * successful retrieval, non-200 error handling, and network errors.
+ */
+describe('getAgreementSignLink', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms the Service Agreement sign link is successfully
+   * retrieved and the signUrl is returned.
+   */
+  it('returns the signUrl for a valid request', async () => {
+    vi.stubGlobal('UrlFetchApp', {
+      fetch: vi.fn().mockReturnValue({
+        getResponseCode: () => 200,
+        getContentText: () =>
+          JSON.stringify({
+            agreementRecordId: 'record_001',
+            signUrl: 'https://client.moego.pet/agreement/sign/abc123',
+          }),
+      }),
+    });
+
+    const result = await getAgreementSignLink({
+      agreementId: 'agr_001',
+      customerId: 'cus_001',
+      businessId: 'biz_001',
+      apiKey: 'test-api-key',
+    });
+
+    expect(result).toBe('https://client.moego.pet/agreement/sign/abc123');
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when the API returns a non-200 response.
+   */
+  it('throws on non-200 response', async () => {
+    vi.stubGlobal('UrlFetchApp', {
+      fetch: vi.fn().mockReturnValue({
+        getResponseCode: () => 404,
+        getContentText: () => JSON.stringify({ message: 'Not found' }),
+      }),
+    });
+
+    await expect(
+      getAgreementSignLink({
+        agreementId: 'agr_001',
+        customerId: 'cus_001',
+        businessId: 'biz_001',
+        apiKey: 'test-api-key',
+      })
+    ).rejects.toThrow();
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when the API call fails.
+   */
+  it('throws on network error', async () => {
+    vi.stubGlobal('UrlFetchApp', {
+      fetch: vi.fn().mockImplementation(() => {
+        throw new Error('Network error');
+      }),
+    });
+
+    await expect(
+      getAgreementSignLink({
+        agreementId: 'agr_001',
+        customerId: 'cus_001',
+        businessId: 'biz_001',
+        apiKey: 'test-api-key',
+      })
+    ).rejects.toThrow();
   });
 });
