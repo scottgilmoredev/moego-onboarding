@@ -20,7 +20,9 @@ export default [
       globals: {
         ContentService: 'readonly',
         GoogleAppsScript: 'readonly',
+        PropertiesService: 'readonly',
         console: 'readonly',
+        process: 'readonly',
       },
     },
     plugins: {
