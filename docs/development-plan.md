@@ -20,9 +20,9 @@ Enable a MoeGo-based pet service business owner to automatically receive a pre-f
 
 ## 2. Architecture
 
-MoeGo fires `CUSTOMER_CREATED` webhook → Apps Script `doPost` receives and validates payload → MoeGo API calls retrieve Service Agreement sign link, SMS Agreement sign link, and card-on-file link → Form builder constructs pre-filled Google Form URL → Bitly shortens the URL → `GmailApp` delivers email to business owner.
+MoeGo fires `CUSTOMER_CREATED` webhook → Apps Script `doPost` receives and validates payload → MoeGo API calls retrieve Service Agreement sign link, SMS Agreement sign link, and card-on-file link → Form builder constructs pre-filled Google Form URL → Short.io shortens the URL → `GmailApp` delivers email to business owner.
 
-On failure: any failed API call results in an email to the business owner containing the partial pre-filled URL, details of the failure(s), and the customer's MoeGo ID for manual recovery. If Bitly shortening fails, the full unshortened URL is delivered with a note that the URL may span multiple SMS segments if sent as-is.
+On failure: any failed API call results in an email to the business owner containing the partial pre-filled URL, details of the failure(s), and the customer's MoeGo ID for manual recovery. If Short.io shortening fails, the full unshortened URL is delivered with a note that the URL may span multiple SMS segments if sent as-is.
 
 ---
 
@@ -36,7 +36,7 @@ On failure: any failed API call results in an email to the business owner contai
 | Apps Script    | Google Apps Script via Clasp 3.x | Standalone web app, `doPost` entrypoint; esbuild handles TypeScript compilation               |
 | Linting        | ESLint                           | Airbnb config                                                                                 |
 | CI/CD          | GitHub Actions                   | See `.github/workflows/ci.yml`                                                                |
-| URL Shortening | Bitly API                        | Free tier — 1,000 short links/month                                                           |
+| URL Shortening | Short.io API                     | Free tier — 1,000 total links/year                                                            |
 
 ---
 
@@ -47,17 +47,17 @@ On failure: any failed API call results in an email to the business owner contai
 - Receiving and validating `CUSTOMER_CREATED` webhook events from MoeGo
 - Retrieving Service Agreement sign link, SMS Agreement sign link, and card-on-file link per client via MoeGo API
 - Constructing a pre-filled Google Form URL from customer data and retrieved links
-- Shortening the pre-filled URL via Bitly API
+- Shortening the pre-filled URL via Short.io API
 - Delivering the onboarding form URL to the business owner via email
 - Partial and full failure handling with manual recovery support
-- Bitly failure fallback — deliver full unshortened URL with advisory note
+- Short.io failure fallback — deliver full unshortened URL with advisory note
 
 **Out of Scope**
 
 - Google Form creation and configuration
 - Direct delivery of the onboarding form URL to the client
 - Automated retry on API failure
-- Support for URL shortening services other than Bitly
+- Support for URL shortening services other than Short.io
 - Support for webhook events other than `CUSTOMER_CREATED`
 - Vaccination record parsing
 - Any user interface beyond the email delivered to the business owner
@@ -67,7 +67,7 @@ On failure: any failed API call results in an email to the business owner contai
 - Apps Script imposes a 6-minute execution limit — the flow must remain lightweight with no polling or retries
 - MoeGo API key must be requested through a Customer Success Manager prior to development of any API-dependent phases
 - The Google Form must be created and configured prior to deployment — field entry IDs must be identified and set in configuration before the app can construct pre-filled URLs — see [Form Setup](form-setup.md)
-- Bitly account and API key must be created and configured by the business owner prior to deployment — see [Bitly Setup](bitly-setup.md)
+- Short.io account and API key must be created and configured by the business owner prior to deployment — see [Short.io Setup](short-io-setup.md)
 
 ---
 
@@ -83,10 +83,10 @@ MoeGo API client. Handles authentication and retrieves the Service Agreement sig
 Constructs the pre-filled Google Form URL from customer data and retrieved links.
 
 **shortener/**
-Shortens the pre-filled Google Form URL via the Bitly API. Falls back to the full URL if shortening fails.
+Shortens the pre-filled Google Form URL via the Short.io API. Falls back to the full URL if shortening fails.
 
 **email/**
-Composes and delivers email to the business owner via `GmailApp`. Handles success, partial failure, full failure, and Bitly fallback cases.
+Composes and delivers email to the business owner via `GmailApp`. Handles success, partial failure, full failure, and Short.io fallback cases.
 
 **types/**
 Shared TypeScript types and interfaces across modules.
@@ -119,11 +119,11 @@ Implement pre-filled Google Form URL construction from customer data and links. 
 
 ### Phase 4 — URL Shortener
 
-Implement Bitly API integration for URL shortening. TDD: successful shortening, Bitly API failure with full URL fallback.
+Implement Short.io API integration for URL shortening. TDD: successful shortening, Short.io API failure with full URL fallback.
 
 ### Phase 5 — Email Delivery
 
-Implement success, partial failure, full failure, and Bitly fallback email composition and delivery via `GmailApp`. TDD: all cases.
+Implement success, partial failure, full failure, and Short.io fallback email composition and delivery via `GmailApp`. TDD: all cases.
 
 ### Phase 6 — Integration & Apps Script Entrypoint
 
@@ -138,7 +138,7 @@ Implement `doPost`, wire all modules together, integration tests with mocked glo
 - Clasp used for local Apps Script development and deployment
 - Apps Script globals (`GmailApp`, `UrlFetchApp`, etc.) mocked in Vitest for testability
 - MoeGo API calls stubbed via mocked HTTP responses
-- Bitly API calls stubbed via mocked HTTP responses
+- Short.io API calls stubbed via mocked HTTP responses
 - Unit tests for each module: webhook validation, MoeGo API client, form builder, URL shortener, email delivery, and utils
 - Integration tests for `doPost` entrypoint with mocked globals and stubbed API responses
 - End-to-end test against live MoeGo sandbox and real Google Form in Phase 6
@@ -156,7 +156,7 @@ All sensitive values are stored as environment variables and must never be commi
 | `MOEGO_BUSINESS_ID`            | Yes      | MoeGo business ID                                                        |
 | `MOEGO_SERVICE_AGREEMENT_ID`   | Yes      | MoeGo Service Agreement ID                                               |
 | `MOEGO_SMS_AGREEMENT_ID`       | Yes      | MoeGo SMS Agreement ID                                                   |
-| `BITLY_API_KEY`                | Yes      | Bitly API access token — see [Bitly Setup](bitly-setup.md)               |
+| `SHORTIO_API_KEY`              | Yes      | Short.io API access token — see [Short.io Setup](short-io-setup.md)      |
 | `BUSINESS_OWNER_EMAIL`         | Yes      | Recipient email address for onboarding notifications                     |
 | `GOOGLE_FORM_URL`              | Yes      | Base URL of the onboarding Google Form — see [Form Setup](form-setup.md) |
 | `FORM_ENTRY_FIRST_NAME`        | Yes      | Google Form entry ID for first name field                                |
@@ -183,8 +183,8 @@ All sensitive values are stored as environment variables and must never be commi
 | ----------------------------------------------------------------------------------------- | ---------- | ------ | ----------------------------------------------------------------------------------- |
 | MoeGo API availability — calls may fail due to downtime or rate limiting                  | Medium     | High   | Graceful failure handling and business owner notification with manual recovery path |
 | MoeGo API key access — key must be requested through a Customer Success Manager           | Low        | High   | Confirm access early in Phase 0 before any dependent development begins             |
-| Bitly API availability — shortening call may fail                                         | Low        | Low    | Fall back to full unshortened URL and notify business owner via email               |
-| Bitly free tier limit — 1,000 short links per month                                       | Low        | Medium | Monitor usage; upgrade Bitly plan if volume approaches limit                        |
+| Short.io API availability — shortening call may fail                                      | Low        | Low    | Fall back to full unshortened URL and notify business owner via email               |
+| Short.io free tier limit — 1,000 short links per year                                     | Low        | Low    | Monitor usage; old links can be deleted to stay within limit                        |
 | Apps Script execution time limits — 6-minute execution limit                              | Low        | High   | Keep the flow lightweight with no polling or retries                                |
 | MoeGo webhook payload changes — payload structure may change without notice               | Low        | Medium | Strict payload validation with clear error messaging                                |
 | Google Apps Script global API changes — `GmailApp` or `UrlFetchApp` interfaces may change | Low        | Medium | Isolate Apps Script globals behind thin wrappers                                    |
@@ -204,6 +204,6 @@ All sensitive values are stored as environment variables and must never be commi
 - MoeGo webhook receiver with payload validation
 - MoeGo API client for Service Agreement, SMS Agreement, and card-on-file link retrieval
 - Google Form pre-filled URL builder
-- Bitly URL shortener integration with full URL fallback
+- Short.io URL shortener integration with full URL fallback
 - Email delivery to business owner with success and failure handling
 - GitHub Actions CI pipeline (lint, test, build)

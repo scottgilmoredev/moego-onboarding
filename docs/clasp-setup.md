@@ -70,7 +70,7 @@ Place in `dist/`:
 }
 ```
 
-The `gmail.send` scope is required for `GmailApp.sendEmail()`. The `script.external_request` scope is required for `UrlFetchApp` calls to the MoeGo and Bitly APIs.
+The `gmail.send` scope is required for `GmailApp.sendEmail()`. The `script.external_request` scope is required for `UrlFetchApp` calls to the MoeGo and Short.io APIs.
 
 `appsscript.json` is excluded from the `.gitignore` pattern `dist/*` via:
 
