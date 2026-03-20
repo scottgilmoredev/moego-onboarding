@@ -1,4 +1,5 @@
 import globals from 'globals';
+import gasPlugin from 'eslint-plugin-googleappsscript';
 import js from '@eslint/js';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
@@ -21,6 +22,7 @@ export default [
       globals: {
         ...globals.node,
         ...globals.browser,
+        ...gasPlugin.environments.googleappsscript.globals,
       },
     },
     plugins: {
