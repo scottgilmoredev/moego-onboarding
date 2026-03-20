@@ -1,3 +1,4 @@
+import globals from 'globals';
 import js from '@eslint/js';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
@@ -18,11 +19,8 @@ export default [
         sourceType: 'module',
       },
       globals: {
-        ContentService: 'readonly',
-        GoogleAppsScript: 'readonly',
-        PropertiesService: 'readonly',
-        console: 'readonly',
-        process: 'readonly',
+        ...globals.node,
+        ...globals.browser,
       },
     },
     plugins: {
