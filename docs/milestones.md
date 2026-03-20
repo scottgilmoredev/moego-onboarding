@@ -59,13 +59,13 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 
 ## Milestone 4 — URL Shortener
 
-**Goal:** Implement Bitly API integration for URL shortening with full URL fallback.
+**Goal:** Implement Short.io API integration for URL shortening with full URL fallback.
 
 **Planned issues:**
 
-- Implement Bitly API client
-- Implement full URL fallback on Bitly failure
-- Unit tests: successful shortening, Bitly API failure with fallback
+- Implement Short.io API client
+- Implement full URL fallback on Short.io failure
+- Unit tests: successful shortening, Short.io API failure with fallback
 
 ---
 
@@ -78,8 +78,8 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 - Implement success email composition and delivery via `GmailApp`
 - Implement partial failure email composition and delivery
 - Implement full failure email composition and delivery
-- Implement Bitly fallback email composition and delivery
-- Unit tests: success email, partial failure email, full failure email, Bitly fallback email
+- Implement Short.io fallback email composition and delivery
+- Unit tests: success email, partial failure email, full failure email, Short.io fallback email
 
 ---
 

@@ -18,7 +18,7 @@ Rather than emailing the business owner for review and manual distribution, deli
 
 MoeGo's API does not appear to expose a messaging endpoint. A third-party SMS provider such as Twilio would likely be required. MoeGo API messaging capabilities should be confirmed before committing to an implementation approach.
 
-_Note: URL shortening for SMS delivery is already handled in the current implementation via the Bitly integration._
+_Note: URL shortening for SMS delivery is already handled in the current implementation via the Short.io integration._
 
 ---
 
@@ -50,19 +50,19 @@ Dependencies: retry strategy and backoff logic, and a mechanism for re-triggerin
 
 **Alternative URL Shortener Services**
 
-The MVP supports Bitly for URL shortening. Supporting additional services would require a common shortener interface with multiple implementations. Alternative services worth considering:
+The MVP supports Short.io for URL shortening. Supporting additional services would require a common shortener interface with multiple implementations. Alternative services worth considering:
 
 **TinyURL**
-Fully free, simpler setup than Bitly, sufficient for pure shortening with no analytics requirements.
+TinyURL Free tier includes 100 links/month and 600 API requests/month (based on reviews). Simpler setup than Short.io.
 https://tinyurl.com/app/dev
-
-**Short.io**
-Free tier with 1,000 links/month, supports custom domains, clean API.
-https://short.io
 
 **Dub**
 Open source, generous free tier, modern developer-focused API.
 https://dub.co/docs
+
+**Bitly**
+Free tier limited to 5 links/month — insufficient for regular onboarding volume. Paid plans start at $10/month (billed annually) with 100 links/month.
+https://dev.bitly.com
 
 ---
 
@@ -70,7 +70,7 @@ https://dub.co/docs
 
 The current implementation is scoped to a single business owner with a fixed Google Form and configuration. Scaling to multiple business owners would require:
 
-- Per-owner configuration (MoeGo credentials, Google Form URL, field entry IDs, Bitly API key, recipient email)
+- Per-owner configuration (MoeGo credentials, Google Form URL, field entry IDs, Short.io API key, recipient email)
 - A mechanism for routing incoming webhooks to the correct owner's configuration
 - Per-owner Google Forms, as each owner's form URL and field entry IDs will differ
 
