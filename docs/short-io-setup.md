@@ -4,7 +4,7 @@
 
 Short.io is used in moego-onboarding to shorten the pre-filled Google Form URL before it is delivered to the business owner for distribution to the client via SMS. This keeps the URL within a manageable length for SMS delivery.
 
-Full API documentation: developers.short.io
+Full API documentation: [developers.short.io](https://developers.short.io)
 
 ---
 
