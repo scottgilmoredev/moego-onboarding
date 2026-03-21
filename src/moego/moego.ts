@@ -3,30 +3,25 @@
  *
  * @module
  * @description Handles authentication and communication with the MoeGo REST API.
- * Retrieves per-client Service Agreement sign link, SMS Agreement sign link,
- * and card-on-file link.
+ * Retrieves per-client agreement sign links and card-on-file link. Agreement
+ * sign link retrieval handles both Service Agreement and SMS Agreement via
+ * {@link getAgreementSignLink}.
  */
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
 /**
  * Base URL for the MoeGo API.
+ *
+ * @constant {string}
  */
 const MOEGO_BASE_URL = 'https://openapi.moego.pet';
 
-/**
- * Parameters for retrieving an agreement sign link.
- *
- * @interface GetAgreementSignLinkParams
- * @property {string} agreementId - The MoeGo agreement ID.
- * @property {string} customerId - The MoeGo customer ID.
- * @property {string} businessId - The MoeGo business ID.
- * @property {string} apiKey - The MoeGo API key.
- */
-export interface GetAgreementSignLinkParams {
-  agreementId: string;
-  customerId: string;
-  businessId: string;
-  apiKey: string;
-}
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
 
 /**
  * Parameters for making a request to the MoeGo API.
@@ -41,6 +36,28 @@ export interface FetchFromMoeGoParams {
   params?: Record<string, string>;
   apiKey: string;
 }
+
+/**
+ * Parameters for retrieving an agreement sign link.
+ *
+ * @interface GetAgreementSignLinkParams
+ * @property {string} agreementId - The MoeGo agreement ID. Use
+ * `config.moegoServiceAgreementId` for the Service Agreement or
+ * `config.moegoSmsAgreementId` for the SMS Agreement.
+ * @property {string} customerId - The MoeGo customer ID.
+ * @property {string} businessId - The MoeGo business ID.
+ * @property {string} apiKey - The MoeGo API key.
+ */
+export interface GetAgreementSignLinkParams {
+  agreementId: string;
+  customerId: string;
+  businessId: string;
+  apiKey: string;
+}
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
 
 /**
  * Build the Authorization header for MoeGo API requests.
@@ -119,6 +136,10 @@ export async function fetchFromMoeGo<T>({
   return JSON.parse(response.getContentText()) as T;
 }
 
+// ============================================================================
+// API METHODS
+// ============================================================================
+
 /**
  * Retrieve an agreement sign link for a given customer.
  *
@@ -132,8 +153,17 @@ export async function fetchFromMoeGo<T>({
  * @throws {Error} If the API call fails due to a network error.
  *
  * @example
- * const signUrl = await getAgreementSignLink({
+ * // Retrieve Service Agreement sign link
+ * const serviceAgreementUrl = await getAgreementSignLink({
  *   agreementId: config.moegoServiceAgreementId,
+ *   customerId: customer.id,
+ *   businessId: config.moegoBusinessId,
+ *   apiKey: config.moegoApiKey,
+ * });
+ *
+ * // Retrieve SMS Agreement sign link
+ * const smsAgreementUrl = await getAgreementSignLink({
+ *   agreementId: config.moegoSmsAgreementId,
  *   customerId: customer.id,
  *   businessId: config.moegoBusinessId,
  *   apiKey: config.moegoApiKey,
