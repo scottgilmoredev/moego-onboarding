@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { buildAuthHeader, fetchFromMoeGo, getAgreementSignLink } from './moego.js';
+import { buildAuthHeader, fetchFromMoeGo, getAgreementSignLink, getCofLink } from './moego.js';
 
 /**
  * Mock UrlFetchApp response object.
@@ -230,6 +230,68 @@ describe('getAgreementSignLink', () => {
         agreementId: 'agr_001',
         customerId: 'cus_001',
         businessId: 'biz_001',
+        apiKey: 'test-api-key',
+      })
+    ).rejects.toThrow();
+  });
+});
+
+/**
+ * getCofLink
+ *
+ * @description Tests for card-on-file link retrieval. Covers successful
+ * retrieval, non-200 error handling, and network errors.
+ */
+describe('getCofLink', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms the card-on-file link is successfully retrieved
+   * and returned.
+   */
+  it('returns the link for a valid request', async () => {
+    stubUrlFetchApp(
+      createMockFetchResponse(200, {
+        link: 'https://client.moego.pet/payment/cof/client?c=abc123',
+      })
+    );
+
+    const result = await getCofLink({
+      customerId: 'cus_001',
+      apiKey: 'test-api-key',
+    });
+
+    expect(result).toBe('https://client.moego.pet/payment/cof/client?c=abc123');
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when the API returns a non-200 response.
+   */
+  it('throws on non-200 response', async () => {
+    stubUrlFetchApp(createMockFetchResponse(404, { message: 'Not found' }));
+
+    await expect(
+      getCofLink({
+        customerId: 'cus_001',
+        apiKey: 'test-api-key',
+      })
+    ).rejects.toThrow();
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when the API call fails.
+   */
+  it('throws on network error', async () => {
+    stubUrlFetchAppNetworkError();
+
+    await expect(
+      getCofLink({
+        customerId: 'cus_001',
         apiKey: 'test-api-key',
       })
     ).rejects.toThrow();

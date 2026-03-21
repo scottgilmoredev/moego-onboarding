@@ -55,6 +55,18 @@ export interface GetAgreementSignLinkParams {
   apiKey: string;
 }
 
+/**
+ * Parameters for retrieving a card-on-file link.
+ *
+ * @interface GetCofLinkParams
+ * @property {string} customerId - The MoeGo customer ID.
+ * @property {string} apiKey - The MoeGo API key.
+ */
+export interface GetCofLinkParams {
+  customerId: string;
+  apiKey: string;
+}
+
 // ============================================================================
 // UTILITIES
 // ============================================================================
@@ -183,4 +195,32 @@ export async function getAgreementSignLink({
   });
 
   return result.signUrl;
+}
+
+/**
+ * Retrieve a card-on-file link for a given customer.
+ *
+ * @function getCofLink
+ * @description Calls the MoeGo Customer API to generate a unique card-on-file
+ * link for the specified customer.
+ *
+ * @param {GetCofLinkParams} params - The request parameters.
+ * @returns {Promise<string>} The unique card-on-file link.
+ * @throws {Error} If the API returns a non-200 response.
+ * @throws {Error} If the API call fails due to a network error.
+ *
+ * @example
+ * const cofLink = await getCofLink({
+ *   customerId: customer.id,
+ *   apiKey: config.moegoApiKey,
+ * });
+ */
+export async function getCofLink({ customerId, apiKey }: GetCofLinkParams): Promise<string> {
+  // Retrieve the card-on-file link via the MoeGo Customer API
+  const result = await fetchFromMoeGo<{ link: string }>({
+    path: `/v1/customers/${customerId}/cof/link`,
+    apiKey,
+  });
+
+  return result.link;
 }
