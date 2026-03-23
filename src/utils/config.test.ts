@@ -7,8 +7,6 @@
  * and GAS PropertiesService runtime.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-
 describe('getConfig', () => {
   beforeEach(() => {
     vi.resetModules();
