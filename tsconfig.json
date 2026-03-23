@@ -3,19 +3,20 @@
     "target": "ES2019",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2019"],
+    "lib": ["ES2019", "DOM"],
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "forceConsistentCasingInFileNames": true,
-    "rootDir": "./src",
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
       "#/*": ["./src/*"]
-    }
+    },
+    "types": ["vitest/globals", "node", "google-apps-script"],
+    "skipLibCheck": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "*.ts", "*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
