@@ -7,74 +7,13 @@
  * with full URL fallback.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
 import { shortenUrl } from './shortener.js';
 
-/**
- * Mock UrlFetchApp response object.
- *
- * @interface MockFetchResponse
- * @property {() => number} getResponseCode - Returns the mock HTTP response code.
- * @property {() => string} getContentText - Returns the mock response body as a string.
- */
-interface MockFetchResponse {
-  getResponseCode: () => number;
-  getContentText: () => string;
-}
-
-/**
- * Create a mock UrlFetchApp response.
- *
- * @function createMockFetchResponse
- * @description Factory for creating mock UrlFetchApp fetch responses for use
- * in tests.
- *
- * @param {number} responseCode - The HTTP response code to return.
- * @param {unknown} body - The response body to serialize and return.
- * @returns {MockFetchResponse} A mock UrlFetchApp response object.
- * @private
- */
-function createMockFetchResponse(responseCode: number, body: unknown): MockFetchResponse {
-  return {
-    getResponseCode: () => responseCode,
-    getContentText: () => JSON.stringify(body),
-  };
-}
-
-/**
- * Stub UrlFetchApp with a mock response.
- *
- * @function stubUrlFetchApp
- * @description Stubs the UrlFetchApp global with a mock fetch implementation
- * returning the provided response.
- *
- * @param {MockFetchResponse} response - The mock response to return.
- * @returns {void}
- * @private
- */
-function stubUrlFetchApp(response: MockFetchResponse): void {
-  vi.stubGlobal('UrlFetchApp', {
-    fetch: vi.fn().mockReturnValue(response),
-  });
-}
-
-/**
- * Stub UrlFetchApp to simulate a network error.
- *
- * @function stubUrlFetchAppNetworkError
- * @description Stubs the UrlFetchApp global to throw a network error on fetch.
- *
- * @returns {void}
- * @private
- */
-function stubUrlFetchAppNetworkError(): void {
-  vi.stubGlobal('UrlFetchApp', {
-    fetch: vi.fn().mockImplementation(() => {
-      throw new Error('Network error');
-    }),
-  });
-}
+import {
+  createMockFetchResponse,
+  stubUrlFetchApp,
+  stubUrlFetchAppNetworkError,
+} from '#/tests/utils/gas-mocks.js';
 
 const mockConfig = {
   shortIoApiKey: 'test-api-key',
