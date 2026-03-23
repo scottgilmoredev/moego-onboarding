@@ -8,8 +8,6 @@
  * // TODO: Full integration tests covering the complete onboarding flow are added in Milestone 6
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
 import { doPost } from '#/server.js';
 
 // Mock GAS globals

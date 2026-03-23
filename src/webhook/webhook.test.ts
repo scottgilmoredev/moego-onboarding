@@ -7,32 +7,41 @@
  * and malformed JSON handling.
  */
 
-import { describe, it, expect } from 'vitest';
-
 import { parseWebhookPayload } from './webhook.js';
 
 import type { MoeGoCustomerCreatedEvent } from '#/types/moego.js';
 
+/**
+ * Base webhook payload used across tests.
+ * Override individual fields per test as needed.
+ */
+const basePayload = {
+  id: 'evt_001',
+  type: 'CUSTOMER_CREATED',
+  timestamp: '2024-08-01T12:10:00Z',
+  companyId: 'cmp_001',
+  customer: {
+    id: 'cus_001',
+    firstName: 'John',
+    lastName: 'Doe',
+    phone: '+12125551234',
+  },
+};
+
+/**
+ * parseWebhookPayload
+ *
+ * @description Tests for MoeGo webhook payload parsing and validation. Covers
+ * valid payload parsing, event type validation, required field validation,
+ * and malformed JSON handling.
+ */
 describe('parseWebhookPayload', () => {
   /**
    * @test
    * @description Confirms a valid CUSTOMER_CREATED payload is parsed correctly.
    */
   it('parses a valid CUSTOMER_CREATED payload', () => {
-    const raw = JSON.stringify({
-      id: 'evt_001',
-      type: 'CUSTOMER_CREATED',
-      timestamp: '2024-08-01T12:10:00Z',
-      companyId: 'cmp_001',
-      customer: {
-        id: 'cus_001',
-        firstName: 'John',
-        lastName: 'Doe',
-        phone: '+12125551234',
-      },
-    });
-
-    const result = parseWebhookPayload(raw) as MoeGoCustomerCreatedEvent;
+    const result = parseWebhookPayload(JSON.stringify(basePayload)) as MoeGoCustomerCreatedEvent;
 
     expect(result.type).toBe('CUSTOMER_CREATED');
     expect(result.customer.id).toBe('cus_001');
@@ -54,18 +63,7 @@ describe('parseWebhookPayload', () => {
    * @description Confirms a payload with wrong event type throws a clear error.
    */
   it('throws on incorrect event type', () => {
-    const raw = JSON.stringify({
-      id: 'evt_001',
-      type: 'APPOINTMENT_CREATED',
-      timestamp: '2024-08-01T12:10:00Z',
-      companyId: 'cmp_001',
-      customer: {
-        id: 'cus_001',
-        firstName: 'John',
-        lastName: 'Doe',
-        phone: '+12125551234',
-      },
-    });
+    const raw = JSON.stringify({ ...basePayload, type: 'APPOINTMENT_CREATED' });
 
     expect(() => parseWebhookPayload(raw)).toThrow();
   });
@@ -76,14 +74,8 @@ describe('parseWebhookPayload', () => {
    */
   it('throws on missing required customer fields', () => {
     const raw = JSON.stringify({
-      id: 'evt_001',
-      type: 'CUSTOMER_CREATED',
-      timestamp: '2024-08-01T12:10:00Z',
-      companyId: 'cmp_001',
-      customer: {
-        id: 'cus_001',
-        firstName: 'John',
-      },
+      ...basePayload,
+      customer: { id: 'cus_001', firstName: 'John' },
     });
 
     expect(() => parseWebhookPayload(raw)).toThrow();

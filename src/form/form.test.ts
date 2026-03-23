@@ -7,8 +7,6 @@
  * construction when one or more links are unavailable, and URL encoding.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
 import { buildFormUrl } from './form.js';
 
 const mockConfig = {
@@ -25,6 +23,26 @@ vi.mock('#/utils/config.js', () => ({
   getConfig: () => mockConfig,
 }));
 
+/**
+ * Base form fields used across tests.
+ * Override individual fields per test as needed.
+ */
+const baseFields = {
+  firstName: 'John',
+  lastName: 'Doe',
+  phone: '+12125551234',
+  serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
+  smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
+  cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
+};
+
+/**
+ * buildFormUrl
+ *
+ * @description Tests for pre-filled Google Form URL construction. Covers
+ * complete URL construction, partial URL construction when links are
+ * unavailable, and correct URL encoding of field values.
+ */
 describe('buildFormUrl', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,14 +54,7 @@ describe('buildFormUrl', () => {
    * fields are present.
    */
   it('constructs a complete pre-filled URL when all fields are present', () => {
-    const result = buildFormUrl({
-      firstName: 'John',
-      lastName: 'Doe',
-      phone: '+12125551234',
-      serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
-      smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
-      cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
-    });
+    const result = buildFormUrl(baseFields);
 
     expect(result.missingFields).toHaveLength(0);
     expect(result.url).toContain('entry.111=John');
@@ -66,14 +77,7 @@ describe('buildFormUrl', () => {
    * reported when the Service Agreement URL is unavailable.
    */
   it('constructs a partial URL and reports missing fields when serviceAgreementUrl is null', () => {
-    const result = buildFormUrl({
-      firstName: 'John',
-      lastName: 'Doe',
-      phone: '+12125551234',
-      serviceAgreementUrl: null,
-      smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
-      cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
-    });
+    const result = buildFormUrl({ ...baseFields, serviceAgreementUrl: null });
 
     expect(result.missingFields).toContain('serviceAgreementUrl');
     expect(result.url).not.toContain('entry.444');
@@ -85,14 +89,7 @@ describe('buildFormUrl', () => {
    * reported when the SMS Agreement URL is unavailable.
    */
   it('constructs a partial URL and reports missing fields when smsAgreementUrl is null', () => {
-    const result = buildFormUrl({
-      firstName: 'John',
-      lastName: 'Doe',
-      phone: '+12125551234',
-      serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
-      smsAgreementUrl: null,
-      cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
-    });
+    const result = buildFormUrl({ ...baseFields, smsAgreementUrl: null });
 
     expect(result.missingFields).toContain('smsAgreementUrl');
     expect(result.url).not.toContain('entry.555');
@@ -104,14 +101,7 @@ describe('buildFormUrl', () => {
    * reported when the card-on-file URL is unavailable.
    */
   it('constructs a partial URL and reports missing fields when cofUrl is null', () => {
-    const result = buildFormUrl({
-      firstName: 'John',
-      lastName: 'Doe',
-      phone: '+12125551234',
-      serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
-      smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
-      cofUrl: null,
-    });
+    const result = buildFormUrl({ ...baseFields, cofUrl: null });
 
     expect(result.missingFields).toContain('cofUrl');
     expect(result.url).not.toContain('entry.666');
@@ -124,9 +114,7 @@ describe('buildFormUrl', () => {
    */
   it('reports all missing fields when all links are null', () => {
     const result = buildFormUrl({
-      firstName: 'John',
-      lastName: 'Doe',
-      phone: '+12125551234',
+      ...baseFields,
       serviceAgreementUrl: null,
       smsAgreementUrl: null,
       cofUrl: null,
