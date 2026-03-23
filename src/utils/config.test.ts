@@ -38,6 +38,7 @@ describe('getConfig', () => {
     vi.stubEnv('FORM_ENTRY_SERVICE_AGREEMENT', 'entry.444');
     vi.stubEnv('FORM_ENTRY_SMS_AGREEMENT', 'entry.555');
     vi.stubEnv('FORM_ENTRY_COF', 'entry.666');
+    vi.stubEnv('SHORTIO_DOMAIN', 'abc.short.gy');
 
     const { getConfig } = await import('#/utils/config.js');
     const config = getConfig();
@@ -56,6 +57,7 @@ describe('getConfig', () => {
     expect(config.formEntryServiceAgreement).toBe('entry.444');
     expect(config.formEntrySmsAgreement).toBe('entry.555');
     expect(config.formEntryCof).toBe('entry.666');
+    expect(config.shortIoDomain).toBe('abc.short.gy');
   });
 
   /**
@@ -82,5 +84,6 @@ describe('getConfig', () => {
     const config = getConfig();
 
     expect(config.moegoApiKey).toBe('gas-MOEGO_API_KEY');
+    expect(config.shortIoDomain).toBe('gas-SHORTIO_DOMAIN');
   });
 });
