@@ -27,6 +27,7 @@ import { IS_GAS_RUNTIME } from '#/utils/constants.js';
  * @property {string} formEntryServiceAgreement - Google Form entry ID for Service Agreement link field.
  * @property {string} formEntrySmsAgreement - Google Form entry ID for SMS Agreement link field.
  * @property {string} formEntryCof - Google Form entry ID for card-on-file link field.
+ * @property {string} shortIoDomain - Short.io domain for link shortening.
  */
 export interface Config {
   moegoApiKey: string;
@@ -43,6 +44,7 @@ export interface Config {
   formEntryServiceAgreement: string;
   formEntrySmsAgreement: string;
   formEntryCof: string;
+  shortIoDomain: string;
 }
 
 /**
@@ -101,5 +103,6 @@ export function getConfig(): Config {
     formEntryServiceAgreement: getEnvValue('FORM_ENTRY_SERVICE_AGREEMENT'),
     formEntrySmsAgreement: getEnvValue('FORM_ENTRY_SMS_AGREEMENT'),
     formEntryCof: getEnvValue('FORM_ENTRY_COF'),
+    shortIoDomain: getEnvValue('SHORTIO_DOMAIN'),
   };
 }
