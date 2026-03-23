@@ -149,22 +149,23 @@ Implement `doPost`, wire all modules together, integration tests with mocked glo
 
 All sensitive values are stored as environment variables and must never be committed to version control. Provide a `.env.example` file with placeholder values.
 
-| Variable                       | Required | Description                                                              |
-| ------------------------------ | -------- | ------------------------------------------------------------------------ |
-| `MOEGO_API_KEY`                | Yes      | MoeGo API key — issued by Customer Success Manager                       |
-| `MOEGO_COMPANY_ID`             | Yes      | MoeGo company ID                                                         |
-| `MOEGO_BUSINESS_ID`            | Yes      | MoeGo business ID                                                        |
-| `MOEGO_SERVICE_AGREEMENT_ID`   | Yes      | MoeGo Service Agreement ID                                               |
-| `MOEGO_SMS_AGREEMENT_ID`       | Yes      | MoeGo SMS Agreement ID                                                   |
-| `SHORTIO_API_KEY`              | Yes      | Short.io API access token — see [Short.io Setup](short-io-setup.md)      |
-| `BUSINESS_OWNER_EMAIL`         | Yes      | Recipient email address for onboarding notifications                     |
-| `GOOGLE_FORM_URL`              | Yes      | Base URL of the onboarding Google Form — see [Form Setup](form-setup.md) |
-| `FORM_ENTRY_FIRST_NAME`        | Yes      | Google Form entry ID for first name field                                |
-| `FORM_ENTRY_LAST_NAME`         | Yes      | Google Form entry ID for last name field                                 |
-| `FORM_ENTRY_PHONE`             | Yes      | Google Form entry ID for phone number field                              |
-| `FORM_ENTRY_SERVICE_AGREEMENT` | Yes      | Google Form entry ID for Service Agreement link field                    |
-| `FORM_ENTRY_SMS_AGREEMENT`     | Yes      | Google Form entry ID for SMS Agreement link field                        |
-| `FORM_ENTRY_COF`               | Yes      | Google Form entry ID for card-on-file link field                         |
+| Variable                       | Required | Description                                                                        |
+| ------------------------------ | -------- | ---------------------------------------------------------------------------------- |
+| `MOEGO_API_KEY`                | Yes      | MoeGo API key — issued by Customer Success Manager                                 |
+| `MOEGO_COMPANY_ID`             | Yes      | MoeGo company ID                                                                   |
+| `MOEGO_BUSINESS_ID`            | Yes      | MoeGo business ID                                                                  |
+| `MOEGO_SERVICE_AGREEMENT_ID`   | Yes      | MoeGo Service Agreement ID                                                         |
+| `MOEGO_SMS_AGREEMENT_ID`       | Yes      | MoeGo SMS Agreement ID                                                             |
+| `SHORTIO_API_KEY`              | Yes      | Short.io API access token — see [Short.io Setup](short-io-setup.md)                |
+| `BUSINESS_OWNER_EMAIL`         | Yes      | Recipient email address for onboarding notifications                               |
+| `GOOGLE_FORM_URL`              | Yes      | Base URL of the onboarding Google Form — see [Form Setup](form-setup.md)           |
+| `FORM_ENTRY_FIRST_NAME`        | Yes      | Google Form entry ID for first name field                                          |
+| `FORM_ENTRY_LAST_NAME`         | Yes      | Google Form entry ID for last name field                                           |
+| `FORM_ENTRY_PHONE`             | Yes      | Google Form entry ID for phone number field                                        |
+| `FORM_ENTRY_SERVICE_AGREEMENT` | Yes      | Google Form entry ID for Service Agreement link field                              |
+| `FORM_ENTRY_SMS_AGREEMENT`     | Yes      | Google Form entry ID for SMS Agreement link field                                  |
+| `FORM_ENTRY_COF`               | Yes      | Google Form entry ID for card-on-file link field                                   |
+| `SHORTIO_DOMAIN`               | Yes      | Short.io domain assigned to your account — see [Short.io Setup](short-io-setup.md) |
 
 ---
 

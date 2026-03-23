@@ -53,6 +53,7 @@ Add your Short.io API access token to the project environment:
 
 ```
 SHORTIO_API_KEY=<your-access-token>
+SHORTIO_DOMAIN=<your-assigned-domain>
 ```
 
 See the Configuration section in the [Development Plan](development-plan.md) for the full list of required environment variables.
