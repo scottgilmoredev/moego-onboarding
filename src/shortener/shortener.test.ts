@@ -40,12 +40,10 @@ describe('shortenUrl', () => {
    * @description Confirms the URL is successfully shortened and the
    * shortURL is returned.
    */
-  it('returns the shortened URL on success', async () => {
+  it('returns the shortened URL on success', () => {
     stubUrlFetchApp(createMockFetchResponse(200, { shortURL: 'https://abc.short.gy/xyz123' }));
 
-    const result = await shortenUrl(
-      'https://docs.google.com/forms/d/e/test/viewform?entry.111=John'
-    );
+    const result = shortenUrl('https://docs.google.com/forms/d/e/test/viewform?entry.111=John');
 
     expect(result.url).toBe('https://abc.short.gy/xyz123');
     expect(result.shortened).toBe(true);
@@ -56,11 +54,11 @@ describe('shortenUrl', () => {
    * @description Confirms the full URL is returned as fallback when the
    * Short.io API returns a non-200 response.
    */
-  it('returns the full URL as fallback on non-200 response', async () => {
+  it('returns the full URL as fallback on non-200 response', () => {
     stubUrlFetchApp(createMockFetchResponse(402, { message: 'Payment required' }));
 
     const longUrl = 'https://docs.google.com/forms/d/e/test/viewform?entry.111=John';
-    const result = await shortenUrl(longUrl);
+    const result = shortenUrl(longUrl);
 
     expect(result.url).toBe(longUrl);
     expect(result.shortened).toBe(false);
@@ -71,11 +69,11 @@ describe('shortenUrl', () => {
    * @description Confirms the full URL is returned as fallback when the
    * Short.io API call fails due to a network error.
    */
-  it('returns the full URL as fallback on network error', async () => {
+  it('returns the full URL as fallback on network error', () => {
     stubUrlFetchAppNetworkError();
 
     const longUrl = 'https://docs.google.com/forms/d/e/test/viewform?entry.111=John';
-    const result = await shortenUrl(longUrl);
+    const result = shortenUrl(longUrl);
 
     expect(result.url).toBe(longUrl);
     expect(result.shortened).toBe(false);
