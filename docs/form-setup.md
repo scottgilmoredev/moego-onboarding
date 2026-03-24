@@ -66,6 +66,16 @@ See the Configuration section in the [Development Plan](development-plan.md) for
 
 ---
 
+## Privacy Settings
+
+After creating the form, disable response summaries to prevent clients from seeing other clients' responses:
+
+1. Open the form in Google Forms
+2. Click the gear icon (Settings)
+3. Under **Presentation**, ensure **View results summary** is toggled off
+
+---
+
 ## Manually Constructing a Pre-filled URL
 
 In the event of a partial API failure, the business owner may need to manually construct a complete pre-filled URL. A pre-filled Google Form URL follows this format:
@@ -86,5 +96,7 @@ In the event of a partial API failure, the business owner may need to manually c
 ```
 https://docs.google.com/forms/d/e/<form-id>/viewform?entry.111111111=John&entry.222222222=Doe&entry.333333333=%2B12125551234&entry.444444444=https%3A%2F%2Fclient.moego.pet%2Fagreement%2Fsign%2F<hash>&entry.555555555=https%3A%2F%2Fclient.moego.pet%2Fagreement%2Fsign%2F<hash>&entry.666666666=https%3A%2F%2Fclient.moego.pet%2Fpayment%2Fcof%2Fclient%3Fc%3D<hash>
 ```
+
+> **Note:** Only the Service Agreement link, SMS Agreement link, and card-on-file link are pre-filled. Client name and phone number are intentionally excluded to minimize personally identifiable information embedded in the URL.
 
 For further reference see [Google's documentation on pre-filled form URLs](https://support.google.com/docs/answer/2839588).
