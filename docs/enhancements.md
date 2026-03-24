@@ -4,6 +4,14 @@ This document captures planned and potential post-MVP enhancements. Items here a
 
 ---
 
+**Custom Client Landing Page (Priority Enhancement)**
+
+Replace the shared Google Form approach with a per-client landing page served by the Apps Script `doGet` entrypoint. Each client receives a unique token-based URL that renders a private page containing only their specific onboarding links. The token contains no sensitive data, eliminating the current concern around agreement and COF links being stored by Short.io.
+
+Dependencies: token generation and storage via PropertiesService, `doGet` HTML rendering, token expiry/invalidation logic.
+
+---
+
 **Automated Clasp Deployment via CI**
 
 The current deployment process requires manual execution of clasp push and clasp deploy from a local machine. Automating this via GitHub Actions would deploy the Apps Script web app automatically when changes are merged to main.
