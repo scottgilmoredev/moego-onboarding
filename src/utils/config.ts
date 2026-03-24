@@ -21,9 +21,6 @@ import { IS_GAS_RUNTIME } from '#/utils/constants.js';
  * @property {string} shortIoApiKey - Short.io API key.
  * @property {string} businessOwnerEmail - Recipient email address for onboarding notifications.
  * @property {string} googleFormUrl - Base URL of the onboarding Google Form.
- * @property {string} formEntryFirstName - Google Form entry ID for first name field.
- * @property {string} formEntryLastName - Google Form entry ID for last name field.
- * @property {string} formEntryPhone - Google Form entry ID for phone number field.
  * @property {string} formEntryServiceAgreement - Google Form entry ID for Service Agreement link field.
  * @property {string} formEntrySmsAgreement - Google Form entry ID for SMS Agreement link field.
  * @property {string} formEntryCof - Google Form entry ID for card-on-file link field.
@@ -38,9 +35,6 @@ export interface Config {
   shortIoApiKey: string;
   businessOwnerEmail: string;
   googleFormUrl: string;
-  formEntryFirstName: string;
-  formEntryLastName: string;
-  formEntryPhone: string;
   formEntryServiceAgreement: string;
   formEntrySmsAgreement: string;
   formEntryCof: string;
@@ -97,9 +91,6 @@ export function getConfig(): Config {
     shortIoApiKey: getEnvValue('SHORTIO_API_KEY'),
     businessOwnerEmail: getEnvValue('BUSINESS_OWNER_EMAIL'),
     googleFormUrl: getEnvValue('GOOGLE_FORM_URL'),
-    formEntryFirstName: getEnvValue('FORM_ENTRY_FIRST_NAME'),
-    formEntryLastName: getEnvValue('FORM_ENTRY_LAST_NAME'),
-    formEntryPhone: getEnvValue('FORM_ENTRY_PHONE'),
     formEntryServiceAgreement: getEnvValue('FORM_ENTRY_SERVICE_AGREEMENT'),
     formEntrySmsAgreement: getEnvValue('FORM_ENTRY_SMS_AGREEMENT'),
     formEntryCof: getEnvValue('FORM_ENTRY_COF'),
