@@ -7,7 +7,7 @@
  * composition and delivery via GmailApp.
  */
 
-import { sendSuccessEmail } from './email.js';
+import { sendSuccessEmail, sendPartialFailureEmail } from './email.js';
 
 const mockConfig = {
   businessOwnerEmail: 'owner@example.com',
@@ -86,5 +86,114 @@ describe('sendSuccessEmail', () => {
 
     const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('URL shortening failed');
+  });
+});
+
+/**
+ * sendPartialFailureEmail
+ *
+ * @description Tests for partial failure email composition and delivery. Covers
+ * correct recipient, subject, body content including failed fields, partial URL,
+ * customer MoeGo ID, and manual recovery steps.
+ */
+describe('sendPartialFailureEmail', () => {
+  beforeEach(() => {
+    vi.stubGlobal('GmailApp', {
+      sendEmail: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * @test
+   * @description Confirms partial failure email is sent with correct recipient
+   * and subject.
+   */
+  it('sends partial failure email to correct recipient with correct subject', () => {
+    sendPartialFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      partialUrl: 'https://abc.short.gy/xyz123',
+      missingFields: ['serviceAgreementUrl'],
+    });
+
+    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com',
+      'Action Required — Incomplete Onboarding for John D.',
+      expect.any(String)
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms partial failure email body contains the partial URL.
+   */
+  it('includes the partial URL in the body', () => {
+    sendPartialFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      partialUrl: 'https://abc.short.gy/xyz123',
+      missingFields: ['serviceAgreementUrl'],
+    });
+
+    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('https://abc.short.gy/xyz123');
+  });
+
+  /**
+   * @test
+   * @description Confirms partial failure email body contains the customer MoeGo ID.
+   */
+  it('includes the customer MoeGo ID in the body', () => {
+    sendPartialFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      partialUrl: 'https://abc.short.gy/xyz123',
+      missingFields: ['serviceAgreementUrl'],
+    });
+
+    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('cus_001');
+  });
+
+  /**
+   * @test
+   * @description Confirms partial failure email body identifies each missing field.
+   */
+  it('identifies all missing fields in the body', () => {
+    sendPartialFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      partialUrl: 'https://abc.short.gy/xyz123',
+      missingFields: ['serviceAgreementUrl', 'cofUrl'],
+    });
+
+    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('serviceAgreementUrl');
+    expect(body).toContain('cofUrl');
+  });
+
+  /**
+   * @test
+   * @description Confirms partial failure email body contains manual recovery steps.
+   */
+  it('includes manual recovery steps in the body', () => {
+    sendPartialFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      partialUrl: 'https://abc.short.gy/xyz123',
+      missingFields: ['serviceAgreementUrl'],
+    });
+
+    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('manual');
   });
 });
