@@ -7,7 +7,7 @@
  * composition and delivery via GmailApp.
  */
 
-import { sendSuccessEmail, sendPartialFailureEmail } from './email.js';
+import { sendSuccessEmail, sendFullFailureEmail, sendPartialFailureEmail } from './email.js';
 
 const mockConfig = {
   businessOwnerEmail: 'owner@example.com',
@@ -90,6 +90,89 @@ describe('sendSuccessEmail', () => {
 });
 
 /**
+ * sendFullFailureEmail
+ *
+ * @description Tests for full failure email composition and delivery. Covers
+ * correct recipient, subject, body content including customer MoeGo ID and
+ * manual recovery steps. No URL is included.
+ */
+describe('sendFullFailureEmail', () => {
+  beforeEach(() => {
+    vi.stubGlobal('GmailApp', {
+      sendEmail: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * @test
+   * @description Confirms full failure email is sent with correct recipient
+   * and subject.
+   */
+  it('sends full failure email to correct recipient with correct subject', () => {
+    sendFullFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+    });
+
+    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com',
+      'Action Required — Onboarding Links Unavailable for John D.',
+      expect.any(String)
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms full failure email body contains the customer MoeGo ID.
+   */
+  it('includes the customer MoeGo ID in the body', () => {
+    sendFullFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+    });
+
+    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('cus_001');
+  });
+
+  /**
+   * @test
+   * @description Confirms full failure email body contains manual recovery steps.
+   */
+  it('includes manual recovery steps in the body', () => {
+    sendFullFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+    });
+
+    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('manual');
+  });
+
+  /**
+   * @test
+   * @description Confirms full failure email body does not contain a URL.
+   */
+  it('does not include a URL in the body', () => {
+    sendFullFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+    });
+
+    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).not.toContain('https://');
+  });
+});
+
+/**
  * sendPartialFailureEmail
  *
  * @description Tests for partial failure email composition and delivery. Covers
@@ -123,7 +206,7 @@ describe('sendPartialFailureEmail', () => {
 
     expect(GmailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com',
-      'Action Required — Incomplete Onboarding for John D.',
+      'Action Required — Onboarding Links Partially Unavailable for John D.',
       expect.any(String)
     );
   });
