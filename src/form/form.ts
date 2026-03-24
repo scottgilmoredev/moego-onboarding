@@ -9,21 +9,16 @@
  */
 
 import { getConfig } from '#/utils/config.js';
+
 /**
  * Input fields for constructing a pre-filled Google Form URL.
  *
  * @interface FormFields
- * @property {string} firstName - The client's first name.
- * @property {string} lastName - The client's last name.
- * @property {string} phone - The client's phone number.
  * @property {string | null} serviceAgreementUrl - The Service Agreement sign link, or null if retrieval failed.
  * @property {string | null} smsAgreementUrl - The SMS Agreement sign link, or null if retrieval failed.
  * @property {string | null} cofUrl - The card-on-file link, or null if retrieval failed.
  */
 export interface FormFields {
-  firstName: string;
-  lastName: string;
-  phone: string;
   serviceAgreementUrl: string | null;
   smsAgreementUrl: string | null;
   cofUrl: string | null;
@@ -88,9 +83,6 @@ function appendEntry(
  *
  * @example
  * const { url, missingFields } = buildFormUrl({
- *   firstName: customer.firstName,
- *   lastName: customer.lastName,
- *   phone: customer.phone,
  *   serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
  *   smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
  *   cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
@@ -102,11 +94,6 @@ export function buildFormUrl(fields: FormFields): FormUrlResult {
 
   // Start with the base form URL and append each pre-fillable field
   let url = config.googleFormUrl;
-
-  // Append customer data fields — these are always present
-  url = appendEntry(url, config.formEntryFirstName, fields.firstName, missingFields, 'firstName');
-  url = appendEntry(url, config.formEntryLastName, fields.lastName, missingFields, 'lastName');
-  url = appendEntry(url, config.formEntryPhone, fields.phone, missingFields, 'phone');
 
   // Append link fields — these may be null if MoeGo API calls failed
   url = appendEntry(
