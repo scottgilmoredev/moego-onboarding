@@ -100,22 +100,18 @@ export function buildAuthHeader(apiKey: string): string {
  *
  * @template T - The expected response body type.
  * @param {FetchFromMoeGoParams} params - The request parameters.
- * @returns {Promise<T>} The parsed response body.
+ * @returns {T} The parsed response body.
  * @throws {Error} If the API returns a non-200 response.
  * @throws {Error} If the API call fails due to a network error.
  *
  * @example
- * const result = await fetchFromMoeGo<{ signUrl: string }>({
+ * const result = fetchFromMoeGo<{ signUrl: string }>({
  *   path: '/v1/agreements/agr_001/sign_link',
  *   params: { customer_id: 'cus_001', business_id: 'biz_001' },
  *   apiKey: config.moegoApiKey,
  * });
  */
-export async function fetchFromMoeGo<T>({
-  path,
-  params,
-  apiKey,
-}: FetchFromMoeGoParams): Promise<T> {
+export function fetchFromMoeGo<T>({ path, params, apiKey }: FetchFromMoeGoParams): T {
   // Construct query string from params if provided
   const queryString = params
     ? `?${Object.entries(params)
@@ -160,13 +156,13 @@ export async function fetchFromMoeGo<T>({
  * for the specified agreement and customer.
  *
  * @param {GetAgreementSignLinkParams} params - The request parameters.
- * @returns {Promise<string>} The unique signing URL.
+ * @returns {string} The unique signing URL.
  * @throws {Error} If the API returns a non-200 response.
  * @throws {Error} If the API call fails due to a network error.
  *
  * @example
  * // Retrieve Service Agreement sign link
- * const serviceAgreementUrl = await getAgreementSignLink({
+ * const serviceAgreementUrl = getAgreementSignLink({
  *   agreementId: config.moegoServiceAgreementId,
  *   customerId: customer.id,
  *   businessId: config.moegoBusinessId,
@@ -174,21 +170,21 @@ export async function fetchFromMoeGo<T>({
  * });
  *
  * // Retrieve SMS Agreement sign link
- * const smsAgreementUrl = await getAgreementSignLink({
+ * const smsAgreementUrl = getAgreementSignLink({
  *   agreementId: config.moegoSmsAgreementId,
  *   customerId: customer.id,
  *   businessId: config.moegoBusinessId,
  *   apiKey: config.moegoApiKey,
  * });
  */
-export async function getAgreementSignLink({
+export function getAgreementSignLink({
   agreementId,
   customerId,
   businessId,
   apiKey,
-}: GetAgreementSignLinkParams): Promise<string> {
+}: GetAgreementSignLinkParams): string {
   // Retrieve the agreement sign link via the MoeGo API
-  const result = await fetchFromMoeGo<{ signUrl: string }>({
+  const result = fetchFromMoeGo<{ signUrl: string }>({
     path: `/v1/agreements/${agreementId}/sign_link`,
     params: { customer_id: customerId, business_id: businessId },
     apiKey,
@@ -205,19 +201,19 @@ export async function getAgreementSignLink({
  * link for the specified customer.
  *
  * @param {GetCofLinkParams} params - The request parameters.
- * @returns {Promise<string>} The unique card-on-file link.
+ * @returns {string} The unique card-on-file link.
  * @throws {Error} If the API returns a non-200 response.
  * @throws {Error} If the API call fails due to a network error.
  *
  * @example
- * const cofLink = await getCofLink({
+ * const cofLink = getCofLink({
  *   customerId: customer.id,
  *   apiKey: config.moegoApiKey,
  * });
  */
-export async function getCofLink({ customerId, apiKey }: GetCofLinkParams): Promise<string> {
+export function getCofLink({ customerId, apiKey }: GetCofLinkParams): string {
   // Retrieve the card-on-file link via the MoeGo Customer API
-  const result = await fetchFromMoeGo<{ link: string }>({
+  const result = fetchFromMoeGo<{ link: string }>({
     path: `/v1/customers/${customerId}/cof/link`,
     apiKey,
   });

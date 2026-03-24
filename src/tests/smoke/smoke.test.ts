@@ -2,21 +2,106 @@
  * Smoke Tests
  *
  * @module
- * @description Verifies the project scaffold is operational. Confirms Vitest
- * executes successfully and the test infrastructure is correctly configured.
- * Full end-to-end smoke tests covering the doPost flow are added in Phase 6
- * once all business logic modules are in place.
+ * @description Verifies the critical path through the onboarding flow is
+ * operational. Confirms doPost handles a valid CUSTOMER_CREATED payload
+ * end-to-end with mocked GAS globals and stubbed API responses.
  */
 
-import { describe, expect, it } from 'vitest';
+import { doPost } from '#/server.js';
 
+const mockConfig = {
+  moegoApiKey: 'test-api-key',
+  moegoCompanyId: 'test-company-id',
+  moegoBusinessId: 'test-business-id',
+  moegoServiceAgreementId: 'agr_service',
+  moegoSmsAgreementId: 'agr_sms',
+  shortIoApiKey: 'test-shortio-key',
+  shortIoDomain: 'abc.short.gy',
+  businessOwnerEmail: 'owner@example.com',
+  googleFormUrl: 'https://docs.google.com/forms/d/e/test/viewform',
+  formEntryServiceAgreement: 'entry.444',
+  formEntrySmsAgreement: 'entry.555',
+  formEntryCof: 'entry.666',
+};
+
+vi.mock('#/utils/config.js', () => ({
+  getConfig: () => mockConfig,
+}));
+
+/**
+ * smoke
+ *
+ * @description Verifies the full onboarding flow processes a valid
+ * CUSTOMER_CREATED webhook payload without throwing and delivers
+ * an email to the business owner.
+ */
 describe('smoke', () => {
+  beforeEach(() => {
+    vi.stubGlobal('GmailApp', { sendEmail: vi.fn() });
+    vi.stubGlobal('ContentService', {
+      createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
+    });
+    vi.stubGlobal('UrlFetchApp', {
+      fetch: vi
+        .fn()
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
+        })
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
+        })
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
+        })
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),
+        }),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   /**
    * @test
-   * @description Confirms the project scaffold is operational and Vitest
-   * is correctly configured.
+   * @description Confirms doPost processes a valid CUSTOMER_CREATED payload
+   * end-to-end without throwing and delivers a success email to the business
+   * owner.
    */
-  it('project scaffold is operational', () => {
-    expect(true).toBe(true);
+  it('processes a valid CUSTOMER_CREATED webhook end-to-end', () => {
+    const mockEvent = {
+      postData: {
+        contents: JSON.stringify({
+          id: 'evt_001',
+          type: 'CUSTOMER_CREATED',
+          timestamp: '2024-08-01T12:10:00Z',
+          companyId: 'cmp_001',
+          customer: {
+            id: 'cus_001',
+            firstName: 'John',
+            lastName: 'Doe',
+            phone: '+12125551234',
+          },
+        }),
+        type: 'application/json',
+        length: 0,
+        name: '',
+      },
+    } as GoogleAppsScript.Events.DoPost;
+
+    expect(() => doPost(mockEvent)).not.toThrow();
+    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com',
+      'New Client Onboarding — John D.',
+      expect.stringContaining('https://abc.short.gy/xyz123')
+    );
   });
 });

@@ -61,12 +61,12 @@ describe('fetchFromMoeGo', () => {
    * @test
    * @description Confirms a successful request returns the parsed response body.
    */
-  it('returns parsed response body on success', async () => {
+  it('returns parsed response body on success', () => {
     stubUrlFetchApp(
       createMockFetchResponse(200, { signUrl: 'https://client.moego.pet/agreement/sign/abc123' })
     );
 
-    const result = await fetchFromMoeGo<{ signUrl: string }>({
+    const result = fetchFromMoeGo<{ signUrl: string }>({
       path: '/v1/agreements/agr_001/sign_link',
       params: { customer_id: 'cus_001', business_id: 'biz_001' },
       apiKey: 'test-api-key',
@@ -79,32 +79,32 @@ describe('fetchFromMoeGo', () => {
    * @test
    * @description Confirms an error is thrown on a non-200 response.
    */
-  it('throws on non-200 response', async () => {
+  it('throws on non-200 response', () => {
     stubUrlFetchApp(createMockFetchResponse(404, { message: 'Not found' }));
 
-    await expect(
+    expect(() =>
       fetchFromMoeGo({
         path: '/v1/agreements/agr_001/sign_link',
         params: { customer_id: 'cus_001', business_id: 'biz_001' },
         apiKey: 'test-api-key',
       })
-    ).rejects.toThrow();
+    ).toThrow();
   });
 
   /**
    * @test
    * @description Confirms an error is thrown on a network error.
    */
-  it('throws on network error', async () => {
+  it('throws on network error', () => {
     stubUrlFetchAppNetworkError();
 
-    await expect(
+    expect(() =>
       fetchFromMoeGo({
         path: '/v1/agreements/agr_001/sign_link',
         params: { customer_id: 'cus_001', business_id: 'biz_001' },
         apiKey: 'test-api-key',
       })
-    ).rejects.toThrow();
+    ).toThrow();
   });
 });
 
@@ -125,12 +125,12 @@ describe('getAgreementSignLink', () => {
    * @description Confirms the agreement sign link is successfully retrieved
    * and the signUrl is returned.
    */
-  it('returns the signUrl for a valid request', async () => {
+  it('returns the signUrl for a valid request', () => {
     stubUrlFetchApp(
       createMockFetchResponse(200, { signUrl: 'https://client.moego.pet/agreement/sign/abc123' })
     );
 
-    const result = await getAgreementSignLink({
+    const result = getAgreementSignLink({
       agreementId: 'agr_001',
       customerId: 'cus_001',
       businessId: 'biz_001',
@@ -144,34 +144,34 @@ describe('getAgreementSignLink', () => {
    * @test
    * @description Confirms an error is thrown when the API returns a non-200 response.
    */
-  it('throws on non-200 response', async () => {
+  it('throws on non-200 response', () => {
     stubUrlFetchApp(createMockFetchResponse(404, { message: 'Not found' }));
 
-    await expect(
+    expect(() =>
       getAgreementSignLink({
         agreementId: 'agr_001',
         customerId: 'cus_001',
         businessId: 'biz_001',
         apiKey: 'test-api-key',
       })
-    ).rejects.toThrow();
+    ).toThrow();
   });
 
   /**
    * @test
    * @description Confirms an error is thrown when the API call fails.
    */
-  it('throws on network error', async () => {
+  it('throws on network error', () => {
     stubUrlFetchAppNetworkError();
 
-    await expect(
+    expect(() =>
       getAgreementSignLink({
         agreementId: 'agr_001',
         customerId: 'cus_001',
         businessId: 'biz_001',
         apiKey: 'test-api-key',
       })
-    ).rejects.toThrow();
+    ).toThrow();
   });
 });
 
@@ -191,14 +191,14 @@ describe('getCofLink', () => {
    * @description Confirms the card-on-file link is successfully retrieved
    * and returned.
    */
-  it('returns the link for a valid request', async () => {
+  it('returns the link for a valid request', () => {
     stubUrlFetchApp(
       createMockFetchResponse(200, {
         link: 'https://client.moego.pet/payment/cof/client?c=abc123',
       })
     );
 
-    const result = await getCofLink({
+    const result = getCofLink({
       customerId: 'cus_001',
       apiKey: 'test-api-key',
     });
@@ -210,29 +210,29 @@ describe('getCofLink', () => {
    * @test
    * @description Confirms an error is thrown when the API returns a non-200 response.
    */
-  it('throws on non-200 response', async () => {
+  it('throws on non-200 response', () => {
     stubUrlFetchApp(createMockFetchResponse(404, { message: 'Not found' }));
 
-    await expect(
+    expect(() =>
       getCofLink({
         customerId: 'cus_001',
         apiKey: 'test-api-key',
       })
-    ).rejects.toThrow();
+    ).toThrow();
   });
 
   /**
    * @test
    * @description Confirms an error is thrown when the API call fails.
    */
-  it('throws on network error', async () => {
+  it('throws on network error', () => {
     stubUrlFetchAppNetworkError();
 
-    await expect(
+    expect(() =>
       getCofLink({
         customerId: 'cus_001',
         apiKey: 'test-api-key',
       })
-    ).rejects.toThrow();
+    ).toThrow();
   });
 });
