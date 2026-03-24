@@ -30,15 +30,15 @@ export interface ShortenUrlResult {
  * URL and sets shortened to false if the API call fails for any reason.
  *
  * @param {string} longUrl - The full URL to shorten.
- * @returns {Promise<ShortenUrlResult>} The shortened or fallback URL and success flag.
+ * @returns {ShortenUrlResult} The shortened or fallback URL and success flag.
  *
  * @example
- * const { url, shortened } = await shortenUrl(formUrl);
+ * const { url, shortened } = shortenUrl(formUrl);
  * if (!shortened) {
  *   // notify business owner that URL was not shortened
  * }
  */
-export async function shortenUrl(longUrl: string): Promise<ShortenUrlResult> {
+export function shortenUrl(longUrl: string): ShortenUrlResult {
   const config = getConfig();
 
   try {
@@ -63,7 +63,6 @@ export async function shortenUrl(longUrl: string): Promise<ShortenUrlResult> {
 
     // Parse and return the shortened URL
     const body = JSON.parse(response.getContentText()) as { shortURL: string };
-
     return { url: body.shortURL, shortened: true };
   } catch {
     // Fall back to full URL on network error or any unexpected failure
