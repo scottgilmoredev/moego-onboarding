@@ -159,9 +159,6 @@ All sensitive values are stored as environment variables and must never be commi
 | `SHORTIO_API_KEY`              | Yes      | Short.io API access token — see [Short.io Setup](short-io-setup.md)                |
 | `BUSINESS_OWNER_EMAIL`         | Yes      | Recipient email address for onboarding notifications                               |
 | `GOOGLE_FORM_URL`              | Yes      | Base URL of the onboarding Google Form — see [Form Setup](form-setup.md)           |
-| `FORM_ENTRY_FIRST_NAME`        | Yes      | Google Form entry ID for first name field                                          |
-| `FORM_ENTRY_LAST_NAME`         | Yes      | Google Form entry ID for last name field                                           |
-| `FORM_ENTRY_PHONE`             | Yes      | Google Form entry ID for phone number field                                        |
 | `FORM_ENTRY_SERVICE_AGREEMENT` | Yes      | Google Form entry ID for Service Agreement link field                              |
 | `FORM_ENTRY_SMS_AGREEMENT`     | Yes      | Google Form entry ID for SMS Agreement link field                                  |
 | `FORM_ENTRY_COF`               | Yes      | Google Form entry ID for card-on-file link field                                   |
@@ -180,15 +177,16 @@ All sensitive values are stored as environment variables and must never be commi
 
 ## 10. Risks & Mitigation
 
-| Risk                                                                                      | Likelihood | Impact | Mitigation                                                                          |
-| ----------------------------------------------------------------------------------------- | ---------- | ------ | ----------------------------------------------------------------------------------- |
-| MoeGo API availability — calls may fail due to downtime or rate limiting                  | Medium     | High   | Graceful failure handling and business owner notification with manual recovery path |
-| MoeGo API key access — key must be requested through a Customer Success Manager           | Low        | High   | Confirm access early in Phase 0 before any dependent development begins             |
-| Short.io API availability — shortening call may fail                                      | Low        | Low    | Fall back to full unshortened URL and notify business owner via email               |
-| Short.io free tier limit — 1,000 short links per year                                     | Low        | Low    | Monitor usage; old links can be deleted to stay within limit                        |
-| Apps Script execution time limits — 6-minute execution limit                              | Low        | High   | Keep the flow lightweight with no polling or retries                                |
-| MoeGo webhook payload changes — payload structure may change without notice               | Low        | Medium | Strict payload validation with clear error messaging                                |
-| Google Apps Script global API changes — `GmailApp` or `UrlFetchApp` interfaces may change | Low        | Medium | Isolate Apps Script globals behind thin wrappers                                    |
+| Risk                                                                                                    | Likelihood | Impact | Mitigation                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------- | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MoeGo API availability — calls may fail due to downtime or rate limiting                                | Medium     | High   | Graceful failure handling and business owner notification with manual recovery path                                                                                          |
+| MoeGo API key access — key must be requested through a Customer Success Manager                         | Low        | High   | Confirm access early in Phase 0 before any dependent development begins                                                                                                      |
+| Short.io API availability — shortening call may fail                                                    | Low        | Low    | Fall back to full unshortened URL and notify business owner via email                                                                                                        |
+| Short.io free tier limit — 1,000 short links per year                                                   | Low        | Low    | Monitor usage; old links can be deleted to stay within limit                                                                                                                 |
+| Apps Script execution time limits — 6-minute execution limit                                            | Low        | High   | Keep the flow lightweight with no polling or retries                                                                                                                         |
+| MoeGo webhook payload changes — payload structure may change without notice                             | Low        | Medium | Strict payload validation with clear error messaging                                                                                                                         |
+| Google Apps Script global API changes — `GmailApp` or `UrlFetchApp` interfaces may change               | Low        | Medium | Isolate Apps Script globals behind thin wrappers                                                                                                                             |
+| Short.io data storage — pre-filled URL containing agreement and COF links is stored on Short.io servers | Low        | Low    | Links are not personally identifiable without accompanying customer data. Priority post-MVP enhancement replaces Short.io dependency entirely via doGet custom landing page. |
 
 ---
 

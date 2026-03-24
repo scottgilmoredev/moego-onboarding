@@ -30,9 +30,6 @@ describe('getConfig', () => {
     vi.stubEnv('SHORTIO_API_KEY', 'test-shortio-key');
     vi.stubEnv('BUSINESS_OWNER_EMAIL', 'owner@example.com');
     vi.stubEnv('GOOGLE_FORM_URL', 'https://docs.google.com/forms/test');
-    vi.stubEnv('FORM_ENTRY_FIRST_NAME', 'entry.111');
-    vi.stubEnv('FORM_ENTRY_LAST_NAME', 'entry.222');
-    vi.stubEnv('FORM_ENTRY_PHONE', 'entry.333');
     vi.stubEnv('FORM_ENTRY_SERVICE_AGREEMENT', 'entry.444');
     vi.stubEnv('FORM_ENTRY_SMS_AGREEMENT', 'entry.555');
     vi.stubEnv('FORM_ENTRY_COF', 'entry.666');
@@ -49,9 +46,6 @@ describe('getConfig', () => {
     expect(config.shortIoApiKey).toBe('test-shortio-key');
     expect(config.businessOwnerEmail).toBe('owner@example.com');
     expect(config.googleFormUrl).toBe('https://docs.google.com/forms/test');
-    expect(config.formEntryFirstName).toBe('entry.111');
-    expect(config.formEntryLastName).toBe('entry.222');
-    expect(config.formEntryPhone).toBe('entry.333');
     expect(config.formEntryServiceAgreement).toBe('entry.444');
     expect(config.formEntrySmsAgreement).toBe('entry.555');
     expect(config.formEntryCof).toBe('entry.666');

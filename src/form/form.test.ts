@@ -11,9 +11,6 @@ import { buildFormUrl } from './form.js';
 
 const mockConfig = {
   googleFormUrl: 'https://docs.google.com/forms/d/e/test/viewform',
-  formEntryFirstName: 'entry.111',
-  formEntryLastName: 'entry.222',
-  formEntryPhone: 'entry.333',
   formEntryServiceAgreement: 'entry.444',
   formEntrySmsAgreement: 'entry.555',
   formEntryCof: 'entry.666',
@@ -28,9 +25,6 @@ vi.mock('#/utils/config.js', () => ({
  * Override individual fields per test as needed.
  */
 const baseFields = {
-  firstName: 'John',
-  lastName: 'Doe',
-  phone: '+12125551234',
   serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
   smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
   cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
@@ -57,9 +51,6 @@ describe('buildFormUrl', () => {
     const result = buildFormUrl(baseFields);
 
     expect(result.missingFields).toHaveLength(0);
-    expect(result.url).toContain('entry.111=John');
-    expect(result.url).toContain('entry.222=Doe');
-    expect(result.url).toContain('entry.333=%2B12125551234');
     expect(result.url).toContain(
       'entry.444=https%3A%2F%2Fclient.moego.pet%2Fagreement%2Fsign%2Fabc123'
     );
