@@ -7,7 +7,7 @@
  * and malformed JSON handling.
  */
 
-import { parseWebhookPayload } from './webhook.js';
+import { parseWebhookPayload, verifyWebhookSignature } from './webhook.js';
 
 import type { MoeGoCustomerCreatedEvent } from '#/types/moego.js';
 
@@ -79,5 +79,67 @@ describe('parseWebhookPayload', () => {
     });
 
     expect(() => parseWebhookPayload(raw)).toThrow();
+  });
+});
+
+/**
+ * verifyWebhookSignature
+ *
+ * @description Tests for MoeGo webhook signature verification. Covers
+ * valid signature acceptance and invalid signature rejection.
+ */
+describe('verifyWebhookSignature', () => {
+  beforeEach(() => {
+    vi.stubGlobal('Utilities', {
+      computeHmacSha256Signature: vi.fn().mockReturnValue([1, 2, 3]),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * @test
+   * @description Confirms a valid signature is accepted.
+   */
+  it('returns true for a valid signature', () => {
+    const body = JSON.stringify({ id: 'evt_001', type: 'CUSTOMER_CREATED' });
+    const clientId = 'test-client-id';
+    const nonce = '123456789';
+    const timestamp = '1751284717825';
+    const secret = 'test-secret';
+
+    // Compute expected signature using same logic as implementation
+    const expectedBytes = [1, 2, 3];
+    const expectedSig = btoa(String.fromCharCode(...expectedBytes));
+
+    const result = verifyWebhookSignature({
+      body,
+      clientId,
+      nonce,
+      timestamp,
+      signature: expectedSig,
+      secret,
+    });
+
+    expect(result).toBe(true);
+  });
+
+  /**
+   * @test
+   * @description Confirms an invalid signature is rejected.
+   */
+  it('returns false for an invalid signature', () => {
+    const result = verifyWebhookSignature({
+      body: JSON.stringify({ id: 'evt_001' }),
+      clientId: 'test-client-id',
+      nonce: '123456789',
+      timestamp: '1751284717825',
+      signature: 'invalid-signature',
+      secret: 'test-secret',
+    });
+
+    expect(result).toBe(false);
   });
 });
