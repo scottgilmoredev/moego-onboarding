@@ -23,6 +23,7 @@ const mockConfig = {
   formEntrySmsAgreement: 'entry.555',
   formEntryCof: 'entry.666',
 };
+const MOCK_SIGNATURE = btoa(String.fromCharCode(1, 2, 3));
 
 vi.mock('#/utils/config.js', () => ({
   getConfig: () => mockConfig,
@@ -40,6 +41,9 @@ describe('smoke', () => {
     vi.stubGlobal('GmailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
+    });
+    vi.stubGlobal('Utilities', {
+      computeHmacSha256Signature: vi.fn().mockReturnValue([1, 2, 3]),
     });
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
@@ -95,7 +99,13 @@ describe('smoke', () => {
         length: 0,
         name: '',
       },
-    } as GoogleAppsScript.Events.DoPost;
+      parameter: {
+        'X-Moe-Client-Id': 'test-client-id',
+        'X-Moe-Nonce': '123456789',
+        'X-Moe-Timestamp': '1751284717825',
+        'X-Moe-Signature-256': MOCK_SIGNATURE,
+      },
+    } as unknown as GoogleAppsScript.Events.DoPost;
 
     expect(() => doPost(mockEvent)).not.toThrow();
     expect(GmailApp.sendEmail).toHaveBeenCalledWith(
