@@ -41,6 +41,8 @@ const basePayload = {
   },
 };
 
+const MOCK_SIGNATURE = btoa(String.fromCharCode(1, 2, 3));
+
 const mockDoPostEvent = (payload: object): GoogleAppsScript.Events.DoPost =>
   ({
     postData: {
@@ -49,7 +51,13 @@ const mockDoPostEvent = (payload: object): GoogleAppsScript.Events.DoPost =>
       length: 0,
       name: '',
     },
-  }) as GoogleAppsScript.Events.DoPost;
+    parameter: {
+      'X-Moe-Client-Id': 'test-client-id',
+      'X-Moe-Nonce': '123456789',
+      'X-Moe-Timestamp': '1751284717825',
+      'X-Moe-Signature-256': MOCK_SIGNATURE,
+    },
+  }) as unknown as GoogleAppsScript.Events.DoPost;
 
 /**
  * doPost
@@ -63,6 +71,10 @@ describe('doPost', () => {
     vi.stubGlobal('GmailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
+      MimeType: { TEXT: 'text/plain' },
+    });
+    vi.stubGlobal('Utilities', {
+      computeHmacSha256Signature: vi.fn().mockReturnValue([1, 2, 3]),
     });
   });
 
@@ -224,5 +236,24 @@ describe('doPost', () => {
     doPost(mockDoPostEvent(basePayload));
 
     expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
+  });
+
+  /**
+   * @test
+   * @description Confirms doPost returns 403 when the webhook signature is invalid,
+   * rejecting requests that do not originate from MoeGo.
+   */
+  it('returns 403 when webhook signature is invalid', () => {
+    doPost({
+      ...mockDoPostEvent(basePayload),
+      parameter: {
+        'X-Moe-Client-Id': 'test-client-id',
+        'X-Moe-Nonce': '123456789',
+        'X-Moe-Timestamp': '1751284717825',
+        'X-Moe-Signature-256': 'invalid-signature',
+      },
+    } as unknown as GoogleAppsScript.Events.DoPost);
+
+    expect(ContentService.createTextOutput).toHaveBeenCalledWith('Forbidden');
   });
 });

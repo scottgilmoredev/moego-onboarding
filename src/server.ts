@@ -10,7 +10,7 @@
  * @see {@link https://developers.google.com/apps-script/guides/web} Google Apps Script Web Apps
  */
 
-import { parseWebhookPayload } from '#/webhook/webhook.js';
+import { parseWebhookPayload, verifyWebhookSignature } from '#/webhook/webhook.js';
 import { getAgreementSignLink, getCofLink } from '#/moego/moego.js';
 import { buildFormUrl } from '#/form/form.js';
 import { shortenUrl } from '#/shortener/shortener.js';
@@ -35,6 +35,21 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
   const event = parseWebhookPayload(e.postData.contents);
   const { customer } = event;
   const config = getConfig();
+
+  // Verify the webhook signature
+  const isValid = verifyWebhookSignature({
+    body: e.postData.contents,
+    clientId: e.parameter['X-Moe-Client-Id'],
+    nonce: e.parameter['X-Moe-Nonce'],
+    timestamp: e.parameter['X-Moe-Timestamp'],
+    signature: e.parameter['X-Moe-Signature-256'],
+    secret: config.moegoWebhookSecret,
+  });
+
+  // Reject requests with invalid signatures
+  if (!isValid) {
+    return ContentService.createTextOutput('Forbidden').setMimeType(ContentService.MimeType.TEXT);
+  }
 
   // Retrieve onboarding links from MoeGo API sequentially with individual
   // failure handling to support partial success email delivery.
