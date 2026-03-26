@@ -31,12 +31,19 @@ import { getConfig } from '#/utils/config.js';
  * @returns {GoogleAppsScript.Content.TextOutput} HTTP response.
  */
 export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.TextOutput {
-  // Parse and validate the incoming webhook payload
+  Logger.log('doPost: received webhook request');
+
   const event = parseWebhookPayload(e.postData.contents);
   const { customer } = event;
   const config = getConfig();
 
-  // Verify the webhook signature
+  Logger.log(`doPost: event type = ${event.type}, customer id = ${customer.id}`);
+
+  if (event.companyId !== config.moegoCompanyId) {
+    Logger.log(`doPost: ignoring event for company ${event.companyId}`);
+    return ContentService.createTextOutput('OK');
+  }
+
   const isValid = verifyWebhookSignature({
     body: e.postData.contents,
     clientId: e.parameter['X-Moe-Client-Id'],
@@ -46,14 +53,12 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     secret: config.moegoWebhookSecret,
   });
 
-  // Reject requests with invalid signatures
+  Logger.log(`doPost: signature verification = ${isValid}`);
+
   if (!isValid) {
     return ContentService.createTextOutput('Forbidden').setMimeType(ContentService.MimeType.TEXT);
   }
 
-  // Retrieve onboarding links from MoeGo API sequentially with individual
-  // failure handling to support partial success email delivery.
-  // TODO: Refactor to use UrlFetchApp.fetchAll for concurrent execution.
   let serviceAgreementUrl: string | null = null;
   let smsAgreementUrl: string | null = null;
   let cofUrl: string | null = null;
@@ -65,8 +70,9 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
       businessId: config.moegoBusinessId,
       apiKey: config.moegoApiKey,
     });
-  } catch {
-    // Service agreement link retrieval failed — proceed with null
+    Logger.log(`doPost: serviceAgreementUrl retrieved`);
+  } catch (err) {
+    Logger.log(`doPost: serviceAgreementUrl failed — ${String(err)}`);
   }
 
   try {
@@ -76,8 +82,9 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
       businessId: config.moegoBusinessId,
       apiKey: config.moegoApiKey,
     });
-  } catch {
-    // SMS agreement link retrieval failed — proceed with null
+    Logger.log(`doPost: smsAgreementUrl retrieved`);
+  } catch (err) {
+    Logger.log(`doPost: smsAgreementUrl failed — ${String(err)}`);
   }
 
   try {
@@ -85,33 +92,34 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
       customerId: customer.id,
       apiKey: config.moegoApiKey,
     });
-  } catch {
-    // Card-on-file link retrieval failed — proceed with null
+    Logger.log(`doPost: cofUrl retrieved`);
+  } catch (err) {
+    Logger.log(`doPost: cofUrl failed — ${String(err)}`);
   }
 
-  // Build the pre-filled form URL with whatever links were retrieved
   const { url: formUrl, missingFields } = buildFormUrl({
     serviceAgreementUrl,
     smsAgreementUrl,
     cofUrl,
   });
 
-  // All three API calls failed — send full failure email and return
+  Logger.log(`doPost: missingFields = ${JSON.stringify(missingFields)}`);
+
   if (missingFields.length === 3) {
+    Logger.log(`doPost: sending full failure email`);
     sendFullFailureEmail({
       firstName: customer.firstName,
       lastName: customer.lastName,
       customerId: customer.id,
     });
-
     return ContentService.createTextOutput('OK');
   }
 
-  // Shorten the form URL via Short.io
   const { url: shortUrl, shortened } = shortenUrl(formUrl);
+  Logger.log(`doPost: url shortened = ${shortened}`);
 
-  // One or more API calls failed — send partial failure email
   if (missingFields.length > 0) {
+    Logger.log(`doPost: sending partial failure email`);
     sendPartialFailureEmail({
       firstName: customer.firstName,
       lastName: customer.lastName,
@@ -119,11 +127,10 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
       partialUrl: shortUrl,
       missingFields,
     });
-
     return ContentService.createTextOutput('OK');
   }
 
-  // All API calls succeeded — send success email
+  Logger.log(`doPost: sending success email`);
   sendSuccessEmail({
     firstName: customer.firstName,
     lastName: customer.lastName,
@@ -133,3 +140,6 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
   return ContentService.createTextOutput('OK');
 }
+
+// Expose doPost as a global for the GAS runtime
+(globalThis as unknown as Record<string, unknown>).doPost = doPost;
