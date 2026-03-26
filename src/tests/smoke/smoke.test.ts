@@ -11,7 +11,7 @@ import { doPost } from '#/server.js';
 
 const mockConfig = {
   moegoApiKey: 'test-api-key',
-  moegoCompanyId: 'test-company-id',
+  moegoCompanyId: 'cmp_001',
   moegoBusinessId: 'test-business-id',
   moegoServiceAgreementId: 'agr_service',
   moegoSmsAgreementId: 'agr_sms',
@@ -38,6 +38,7 @@ vi.mock('#/utils/config.js', () => ({
  */
 describe('smoke', () => {
   beforeEach(() => {
+    vi.stubGlobal('Logger', { log: vi.fn() });
     vi.stubGlobal('GmailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
@@ -88,6 +89,7 @@ describe('smoke', () => {
           type: 'CUSTOMER_CREATED',
           timestamp: '2024-08-01T12:10:00Z',
           companyId: 'cmp_001',
+          moegoWebhookSecret: 'test-webhook-secret',
           customer: {
             id: 'cus_001',
             firstName: 'John',

@@ -11,10 +11,11 @@ import { doPost } from '#/server.js';
 
 const mockConfig = {
   moegoApiKey: 'test-api-key',
-  moegoCompanyId: 'test-company-id',
+  moegoCompanyId: 'cmp_001',
   moegoBusinessId: 'test-business-id',
   moegoServiceAgreementId: 'agr_service',
   moegoSmsAgreementId: 'agr_sms',
+  moegoWebhookSecret: 'test-webhook-secret',
   shortIoApiKey: 'test-shortio-key',
   shortIoDomain: 'abc.short.gy',
   businessOwnerEmail: 'owner@example.com',
@@ -68,6 +69,7 @@ const mockDoPostEvent = (payload: object): GoogleAppsScript.Events.DoPost =>
  */
 describe('doPost', () => {
   beforeEach(() => {
+    vi.stubGlobal('Logger', { log: vi.fn() });
     vi.stubGlobal('GmailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
@@ -255,5 +257,16 @@ describe('doPost', () => {
     } as unknown as GoogleAppsScript.Events.DoPost);
 
     expect(ContentService.createTextOutput).toHaveBeenCalledWith('Forbidden');
+  });
+
+  /**
+   * @test
+   * @description Confirms doPost ignores events from other companies.
+   */
+  it('ignores events from other companies', () => {
+    doPost(mockDoPostEvent({ ...basePayload, companyId: 'other_company' }));
+
+    expect(GmailApp.sendEmail).not.toHaveBeenCalled();
+    expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
   });
 });
