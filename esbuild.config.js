@@ -6,5 +6,6 @@ await esbuild.build({
   outfile: 'dist/server.js',
   platform: 'neutral',
   target: 'es2019',
-  format: 'cjs',
+  format: 'iife',
+  globalName: 'exports',
 });
