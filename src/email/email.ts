@@ -2,7 +2,7 @@
  * Email Module
  *
  * @module
- * @description Composes and delivers email to the business owner via GmailApp.
+ * @description Composes and delivers email to the business owner via MailApp.
  * Handles success, partial failure, full failure, and Short.io fallback cases.
  */
 
@@ -94,7 +94,7 @@ export function sendSuccessEmail({
   // Compose the email body
   const body = `A new appointment has been created in MoeGo for ${firstName} ${lastName.charAt(0)}. Please send the following onboarding link via SMS.\n\n${url}${fallbackNote}`;
 
-  // Deliver the email via GmailApp
+  // Deliver the email via MailApp
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }
 
@@ -142,7 +142,7 @@ export function sendFullFailureEmail({
     4. Shorten the completed link using Short.io before sending to the client.
     5. Send the completed link to the client via SMS.`;
 
-  // Deliver the email via GmailApp
+  // Deliver the email via MailApp
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }
 
@@ -202,6 +202,6 @@ export function sendPartialFailureEmail({
     4. Shorten the completed link using Short.io before sending to the client.
     5. Send the completed link to the client via SMS.`;
 
-  // Deliver the email via GmailApp
+  // Deliver the email via MailApp
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }

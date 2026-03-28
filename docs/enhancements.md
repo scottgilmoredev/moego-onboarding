@@ -32,7 +32,7 @@ _Note: URL shortening for SMS delivery is already handled in the current impleme
 
 **Additional Webhook Events**
 
-Beyond `APPOINTMENT_CREATED`, other MoeGo webhook events could be used to trigger additional automated flows. For example, `CUSTOMER_CREATED` could be used to trigger a welcome communication when a new client is added, and `CUSTOMER_UPDATED` could be used to detect changes to client data that require follow-up.
+Beyond `APPOINTMENT_CREATED`, other MoeGo webhook events could be used to trigger additional automated flows. For example, `APPOINTMENT_CREATED` could be used to trigger a welcome communication when a new client is added, and `CUSTOMER_UPDATED` could be used to detect changes to client data that require follow-up.
 
 The full list of supported events is defined in the MoeGo Event API and should be reviewed when scoping this enhancement.
 

@@ -14,7 +14,7 @@ import { MoeGoEventType } from '#/types/moego.js';
 export const IS_GAS_RUNTIME = typeof PropertiesService !== 'undefined';
 
 /**
- * Required fields on the customer object in a CUSTOMER_CREATED payload.
+ * Required fields on the customer object in an APPOINTMENT_CREATED payload.
  */
 export const REQUIRED_CUSTOMER_FIELDS = ['id', 'firstName', 'lastName', 'phone'] as const;
 

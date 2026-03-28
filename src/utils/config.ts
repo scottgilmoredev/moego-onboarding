@@ -25,7 +25,7 @@ import { IS_GAS_RUNTIME } from '#/utils/constants.js';
  * @property {string} formEntrySmsAgreement - Google Form entry ID for SMS Agreement link field.
  * @property {string} formEntryCof - Google Form entry ID for card-on-file link field.
  * @property {string} shortIoDomain - Short.io domain for link shortening.
- * @property {string} moegoWebhookSecret - MoeGo webhook secret token for signature verification.
+ * @property {string} moegoWebhookSecret - MoeGo webhook secret token.
  */
 export interface Config {
   moegoApiKey: string;

@@ -25,7 +25,7 @@ describe('buildAuthHeader', () => {
   /**
    * @test
    * @description Confirms the Authorization header is correctly constructed
-   * with Base64-encoded API key using Basic auth scheme.
+   * with API key using Basic auth scheme.
    */
   it('returns a correctly formatted Basic auth header', () => {
     const apiKey = 'test-api-key';

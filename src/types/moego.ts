@@ -86,14 +86,14 @@ export interface MoeGoEvent {
 }
 
 /**
- * MoeGo CUSTOMER_CREATED webhook event.
+ * MoeGo APPOINTMENT_CREATED webhook event.
  *
- * @interface MoeGoCustomerCreatedEvent
+ * @interface MoeGoAppointmentCreatedEvent
  * @extends MoeGoEvent
- * @property {MoeGoEventType.CUSTOMER_CREATED} type - Event type discriminant.
+ * @property {MoeGoEventType.APPOINTMENT_CREATED} type - Event type discriminant.
  * @property {MoeGoCustomer} customer - Full customer details from the MoeGo customer data model.
  */
-export interface MoeGoCustomerCreatedEvent extends MoeGoEvent {
-  type: MoeGoEventType.CUSTOMER_CREATED;
+export interface MoeGoAppointmentCreatedEvent extends MoeGoEvent {
+  type: MoeGoEventType.APPOINTMENT_CREATED;
   customer: MoeGoCustomer;
 }
