@@ -17,14 +17,12 @@ const mockConfig = {
   moegoSmsAgreementId: 'agr_sms',
   shortIoApiKey: 'test-shortio-key',
   shortIoDomain: 'abc.short.gy',
-  businessOwnerEmail: 'owner@example.com',
+  businessOwnerEmails: ['owner@example.com', 'another-owner@example.com'],
   googleFormUrl: 'https://docs.google.com/forms/d/e/test/viewform',
   formEntryServiceAgreement: 'entry.444',
   formEntrySmsAgreement: 'entry.555',
   formEntryCof: 'entry.666',
 };
-const MOCK_SIGNATURE = btoa(String.fromCharCode(1, 2, 3));
-
 vi.mock('#/utils/config.js', () => ({
   getConfig: () => mockConfig,
 }));
@@ -105,7 +103,6 @@ describe('smoke', () => {
         'X-Moe-Client-Id': 'test-client-id',
         'X-Moe-Nonce': '123456789',
         'X-Moe-Timestamp': '1751284717825',
-        'X-Moe-Signature-256': MOCK_SIGNATURE,
       },
     } as unknown as GoogleAppsScript.Events.DoPost;
 

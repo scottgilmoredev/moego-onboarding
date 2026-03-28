@@ -123,3 +123,7 @@ https://docs.anthropic.com/en/docs/build-with-claude/vision
 **Tesseract**
 Open source OCR library, self-hosted. No per-use cost but requires more implementation work and infrastructure management.
 https://github.com/tesseract-ocr/tesseract
+
+**Middleware Layer for Webhook Signature Verification**
+
+Google Apps Script does not expose incoming HTTP request headers in the DoPost event object, making HMAC-SHA256 webhook signature verification impossible in the current runtime. A middleware layer — such as a lightweight Express server or cloud function — positioned in front of the Apps Script web app would receive the raw webhook request, verify the X-Moe-Signature-256 header, and forward validated requests to the Apps Script endpoint. This would restore signature verification as a security control without requiring a runtime change.

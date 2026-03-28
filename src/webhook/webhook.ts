@@ -7,25 +7,6 @@
  * the expected customer data.
  */
 
-/**
- * Parameters for verifying a MoeGo webhook signature.
- *
- * @interface VerifyWebhookSignatureParams
- * @property {string} body - The raw request body string.
- * @property {string} clientId - The X-Moe-Client-Id header value.
- * @property {string} nonce - The X-Moe-Nonce header value.
- * @property {string} timestamp - The X-Moe-Timestamp header value.
- * @property {string} signature - The X-Moe-Signature-256 header value.
- * @property {string} secret - The webhook secret token.
- */
-export interface VerifyWebhookSignatureParams {
-  body: string;
-  clientId: string;
-  nonce: string;
-  timestamp: string;
-  signature: string;
-  secret: string;
-}
 import type { MoeGoEvent, MoeGoCustomerCreatedEvent, MoeGoEventType } from '#/types/moego.js';
 import { REQUIRED_CUSTOMER_FIELDS, SUPPORTED_EVENT_TYPES } from '#/utils/constants.js';
 
@@ -71,46 +52,4 @@ export function parseWebhookPayload(raw: string): MoeGoEvent | MoeGoCustomerCrea
 
   // Return the validated payload as a typed MoeGoCustomerCreatedEvent
   return event as unknown as MoeGoCustomerCreatedEvent;
-}
-
-/**
- * Verify the HMAC-SHA256 signature of an incoming MoeGo webhook request.
- *
- * @function verifyWebhookSignature
- * @description Verifies the X-Moe-Signature-256 header by recomputing the
- * HMAC-SHA256 signature from the request components and comparing it against
- * the provided signature. Returns true if the signatures match.
- *
- * @param {VerifyWebhookSignatureParams} params - The verification parameters.
- * @returns {boolean} Whether the signature is valid.
- *
- * @example
- * const isValid = verifyWebhookSignature({
- *   body: e.postData.contents,
- *   clientId: e.parameter['X-Moe-Client-Id'],
- *   nonce: e.parameter['X-Moe-Nonce'],
- *   timestamp: e.parameter['X-Moe-Timestamp'],
- *   signature: e.parameter['X-Moe-Signature-256'],
- *   secret: config.moegoWebhookSecret,
- * });
- */
-export function verifyWebhookSignature({
-  body,
-  clientId,
-  nonce,
-  timestamp,
-  signature,
-  secret,
-}: VerifyWebhookSignatureParams): boolean {
-  // Concatenate components per MoeGo signature generation spec
-  const raw = clientId + nonce + timestamp + body;
-
-  // Compute HMAC-SHA256 signature using Apps Script Utilities
-  const signatureBytes = Utilities.computeHmacSha256Signature(raw, secret);
-
-  // Base64-encode the computed signature for comparison
-  const computedSignature = btoa(String.fromCharCode(...signatureBytes));
-
-  // Compare computed signature against provided signature
-  return computedSignature === signature;
 }
