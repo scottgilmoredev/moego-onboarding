@@ -81,7 +81,7 @@ export function sendSuccessEmail({
   url,
   shortened,
 }: SendSuccessEmailParams): void {
-  const config = getConfig();
+  const { businessOwnerEmails } = getConfig();
 
   // Construct subject with first name and last initial
   const subject = `New Client Onboarding — ${firstName} ${lastName.charAt(0)}.`;
@@ -95,7 +95,7 @@ export function sendSuccessEmail({
   const body = `A new client has been created in MoeGo. Please send the following onboarding link to ${firstName} ${lastName.charAt(0)}. via SMS.\n\n${url}${fallbackNote}`;
 
   // Deliver the email via GmailApp
-  GmailApp.sendEmail(config.businessOwnerEmail, subject, body);
+  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }
 
 /**
@@ -121,7 +121,7 @@ export function sendFullFailureEmail({
   lastName,
   customerId,
 }: SendFullFailureEmailParams): void {
-  const config = getConfig();
+  const { businessOwnerEmails } = getConfig();
 
   // Construct subject with first name and last initial
   const subject = `Action Required — Onboarding Links Unavailable for ${firstName} ${lastName.charAt(0)}.`;
@@ -143,7 +143,7 @@ export function sendFullFailureEmail({
     5. Send the completed link to the client via SMS.`;
 
   // Deliver the email via GmailApp
-  GmailApp.sendEmail(config.businessOwnerEmail, subject, body);
+  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }
 
 /**
@@ -174,7 +174,7 @@ export function sendPartialFailureEmail({
   partialUrl,
   missingFields,
 }: SendPartialFailureEmailParams): void {
-  const config = getConfig();
+  const { businessOwnerEmails } = getConfig();
 
   // Construct subject with first name and last initial
   const subject = `Action Required — Onboarding Links Partially Unavailable for ${firstName} ${lastName.charAt(0)}.`;
@@ -203,5 +203,5 @@ export function sendPartialFailureEmail({
     5. Send the completed link to the client via SMS.`;
 
   // Deliver the email via GmailApp
-  GmailApp.sendEmail(config.businessOwnerEmail, subject, body);
+  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }

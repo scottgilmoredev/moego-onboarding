@@ -19,7 +19,7 @@ import { IS_GAS_RUNTIME } from '#/utils/constants.js';
  * @property {string} moegoServiceAgreementId - MoeGo Service Agreement ID.
  * @property {string} moegoSmsAgreementId - MoeGo SMS Agreement ID.
  * @property {string} shortIoApiKey - Short.io API key.
- * @property {string} businessOwnerEmail - Recipient email address for onboarding notifications.
+ * @property {string[]} businessOwnerEmails - Recipient email addresses for onboarding notifications.
  * @property {string} googleFormUrl - Base URL of the onboarding Google Form.
  * @property {string} formEntryServiceAgreement - Google Form entry ID for Service Agreement link field.
  * @property {string} formEntrySmsAgreement - Google Form entry ID for SMS Agreement link field.
@@ -34,7 +34,7 @@ export interface Config {
   moegoServiceAgreementId: string;
   moegoSmsAgreementId: string;
   shortIoApiKey: string;
-  businessOwnerEmail: string;
+  businessOwnerEmails: string[];
   googleFormUrl: string;
   formEntryServiceAgreement: string;
   formEntrySmsAgreement: string;
@@ -91,7 +91,9 @@ export function getConfig(): Config {
     moegoServiceAgreementId: getEnvValue('MOEGO_SERVICE_AGREEMENT_ID'),
     moegoSmsAgreementId: getEnvValue('MOEGO_SMS_AGREEMENT_ID'),
     shortIoApiKey: getEnvValue('SHORTIO_API_KEY'),
-    businessOwnerEmail: getEnvValue('BUSINESS_OWNER_EMAIL'),
+    businessOwnerEmails: getEnvValue('BUSINESS_OWNER_EMAILS')
+      .split(',')
+      .map(e => e.trim()),
     googleFormUrl: getEnvValue('GOOGLE_FORM_URL'),
     formEntryServiceAgreement: getEnvValue('FORM_ENTRY_SERVICE_AGREEMENT'),
     formEntrySmsAgreement: getEnvValue('FORM_ENTRY_SMS_AGREEMENT'),

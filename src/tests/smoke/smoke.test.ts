@@ -38,8 +38,8 @@ vi.mock('#/utils/config.js', () => ({
  */
 describe('smoke', () => {
   beforeEach(() => {
-    vi.stubGlobal('Logger', { log: vi.fn() });
-    vi.stubGlobal('GmailApp', { sendEmail: vi.fn() });
+    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
     });
@@ -110,8 +110,8 @@ describe('smoke', () => {
     } as unknown as GoogleAppsScript.Events.DoPost;
 
     expect(() => doPost(mockEvent)).not.toThrow();
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       'New Client Onboarding — John D.',
       expect.stringContaining('https://abc.short.gy/xyz123')
     );

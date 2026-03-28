@@ -75,7 +75,7 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 
 **Planned issues:**
 
-- Implement success email composition and delivery via `GmailApp`
+- Implement success email composition and delivery via `MailApp`
 - Implement partial failure email composition and delivery
 - Implement full failure email composition and delivery
 - Implement Short.io fallback email composition and delivery

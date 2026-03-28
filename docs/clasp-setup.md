@@ -2,8 +2,6 @@
 
 ## Overview
 
-This doc covers the project-specific Clasp configuration for moego-onboarding. For general Clasp installation, authentication, and workflow guidance see `gas-clasp-setup.md`.
-
 This project uses Clasp 3.x with esbuild for TypeScript compilation. Clasp 3.x no longer handles TypeScript compilation directly — esbuild compiles `src/` to `dist/`, and Clasp pushes `dist/` to GAS.
 
 ---
@@ -70,7 +68,7 @@ Place in `dist/`:
 }
 ```
 
-The `gmail.send` scope is required for `GmailApp.sendEmail()`. The `script.external_request` scope is required for `UrlFetchApp` calls to the MoeGo and Short.io APIs.
+The `gmail.send` scope is required for `MailApp.sendEmail()`. The `script.external_request` scope is required for `UrlFetchApp` calls to the MoeGo and Short.io APIs.
 
 `appsscript.json` is excluded from the `.gitignore` pattern `dist/*` via:
 

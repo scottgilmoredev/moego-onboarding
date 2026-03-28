@@ -18,7 +18,7 @@ const mockConfig = {
   moegoWebhookSecret: 'test-webhook-secret',
   shortIoApiKey: 'test-shortio-key',
   shortIoDomain: 'abc.short.gy',
-  businessOwnerEmail: 'owner@example.com',
+  businessOwnerEmails: ['owner@example.com', 'another-owner@example.com'],
   googleFormUrl: 'https://docs.google.com/forms/d/e/test/viewform',
   formEntryServiceAgreement: 'entry.444',
   formEntrySmsAgreement: 'entry.555',
@@ -69,8 +69,8 @@ const mockDoPostEvent = (payload: object): GoogleAppsScript.Events.DoPost =>
  */
 describe('doPost', () => {
   beforeEach(() => {
-    vi.stubGlobal('Logger', { log: vi.fn() });
-    vi.stubGlobal('GmailApp', { sendEmail: vi.fn() });
+    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
       MimeType: { TEXT: 'text/plain' },
@@ -116,8 +116,8 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       'New Client Onboarding — John D.',
       expect.stringContaining('https://abc.short.gy/xyz123')
     );
@@ -154,8 +154,8 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       expect.stringContaining('Partially Unavailable'),
       expect.stringContaining('cus_001')
     );
@@ -176,8 +176,8 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       expect.stringContaining('Unavailable'),
       expect.stringContaining('cus_001')
     );
@@ -215,8 +215,8 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       'New Client Onboarding — John D.',
       expect.stringContaining('URL shortening failed')
     );
@@ -266,7 +266,7 @@ describe('doPost', () => {
   it('ignores events from other companies', () => {
     doPost(mockDoPostEvent({ ...basePayload, companyId: 'other_company' }));
 
-    expect(GmailApp.sendEmail).not.toHaveBeenCalled();
+    expect(MailApp.sendEmail).not.toHaveBeenCalled();
     expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
   });
 });

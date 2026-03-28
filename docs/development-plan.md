@@ -86,7 +86,7 @@ Constructs the pre-filled Google Form URL from customer data and retrieved links
 Shortens the pre-filled Google Form URL via the Short.io API. Falls back to the full URL if shortening fails.
 
 **email/**
-Composes and delivers email to the business owner via `GmailApp`. Handles success, partial failure, full failure, and Short.io fallback cases.
+Composes and delivers email to the business owner via `MailApp`. Handles success, partial failure, full failure, and Short.io fallback cases.
 
 **types/**
 Shared TypeScript types and interfaces across modules.
@@ -123,7 +123,7 @@ Implement Short.io API integration for URL shortening. TDD: successful shortenin
 
 ### Phase 5 — Email Delivery
 
-Implement success, partial failure, full failure, and Short.io fallback email composition and delivery via `GmailApp`. TDD: all cases.
+Implement success, partial failure, full failure, and Short.io fallback email composition and delivery via `MailApp`. TDD: all cases.
 
 ### Phase 6 — Integration & Apps Script Entrypoint
 
@@ -136,7 +136,7 @@ Implement `doPost`, wire all modules together, integration tests with mocked glo
 - Strict TDD throughout all phases — tests written before implementation
 - Vitest for all TypeScript logic
 - Clasp used for local Apps Script development and deployment
-- Apps Script globals (`GmailApp`, `UrlFetchApp`, etc.) mocked in Vitest for testability
+- Apps Script globals (`MailApp`, `UrlFetchApp`, etc.) mocked in Vitest for testability
 - MoeGo API calls stubbed via mocked HTTP responses
 - Short.io API calls stubbed via mocked HTTP responses
 - Unit tests for each module: webhook validation, MoeGo API client, form builder, URL shortener, email delivery, and utils
@@ -185,7 +185,7 @@ All sensitive values are stored as environment variables and must never be commi
 | Short.io free tier limit — 1,000 short links per year                                                   | Low        | Low    | Monitor usage; old links can be deleted to stay within limit                                                                                                                 |
 | Apps Script execution time limits — 6-minute execution limit                                            | Low        | High   | Keep the flow lightweight with no polling or retries                                                                                                                         |
 | MoeGo webhook payload changes — payload structure may change without notice                             | Low        | Medium | Strict payload validation with clear error messaging                                                                                                                         |
-| Google Apps Script global API changes — `GmailApp` or `UrlFetchApp` interfaces may change               | Low        | Medium | Isolate Apps Script globals behind thin wrappers                                                                                                                             |
+| Google Apps Script global API changes — `MailApp` or `UrlFetchApp` interfaces may change                | Low        | Medium | Isolate Apps Script globals behind thin wrappers                                                                                                                             |
 | Short.io data storage — pre-filled URL containing agreement and COF links is stored on Short.io servers | Low        | Low    | Links are not personally identifiable without accompanying customer data. Priority post-MVP enhancement replaces Short.io dependency entirely via doGet custom landing page. |
 
 ---

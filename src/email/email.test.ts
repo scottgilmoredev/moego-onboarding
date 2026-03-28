@@ -4,13 +4,13 @@
  * @module
  * @description Unit tests for the email delivery module. Covers success email,
  * partial failure email, full failure email, and Short.io fallback email
- * composition and delivery via GmailApp.
+ * composition and delivery via MailApp.
  */
 
 import { sendSuccessEmail, sendFullFailureEmail, sendPartialFailureEmail } from './email.js';
 
 const mockConfig = {
-  businessOwnerEmail: 'owner@example.com',
+  businessOwnerEmails: ['owner@example.com', 'another-owner@example.com'],
 };
 
 vi.mock('#/utils/config.js', () => ({
@@ -25,7 +25,7 @@ vi.mock('#/utils/config.js', () => ({
  */
 describe('sendSuccessEmail', () => {
   beforeEach(() => {
-    vi.stubGlobal('GmailApp', {
+    vi.stubGlobal('MailApp', {
       sendEmail: vi.fn(),
     });
   });
@@ -47,8 +47,8 @@ describe('sendSuccessEmail', () => {
       shortened: true,
     });
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       'New Client Onboarding — John D.',
       expect.stringContaining('https://abc.short.gy/xyz123')
     );
@@ -67,7 +67,7 @@ describe('sendSuccessEmail', () => {
       shortened: true,
     });
 
-    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).not.toContain('URL shortening failed');
   });
 
@@ -84,7 +84,7 @@ describe('sendSuccessEmail', () => {
       shortened: false,
     });
 
-    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('URL shortening failed');
   });
 });
@@ -98,7 +98,7 @@ describe('sendSuccessEmail', () => {
  */
 describe('sendFullFailureEmail', () => {
   beforeEach(() => {
-    vi.stubGlobal('GmailApp', {
+    vi.stubGlobal('MailApp', {
       sendEmail: vi.fn(),
     });
   });
@@ -119,8 +119,8 @@ describe('sendFullFailureEmail', () => {
       customerId: 'cus_001',
     });
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       'Action Required — Onboarding Links Unavailable for John D.',
       expect.any(String)
     );
@@ -137,7 +137,7 @@ describe('sendFullFailureEmail', () => {
       customerId: 'cus_001',
     });
 
-    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('cus_001');
   });
 
@@ -152,7 +152,7 @@ describe('sendFullFailureEmail', () => {
       customerId: 'cus_001',
     });
 
-    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('manual');
   });
 
@@ -167,7 +167,7 @@ describe('sendFullFailureEmail', () => {
       customerId: 'cus_001',
     });
 
-    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).not.toContain('https://');
   });
 });
@@ -181,7 +181,7 @@ describe('sendFullFailureEmail', () => {
  */
 describe('sendPartialFailureEmail', () => {
   beforeEach(() => {
-    vi.stubGlobal('GmailApp', {
+    vi.stubGlobal('MailApp', {
       sendEmail: vi.fn(),
     });
   });
@@ -204,8 +204,8 @@ describe('sendPartialFailureEmail', () => {
       missingFields: ['serviceAgreementUrl'],
     });
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       'Action Required — Onboarding Links Partially Unavailable for John D.',
       expect.any(String)
     );
@@ -224,7 +224,7 @@ describe('sendPartialFailureEmail', () => {
       missingFields: ['serviceAgreementUrl'],
     });
 
-    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('https://abc.short.gy/xyz123');
   });
 
@@ -241,7 +241,7 @@ describe('sendPartialFailureEmail', () => {
       missingFields: ['serviceAgreementUrl'],
     });
 
-    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('cus_001');
   });
 
@@ -258,7 +258,7 @@ describe('sendPartialFailureEmail', () => {
       missingFields: ['serviceAgreementUrl', 'cofUrl'],
     });
 
-    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('serviceAgreementUrl');
     expect(body).toContain('cofUrl');
   });
@@ -276,7 +276,7 @@ describe('sendPartialFailureEmail', () => {
       missingFields: ['serviceAgreementUrl'],
     });
 
-    const body = (GmailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('manual');
   });
 });
