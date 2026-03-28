@@ -41,9 +41,6 @@ describe('smoke', () => {
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
     });
-    vi.stubGlobal('Utilities', {
-      computeHmacSha256Signature: vi.fn().mockReturnValue([1, 2, 3]),
-    });
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
         .fn()
@@ -87,7 +84,6 @@ describe('smoke', () => {
           type: 'APPOINTMENT_CREATED',
           timestamp: '2024-08-01T12:10:00Z',
           companyId: 'cmp_001',
-          moegoWebhookSecret: 'test-webhook-secret',
           customer: {
             id: 'cus_001',
             firstName: 'John',

@@ -72,9 +72,6 @@ describe('doPost', () => {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
       MimeType: { TEXT: 'text/plain' },
     });
-    vi.stubGlobal('Utilities', {
-      computeHmacSha256Signature: vi.fn().mockReturnValue([1, 2, 3]),
-    });
   });
 
   afterEach(() => {

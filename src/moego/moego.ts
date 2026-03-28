@@ -87,7 +87,7 @@ export interface GetCofLinkParams {
  */
 export function buildAuthHeader(apiKey: string): string {
   // Base64-encode the API key and prepend the Basic auth scheme
-  return `Basic ${btoa(apiKey)}`;
+  return `Basic ${apiKey}`;
 }
 
 /**
