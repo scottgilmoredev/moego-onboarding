@@ -92,7 +92,7 @@ export function sendSuccessEmail({
     : '\n\nNote: URL shortening failed. The link above is unshortened and may span multiple SMS segments if sent as-is. You may wish to shorten it manually before sending to the client.';
 
   // Compose the email body
-  const body = `A new client has been created in MoeGo. Please send the following onboarding link to ${firstName} ${lastName.charAt(0)}. via SMS.\n\n${url}${fallbackNote}`;
+  const body = `A new appointment has been created in MoeGo for ${firstName} ${lastName.charAt(0)}. Please send the following onboarding link via SMS.\n\n${url}${fallbackNote}`;
 
   // Deliver the email via GmailApp
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);

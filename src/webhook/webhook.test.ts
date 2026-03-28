@@ -17,7 +17,7 @@ import type { MoeGoCustomerCreatedEvent } from '#/types/moego.js';
  */
 const basePayload = {
   id: 'evt_001',
-  type: 'CUSTOMER_CREATED',
+  type: 'APPOINTMENT_CREATED',
   timestamp: '2024-08-01T12:10:00Z',
   companyId: 'cmp_001',
   customer: {
@@ -38,12 +38,12 @@ const basePayload = {
 describe('parseWebhookPayload', () => {
   /**
    * @test
-   * @description Confirms a valid CUSTOMER_CREATED payload is parsed correctly.
+   * @description Confirms a valid APPOINTMENT_CREATED payload is parsed correctly.
    */
-  it('parses a valid CUSTOMER_CREATED payload', () => {
+  it('parses a valid APPOINTMENT_CREATED payload', () => {
     const result = parseWebhookPayload(JSON.stringify(basePayload)) as MoeGoCustomerCreatedEvent;
 
-    expect(result.type).toBe('CUSTOMER_CREATED');
+    expect(result.type).toBe('APPOINTMENT_CREATED');
     expect(result.customer.id).toBe('cus_001');
     expect(result.customer.firstName).toBe('John');
     expect(result.customer.lastName).toBe('Doe');

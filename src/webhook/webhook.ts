@@ -7,9 +7,6 @@
  * the expected customer data.
  */
 
-import type { MoeGoCustomerCreatedEvent } from '#/types/moego.js';
-import { SUPPORTED_EVENT_TYPE, REQUIRED_CUSTOMER_FIELDS } from '#/utils/constants.js';
-
 /**
  * Parameters for verifying a MoeGo webhook signature.
  *
@@ -29,6 +26,8 @@ export interface VerifyWebhookSignatureParams {
   signature: string;
   secret: string;
 }
+import type { MoeGoEvent, MoeGoCustomerCreatedEvent, MoeGoEventType } from '#/types/moego.js';
+import { REQUIRED_CUSTOMER_FIELDS, SUPPORTED_EVENT_TYPES } from '#/utils/constants.js';
 
 /**
  * Parse and validate an incoming MoeGo webhook payload.
@@ -47,7 +46,7 @@ export interface VerifyWebhookSignatureParams {
  * @example
  * const event = parseWebhookPayload(e.postData.contents);
  */
-export function parseWebhookPayload(raw: string): MoeGoCustomerCreatedEvent {
+export function parseWebhookPayload(raw: string): MoeGoEvent | MoeGoCustomerCreatedEvent {
   let payload: unknown;
 
   // Attempt to parse the raw JSON — throw a clear error if malformed
@@ -58,15 +57,11 @@ export function parseWebhookPayload(raw: string): MoeGoCustomerCreatedEvent {
   }
 
   const event = payload as Record<string, unknown>;
-
-  // Verify the event type is CUSTOMER_CREATED — reject all other event types
-  if (event.type !== SUPPORTED_EVENT_TYPE) {
-    throw new Error(
-      `Invalid webhook event type: expected ${SUPPORTED_EVENT_TYPE}, received ${String(event.type)}`
-    );
-  }
-
   const customer = event.customer as Record<string, unknown>;
+
+  if (!SUPPORTED_EVENT_TYPES.includes(event.type as MoeGoEventType)) {
+    return event as unknown as MoeGoEvent;
+  }
 
   for (const field of REQUIRED_CUSTOMER_FIELDS) {
     if (!customer?.[field]) {

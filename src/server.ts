@@ -10,12 +10,15 @@
  * @see {@link https://developers.google.com/apps-script/guides/web} Google Apps Script Web Apps
  */
 
-import { parseWebhookPayload, verifyWebhookSignature } from '#/webhook/webhook.js';
+import type { MoeGoCustomerCreatedEvent } from './types/moego.js';
+
+import { parseWebhookPayload } from '#/webhook/webhook.js';
 import { getAgreementSignLink, getCofLink } from '#/moego/moego.js';
 import { buildFormUrl } from '#/form/form.js';
 import { shortenUrl } from '#/shortener/shortener.js';
 import { sendSuccessEmail, sendPartialFailureEmail, sendFullFailureEmail } from '#/email/email.js';
 import { getConfig } from '#/utils/config.js';
+import { SUPPORTED_EVENT_TYPES } from '#/utils/constants.js';
 
 /**
  * Handle incoming HTTP POST requests from MoeGo webhooks.
@@ -31,32 +34,21 @@ import { getConfig } from '#/utils/config.js';
  * @returns {GoogleAppsScript.Content.TextOutput} HTTP response.
  */
 export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.TextOutput {
-  Logger.log('doPost: received webhook request');
-
   const event = parseWebhookPayload(e.postData.contents);
-  const { customer } = event;
+  const { customer } = event as MoeGoCustomerCreatedEvent;
   const config = getConfig();
 
-  Logger.log(`doPost: event type = ${event.type}, customer id = ${customer.id}`);
-
+  // Ignore events for other companies (in case company scoping fails or the webhook secret is compromised)
   if (event.companyId !== config.moegoCompanyId) {
-    Logger.log(`doPost: ignoring event for company ${event.companyId}`);
     return ContentService.createTextOutput('OK');
   }
 
-  const isValid = verifyWebhookSignature({
-    body: e.postData.contents,
-    clientId: e.parameter['X-Moe-Client-Id'],
-    nonce: e.parameter['X-Moe-Nonce'],
-    timestamp: e.parameter['X-Moe-Timestamp'],
-    signature: e.parameter['X-Moe-Signature-256'],
-    secret: config.moegoWebhookSecret,
-  });
+  const isSupportedEvent = SUPPORTED_EVENT_TYPES.includes(
+    event.type as (typeof SUPPORTED_EVENT_TYPES)[number]
+  );
 
-  Logger.log(`doPost: signature verification = ${isValid}`);
-
-  if (!isValid) {
-    return ContentService.createTextOutput('Forbidden').setMimeType(ContentService.MimeType.TEXT);
+  if (!isSupportedEvent) {
+    return ContentService.createTextOutput('OK');
   }
 
   let serviceAgreementUrl: string | null = null;

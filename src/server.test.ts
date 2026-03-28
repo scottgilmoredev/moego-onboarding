@@ -31,7 +31,7 @@ vi.mock('#/utils/config.js', () => ({
 
 const basePayload = {
   id: 'evt_001',
-  type: 'CUSTOMER_CREATED',
+  type: 'APPOINTMENT_CREATED',
   timestamp: '2024-08-01T12:10:00Z',
   companyId: 'cmp_001',
   customer: {

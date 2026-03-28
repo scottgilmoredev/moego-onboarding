@@ -3,7 +3,7 @@
  *
  * @module
  * @description Verifies the critical path through the onboarding flow is
- * operational. Confirms doPost handles a valid CUSTOMER_CREATED payload
+ * operational. Confirms doPost handles a valid APPOINTMENT_CREATED payload
  * end-to-end with mocked GAS globals and stubbed API responses.
  */
 
@@ -33,7 +33,7 @@ vi.mock('#/utils/config.js', () => ({
  * smoke
  *
  * @description Verifies the full onboarding flow processes a valid
- * CUSTOMER_CREATED webhook payload without throwing and delivers
+ * APPOINTMENT_CREATED webhook payload without throwing and delivers
  * an email to the business owner.
  */
 describe('smoke', () => {
@@ -77,16 +77,16 @@ describe('smoke', () => {
 
   /**
    * @test
-   * @description Confirms doPost processes a valid CUSTOMER_CREATED payload
+   * @description Confirms doPost processes a valid APPOINTMENT_CREATED payload
    * end-to-end without throwing and delivers a success email to the business
    * owner.
    */
-  it('processes a valid CUSTOMER_CREATED webhook end-to-end', () => {
+  it('processes a valid APPOINTMENT_CREATED webhook end-to-end', () => {
     const mockEvent = {
       postData: {
         contents: JSON.stringify({
           id: 'evt_001',
-          type: 'CUSTOMER_CREATED',
+          type: 'APPOINTMENT_CREATED',
           timestamp: '2024-08-01T12:10:00Z',
           companyId: 'cmp_001',
           moegoWebhookSecret: 'test-webhook-secret',

@@ -21,4 +21,4 @@ export const REQUIRED_CUSTOMER_FIELDS = ['id', 'firstName', 'lastName', 'phone']
 /**
  * The MoeGo webhook event type this application handles.
  */
-export const SUPPORTED_EVENT_TYPE = MoeGoEventType.CUSTOMER_CREATED;
+export const SUPPORTED_EVENT_TYPES = [MoeGoEventType.APPOINTMENT_CREATED];
