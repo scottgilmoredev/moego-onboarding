@@ -9,7 +9,7 @@
 
 import { parseWebhookPayload } from './webhook.js';
 
-import type { MoeGoCustomerCreatedEvent } from '#/types/moego.js';
+import type { MoeGoAppointmentCreatedEvent } from '#/types/moego.js';
 
 /**
  * Base webhook payload used across tests.
@@ -41,7 +41,7 @@ describe('parseWebhookPayload', () => {
    * @description Confirms a valid APPOINTMENT_CREATED payload is parsed correctly.
    */
   it('parses a valid APPOINTMENT_CREATED payload', () => {
-    const result = parseWebhookPayload(JSON.stringify(basePayload)) as MoeGoCustomerCreatedEvent;
+    const result = parseWebhookPayload(JSON.stringify(basePayload)) as MoeGoAppointmentCreatedEvent;
 
     expect(result.type).toBe('APPOINTMENT_CREATED');
     expect(result.customer.id).toBe('cus_001');
