@@ -8,7 +8,7 @@ Automates the client onboarding process for MoeGo-based pet service businesses. 
 
 ## Features
 
-- Listens for `CUSTOMER_CREATED` webhook events from MoeGo
+- Listens for `APPOINTMENT_CREATED` webhook events from MoeGo
 - Retrieves per-client agreement sign links and card-on-file link via MoeGo API
 - Constructs a pre-filled Google Form URL with client data and links
 - Emails the business owner with the pre-filled form URL for review and client delivery

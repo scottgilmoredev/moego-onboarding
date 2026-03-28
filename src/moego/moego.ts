@@ -75,7 +75,7 @@ export interface GetCofLinkParams {
  * Build the Authorization header for MoeGo API requests.
  *
  * @function buildAuthHeader
- * @description Constructs a Basic auth header by Base64-encoding the API key
+ * @description Constructs a Basic auth header using the API key
  * per the MoeGo API authentication specification.
  *
  * @param {string} apiKey - The MoeGo API key secret.
@@ -83,11 +83,11 @@ export interface GetCofLinkParams {
  *
  * @example
  * const authHeader = buildAuthHeader(config.moegoApiKey);
- * // Returns: "Basic <base64-encoded-key>"
+ * // Returns: "Basic <api-key>"
  */
 export function buildAuthHeader(apiKey: string): string {
   // Base64-encode the API key and prepend the Basic auth scheme
-  return `Basic ${btoa(apiKey)}`;
+  return `Basic ${apiKey}`;
 }
 
 /**

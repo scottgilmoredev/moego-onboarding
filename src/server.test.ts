@@ -18,7 +18,7 @@ const mockConfig = {
   moegoWebhookSecret: 'test-webhook-secret',
   shortIoApiKey: 'test-shortio-key',
   shortIoDomain: 'abc.short.gy',
-  businessOwnerEmail: 'owner@example.com',
+  businessOwnerEmails: ['owner@example.com', 'another-owner@example.com'],
   googleFormUrl: 'https://docs.google.com/forms/d/e/test/viewform',
   formEntryServiceAgreement: 'entry.444',
   formEntrySmsAgreement: 'entry.555',
@@ -31,7 +31,7 @@ vi.mock('#/utils/config.js', () => ({
 
 const basePayload = {
   id: 'evt_001',
-  type: 'CUSTOMER_CREATED',
+  type: 'APPOINTMENT_CREATED',
   timestamp: '2024-08-01T12:10:00Z',
   companyId: 'cmp_001',
   customer: {
@@ -41,8 +41,6 @@ const basePayload = {
     phone: '+12125551234',
   },
 };
-
-const MOCK_SIGNATURE = btoa(String.fromCharCode(1, 2, 3));
 
 const mockDoPostEvent = (payload: object): GoogleAppsScript.Events.DoPost =>
   ({
@@ -56,7 +54,6 @@ const mockDoPostEvent = (payload: object): GoogleAppsScript.Events.DoPost =>
       'X-Moe-Client-Id': 'test-client-id',
       'X-Moe-Nonce': '123456789',
       'X-Moe-Timestamp': '1751284717825',
-      'X-Moe-Signature-256': MOCK_SIGNATURE,
     },
   }) as unknown as GoogleAppsScript.Events.DoPost;
 
@@ -69,14 +66,11 @@ const mockDoPostEvent = (payload: object): GoogleAppsScript.Events.DoPost =>
  */
 describe('doPost', () => {
   beforeEach(() => {
-    vi.stubGlobal('Logger', { log: vi.fn() });
-    vi.stubGlobal('GmailApp', { sendEmail: vi.fn() });
+    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
       MimeType: { TEXT: 'text/plain' },
-    });
-    vi.stubGlobal('Utilities', {
-      computeHmacSha256Signature: vi.fn().mockReturnValue([1, 2, 3]),
     });
   });
 
@@ -93,21 +87,29 @@ describe('doPost', () => {
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
         .fn()
+
+        // Service Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
         })
+
+        // SMS Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
         })
+
+        // Card-on-file link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
         })
+
+        // Short.io shortened URL
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),
@@ -116,8 +118,8 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       'New Client Onboarding — John D.',
       expect.stringContaining('https://abc.short.gy/xyz123')
     );
@@ -132,20 +134,28 @@ describe('doPost', () => {
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
         .fn()
+
+        // Service Agreement sign link — fails
         .mockReturnValueOnce({
           getResponseCode: () => 404,
           getContentText: () => JSON.stringify({ message: 'Not found' }),
         })
+
+        // SMS Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
         })
+
+        // Card-on-file link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
         })
+
+        // Short.io shortened URL
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),
@@ -154,8 +164,8 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       expect.stringContaining('Partially Unavailable'),
       expect.stringContaining('cus_001')
     );
@@ -168,6 +178,7 @@ describe('doPost', () => {
    */
   it('sends full failure email when all MoeGo API calls fail', () => {
     vi.stubGlobal('UrlFetchApp', {
+      // All API calls fail
       fetch: vi.fn().mockReturnValue({
         getResponseCode: () => 500,
         getContentText: () => JSON.stringify({ message: 'Server error' }),
@@ -176,8 +187,8 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       expect.stringContaining('Unavailable'),
       expect.stringContaining('cus_001')
     );
@@ -192,21 +203,29 @@ describe('doPost', () => {
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
         .fn()
+
+        // Service Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
         })
+
+        // SMS Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
         })
+
+        // Card-on-file link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
         })
+
+        // Short.io — fails
         .mockReturnValueOnce({
           getResponseCode: () => 500,
           getContentText: () => JSON.stringify({ message: 'Server error' }),
@@ -215,8 +234,8 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
-    expect(GmailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com',
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
       'New Client Onboarding — John D.',
       expect.stringContaining('URL shortening failed')
     );
@@ -242,21 +261,13 @@ describe('doPost', () => {
 
   /**
    * @test
-   * @description Confirms doPost returns 403 when the webhook signature is invalid,
-   * rejecting requests that do not originate from MoeGo.
+   * @description Confirms doPost ignores events from other companies.
    */
-  it('returns 403 when webhook signature is invalid', () => {
-    doPost({
-      ...mockDoPostEvent(basePayload),
-      parameter: {
-        'X-Moe-Client-Id': 'test-client-id',
-        'X-Moe-Nonce': '123456789',
-        'X-Moe-Timestamp': '1751284717825',
-        'X-Moe-Signature-256': 'invalid-signature',
-      },
-    } as unknown as GoogleAppsScript.Events.DoPost);
+  it('ignores events from other companies', () => {
+    doPost(mockDoPostEvent({ ...basePayload, companyId: 'other_company' }));
 
-    expect(ContentService.createTextOutput).toHaveBeenCalledWith('Forbidden');
+    expect(MailApp.sendEmail).not.toHaveBeenCalled();
+    expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
   });
 
   /**
@@ -266,7 +277,7 @@ describe('doPost', () => {
   it('ignores events from other companies', () => {
     doPost(mockDoPostEvent({ ...basePayload, companyId: 'other_company' }));
 
-    expect(GmailApp.sendEmail).not.toHaveBeenCalled();
+    expect(MailApp.sendEmail).not.toHaveBeenCalled();
     expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
   });
 });

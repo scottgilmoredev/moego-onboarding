@@ -7,9 +7,9 @@
  * and malformed JSON handling.
  */
 
-import { parseWebhookPayload, verifyWebhookSignature } from './webhook.js';
+import { parseWebhookPayload } from './webhook.js';
 
-import type { MoeGoCustomerCreatedEvent } from '#/types/moego.js';
+import type { MoeGoAppointmentCreatedEvent } from '#/types/moego.js';
 
 /**
  * Base webhook payload used across tests.
@@ -17,7 +17,7 @@ import type { MoeGoCustomerCreatedEvent } from '#/types/moego.js';
  */
 const basePayload = {
   id: 'evt_001',
-  type: 'CUSTOMER_CREATED',
+  type: 'APPOINTMENT_CREATED',
   timestamp: '2024-08-01T12:10:00Z',
   companyId: 'cmp_001',
   customer: {
@@ -38,12 +38,12 @@ const basePayload = {
 describe('parseWebhookPayload', () => {
   /**
    * @test
-   * @description Confirms a valid CUSTOMER_CREATED payload is parsed correctly.
+   * @description Confirms a valid APPOINTMENT_CREATED payload is parsed correctly.
    */
-  it('parses a valid CUSTOMER_CREATED payload', () => {
-    const result = parseWebhookPayload(JSON.stringify(basePayload)) as MoeGoCustomerCreatedEvent;
+  it('parses a valid APPOINTMENT_CREATED payload', () => {
+    const result = parseWebhookPayload(JSON.stringify(basePayload)) as MoeGoAppointmentCreatedEvent;
 
-    expect(result.type).toBe('CUSTOMER_CREATED');
+    expect(result.type).toBe('APPOINTMENT_CREATED');
     expect(result.customer.id).toBe('cus_001');
     expect(result.customer.firstName).toBe('John');
     expect(result.customer.lastName).toBe('Doe');
@@ -52,20 +52,19 @@ describe('parseWebhookPayload', () => {
 
   /**
    * @test
-   * @description Confirms malformed JSON throws a clear error.
+   * @description Confirms unsupported event types are returned without throwing.
    */
-  it('throws on malformed JSON', () => {
-    expect(() => parseWebhookPayload('not json')).toThrow();
+  it('returns without throwing for unsupported event types', () => {
+    const raw = JSON.stringify({ ...basePayload, type: 'HEALTH_CHECK' });
+    expect(() => parseWebhookPayload(raw)).not.toThrow();
   });
 
   /**
    * @test
-   * @description Confirms a payload with wrong event type throws a clear error.
+   * @description Confirms malformed JSON throws a clear error.
    */
-  it('throws on incorrect event type', () => {
-    const raw = JSON.stringify({ ...basePayload, type: 'APPOINTMENT_CREATED' });
-
-    expect(() => parseWebhookPayload(raw)).toThrow();
+  it('throws on malformed JSON', () => {
+    expect(() => parseWebhookPayload('not json')).toThrow();
   });
 
   /**
@@ -79,67 +78,5 @@ describe('parseWebhookPayload', () => {
     });
 
     expect(() => parseWebhookPayload(raw)).toThrow();
-  });
-});
-
-/**
- * verifyWebhookSignature
- *
- * @description Tests for MoeGo webhook signature verification. Covers
- * valid signature acceptance and invalid signature rejection.
- */
-describe('verifyWebhookSignature', () => {
-  beforeEach(() => {
-    vi.stubGlobal('Utilities', {
-      computeHmacSha256Signature: vi.fn().mockReturnValue([1, 2, 3]),
-    });
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  /**
-   * @test
-   * @description Confirms a valid signature is accepted.
-   */
-  it('returns true for a valid signature', () => {
-    const body = JSON.stringify({ id: 'evt_001', type: 'CUSTOMER_CREATED' });
-    const clientId = 'test-client-id';
-    const nonce = '123456789';
-    const timestamp = '1751284717825';
-    const secret = 'test-secret';
-
-    // Compute expected signature using same logic as implementation
-    const expectedBytes = [1, 2, 3];
-    const expectedSig = btoa(String.fromCharCode(...expectedBytes));
-
-    const result = verifyWebhookSignature({
-      body,
-      clientId,
-      nonce,
-      timestamp,
-      signature: expectedSig,
-      secret,
-    });
-
-    expect(result).toBe(true);
-  });
-
-  /**
-   * @test
-   * @description Confirms an invalid signature is rejected.
-   */
-  it('returns false for an invalid signature', () => {
-    const result = verifyWebhookSignature({
-      body: JSON.stringify({ id: 'evt_001' }),
-      clientId: 'test-client-id',
-      nonce: '123456789',
-      timestamp: '1751284717825',
-      signature: 'invalid-signature',
-      secret: 'test-secret',
-    });
-
-    expect(result).toBe(false);
   });
 });

@@ -22,7 +22,7 @@ This requires service account authentication for Clasp in a non-interactive CI e
 
 **Automated SMS Delivery to Client**
 
-Rather than emailing the business owner for review and manual distribution, deliver the pre-filled onboarding form URL directly to the client via SMS upon receiving the `CUSTOMER_CREATED` webhook event.
+Rather than emailing the business owner for review and manual distribution, deliver the pre-filled onboarding form URL directly to the client via SMS upon receiving the `APPOINTMENT_CREATED` webhook event.
 
 MoeGo's API does not appear to expose a messaging endpoint. A third-party SMS provider such as Twilio would likely be required. MoeGo API messaging capabilities should be confirmed before committing to an implementation approach.
 
@@ -32,7 +32,7 @@ _Note: URL shortening for SMS delivery is already handled in the current impleme
 
 **Additional Webhook Events**
 
-Beyond `CUSTOMER_CREATED`, other MoeGo webhook events could be used to trigger automated flows. For example, `APPOINTMENT_CREATED` could be used to trigger appointment-specific communications, and `CUSTOMER_UPDATED` could be used to detect changes to client data that require follow-up.
+Beyond `APPOINTMENT_CREATED`, other MoeGo webhook events could be used to trigger additional automated flows. For example, `APPOINTMENT_CREATED` could be used to trigger a welcome communication when a new client is added, and `CUSTOMER_UPDATED` could be used to detect changes to client data that require follow-up.
 
 The full list of supported events is defined in the MoeGo Event API and should be reviewed when scoping this enhancement.
 
@@ -123,3 +123,7 @@ https://docs.anthropic.com/en/docs/build-with-claude/vision
 **Tesseract**
 Open source OCR library, self-hosted. No per-use cost but requires more implementation work and infrastructure management.
 https://github.com/tesseract-ocr/tesseract
+
+**Middleware Layer for Webhook Signature Verification**
+
+Google Apps Script does not expose incoming HTTP request headers in the DoPost event object, making HMAC-SHA256 webhook signature verification impossible in the current runtime. A middleware layer — such as a lightweight Express server or cloud function — positioned in front of the Apps Script web app would receive the raw webhook request, verify the X-Moe-Signature-256 header, and forward validated requests to the Apps Script endpoint. This would restore signature verification as a security control without requiring a runtime change.

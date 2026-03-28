@@ -28,7 +28,7 @@ describe('getConfig', () => {
     vi.stubEnv('MOEGO_SERVICE_AGREEMENT_ID', 'test-service-agreement-id');
     vi.stubEnv('MOEGO_SMS_AGREEMENT_ID', 'test-sms-agreement-id');
     vi.stubEnv('SHORTIO_API_KEY', 'test-shortio-key');
-    vi.stubEnv('BUSINESS_OWNER_EMAIL', 'owner@example.com');
+    vi.stubEnv('BUSINESS_OWNER_EMAILS', 'owner@example.com,another-owner@example.com');
     vi.stubEnv('GOOGLE_FORM_URL', 'https://docs.google.com/forms/test');
     vi.stubEnv('FORM_ENTRY_SERVICE_AGREEMENT', 'entry.444');
     vi.stubEnv('FORM_ENTRY_SMS_AGREEMENT', 'entry.555');
@@ -45,7 +45,7 @@ describe('getConfig', () => {
     expect(config.moegoServiceAgreementId).toBe('test-service-agreement-id');
     expect(config.moegoSmsAgreementId).toBe('test-sms-agreement-id');
     expect(config.shortIoApiKey).toBe('test-shortio-key');
-    expect(config.businessOwnerEmail).toBe('owner@example.com');
+    expect(config.businessOwnerEmails).toEqual(['owner@example.com', 'another-owner@example.com']);
     expect(config.googleFormUrl).toBe('https://docs.google.com/forms/test');
     expect(config.formEntryServiceAgreement).toBe('entry.444');
     expect(config.formEntrySmsAgreement).toBe('entry.555');

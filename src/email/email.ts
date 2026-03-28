@@ -2,7 +2,7 @@
  * Email Module
  *
  * @module
- * @description Composes and delivers email to the business owner via GmailApp.
+ * @description Composes and delivers email to the business owner via MailApp.
  * Handles success, partial failure, full failure, and Short.io fallback cases.
  */
 
@@ -81,7 +81,7 @@ export function sendSuccessEmail({
   url,
   shortened,
 }: SendSuccessEmailParams): void {
-  const config = getConfig();
+  const { businessOwnerEmails } = getConfig();
 
   // Construct subject with first name and last initial
   const subject = `New Client Onboarding — ${firstName} ${lastName.charAt(0)}.`;
@@ -92,10 +92,10 @@ export function sendSuccessEmail({
     : '\n\nNote: URL shortening failed. The link above is unshortened and may span multiple SMS segments if sent as-is. You may wish to shorten it manually before sending to the client.';
 
   // Compose the email body
-  const body = `A new client has been created in MoeGo. Please send the following onboarding link to ${firstName} ${lastName.charAt(0)}. via SMS.\n\n${url}${fallbackNote}`;
+  const body = `A new appointment has been created in MoeGo for ${firstName} ${lastName.charAt(0)}. Please send the following onboarding link via SMS.\n\n${url}${fallbackNote}`;
 
-  // Deliver the email via GmailApp
-  GmailApp.sendEmail(config.businessOwnerEmail, subject, body);
+  // Deliver the email via MailApp
+  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }
 
 /**
@@ -121,7 +121,7 @@ export function sendFullFailureEmail({
   lastName,
   customerId,
 }: SendFullFailureEmailParams): void {
-  const config = getConfig();
+  const { businessOwnerEmails } = getConfig();
 
   // Construct subject with first name and last initial
   const subject = `Action Required — Onboarding Links Unavailable for ${firstName} ${lastName.charAt(0)}.`;
@@ -142,8 +142,8 @@ export function sendFullFailureEmail({
     4. Shorten the completed link using Short.io before sending to the client.
     5. Send the completed link to the client via SMS.`;
 
-  // Deliver the email via GmailApp
-  GmailApp.sendEmail(config.businessOwnerEmail, subject, body);
+  // Deliver the email via MailApp
+  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }
 
 /**
@@ -174,7 +174,7 @@ export function sendPartialFailureEmail({
   partialUrl,
   missingFields,
 }: SendPartialFailureEmailParams): void {
-  const config = getConfig();
+  const { businessOwnerEmails } = getConfig();
 
   // Construct subject with first name and last initial
   const subject = `Action Required — Onboarding Links Partially Unavailable for ${firstName} ${lastName.charAt(0)}.`;
@@ -202,6 +202,6 @@ export function sendPartialFailureEmail({
     4. Shorten the completed link using Short.io before sending to the client.
     5. Send the completed link to the client via SMS.`;
 
-  // Deliver the email via GmailApp
-  GmailApp.sendEmail(config.businessOwnerEmail, subject, body);
+  // Deliver the email via MailApp
+  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }
