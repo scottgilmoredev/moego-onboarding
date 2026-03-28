@@ -269,4 +269,15 @@ describe('doPost', () => {
     expect(MailApp.sendEmail).not.toHaveBeenCalled();
     expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
   });
+
+  /**
+   * @test
+   * @description Confirms doPost ignores events from other companies.
+   */
+  it('ignores events from other companies', () => {
+    doPost(mockDoPostEvent({ ...basePayload, companyId: 'other_company' }));
+
+    expect(GmailApp.sendEmail).not.toHaveBeenCalled();
+    expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
+  });
 });

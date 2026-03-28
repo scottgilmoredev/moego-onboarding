@@ -107,6 +107,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
   // All three API calls failed — send full failure email with manual recovery steps
   if (missingFields.length === 3) {
+    Logger.log(`doPost: sending full failure email`);
     sendFullFailureEmail({
       firstName: customer.firstName,
       lastName: customer.lastName,
@@ -117,9 +118,11 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
   // Shorten the form URL via Short.io — falls back to full URL on failure
   const { url: shortUrl, shortened } = shortenUrl(formUrl);
+  Logger.log(`doPost: url shortened = ${shortened}`);
 
   // One or more API calls failed — send partial failure email with the partial
   if (missingFields.length > 0) {
+    Logger.log(`doPost: sending partial failure email`);
     sendPartialFailureEmail({
       firstName: customer.firstName,
       lastName: customer.lastName,
