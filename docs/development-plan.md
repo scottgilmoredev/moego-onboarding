@@ -20,7 +20,7 @@ Enable a MoeGo-based pet service business owner to automatically receive a pre-f
 
 ## 2. Architecture
 
-MoeGo fires `CUSTOMER_CREATED` webhook → Apps Script `doPost` receives and validates payload → MoeGo API calls retrieve Service Agreement sign link, SMS Agreement sign link, and card-on-file link → Form builder constructs pre-filled Google Form URL → Short.io shortens the URL → `GmailApp` delivers email to business owner.
+MoeGo fires `APPOINTMENT_CREATED` webhook → Apps Script `doPost` receives and validates payload → MoeGo API calls retrieve Service Agreement sign link, SMS Agreement sign link, and card-on-file link → Form builder constructs pre-filled Google Form URL → Short.io shortens the URL → `MailApp` delivers email to business owner.
 
 On failure: any failed API call results in an email to the business owner containing the partial pre-filled URL, details of the failure(s), and the customer's MoeGo ID for manual recovery. If Short.io shortening fails, the full unshortened URL is delivered with a note that the URL may span multiple SMS segments if sent as-is.
 
@@ -44,7 +44,7 @@ On failure: any failed API call results in an email to the business owner contai
 
 **In Scope**
 
-- Receiving and validating `CUSTOMER_CREATED` webhook events from MoeGo
+- Receiving and validating `APPOINTMENT_CREATED` webhook events from MoeGo
 - Retrieving Service Agreement sign link, SMS Agreement sign link, and card-on-file link per client via MoeGo API
 - Constructing a pre-filled Google Form URL from customer data and retrieved links
 - Shortening the pre-filled URL via Short.io API
@@ -58,7 +58,7 @@ On failure: any failed API call results in an email to the business owner contai
 - Direct delivery of the onboarding form URL to the client
 - Automated retry on API failure
 - Support for URL shortening services other than Short.io
-- Support for webhook events other than `CUSTOMER_CREATED`
+- Support for webhook events other than `APPOINTMENT_CREATED`
 - Vaccination record parsing
 - Any user interface beyond the email delivered to the business owner
 
@@ -68,13 +68,14 @@ On failure: any failed API call results in an email to the business owner contai
 - MoeGo API key must be requested through a Customer Success Manager prior to development of any API-dependent phases
 - The Google Form must be created and configured prior to deployment — field entry IDs must be identified and set in configuration before the app can construct pre-filled URLs — see [Form Setup](form-setup.md)
 - Short.io account and API key must be created and configured by the business owner prior to deployment — see [Short.io Setup](short-io-setup.md)
+- Google Apps Script does not expose incoming HTTP request headers in the DoPost event object. HMAC-SHA256 webhook signature verification is not possible in this runtime. Company ID filtering is the primary security control. A middleware layer for signature verification is tracked as a post-MVP enhancement — see Enhancements.
 
 ---
 
 ## 5. Modules & Responsibilities
 
 **webhook/**
-Receives and validates incoming MoeGo webhook payloads. Verifies event type is `CUSTOMER_CREATED` and that the payload contains the expected customer data.
+Receives and validates incoming MoeGo webhook payloads. Verifies event type is `APPOINTMENT_CREATED` and that the payload contains the expected customer data.
 
 **moego/**
 MoeGo API client. Handles authentication and retrieves the Service Agreement sign link, SMS Agreement sign link, and card-on-file link for a given customer.
