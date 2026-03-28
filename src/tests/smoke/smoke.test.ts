@@ -44,21 +44,29 @@ describe('smoke', () => {
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
         .fn()
+
+        // Service Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
         })
+
+        // SMS Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
         })
+
+        // Card-on-file link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
         })
+
+        // Short.io shortened URL
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),

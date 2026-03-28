@@ -91,14 +91,16 @@ export function getConfig(): Config {
     moegoServiceAgreementId: getEnvValue('MOEGO_SERVICE_AGREEMENT_ID'),
     moegoSmsAgreementId: getEnvValue('MOEGO_SMS_AGREEMENT_ID'),
     shortIoApiKey: getEnvValue('SHORTIO_API_KEY'),
-    businessOwnerEmails: getEnvValue('BUSINESS_OWNER_EMAILS')
-      .split(',')
-      .map(e => e.trim()),
     googleFormUrl: getEnvValue('GOOGLE_FORM_URL'),
     formEntryServiceAgreement: getEnvValue('FORM_ENTRY_SERVICE_AGREEMENT'),
     formEntrySmsAgreement: getEnvValue('FORM_ENTRY_SMS_AGREEMENT'),
     formEntryCof: getEnvValue('FORM_ENTRY_COF'),
     shortIoDomain: getEnvValue('SHORTIO_DOMAIN'),
     moegoWebhookSecret: getEnvValue('MOEGO_WEBHOOK_SECRET'),
+
+    // Parse comma-separated email list into an array
+    businessOwnerEmails: getEnvValue('BUSINESS_OWNER_EMAILS')
+      .split(',')
+      .map(e => e.trim()),
   };
 }

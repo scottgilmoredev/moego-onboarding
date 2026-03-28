@@ -87,21 +87,29 @@ describe('doPost', () => {
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
         .fn()
+
+        // Service Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
         })
+
+        // SMS Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
         })
+
+        // Card-on-file link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
         })
+
+        // Short.io shortened URL
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),
@@ -126,20 +134,28 @@ describe('doPost', () => {
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
         .fn()
+
+        // Service Agreement sign link — fails
         .mockReturnValueOnce({
           getResponseCode: () => 404,
           getContentText: () => JSON.stringify({ message: 'Not found' }),
         })
+
+        // SMS Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
         })
+
+        // Card-on-file link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
         })
+
+        // Short.io shortened URL
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),
@@ -162,6 +178,7 @@ describe('doPost', () => {
    */
   it('sends full failure email when all MoeGo API calls fail', () => {
     vi.stubGlobal('UrlFetchApp', {
+      // All API calls fail
       fetch: vi.fn().mockReturnValue({
         getResponseCode: () => 500,
         getContentText: () => JSON.stringify({ message: 'Server error' }),
@@ -186,21 +203,29 @@ describe('doPost', () => {
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
         .fn()
+
+        // Service Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
         })
+
+        // SMS Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
         })
+
+        // Card-on-file link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
           getContentText: () =>
             JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
         })
+
+        // Short.io — fails
         .mockReturnValueOnce({
           getResponseCode: () => 500,
           getContentText: () => JSON.stringify({ message: 'Server error' }),
