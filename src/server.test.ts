@@ -277,7 +277,7 @@ describe('doPost', () => {
   it('ignores events from other companies', () => {
     doPost(mockDoPostEvent({ ...basePayload, companyId: 'other_company' }));
 
-    expect(GmailApp.sendEmail).not.toHaveBeenCalled();
+    expect(MailApp.sendEmail).not.toHaveBeenCalled();
     expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
   });
 });
