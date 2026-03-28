@@ -52,6 +52,15 @@ describe('parseWebhookPayload', () => {
 
   /**
    * @test
+   * @description Confirms unsupported event types are returned without throwing.
+   */
+  it('returns without throwing for unsupported event types', () => {
+    const raw = JSON.stringify({ ...basePayload, type: 'HEALTH_CHECK' });
+    expect(() => parseWebhookPayload(raw)).not.toThrow();
+  });
+
+  /**
+   * @test
    * @description Confirms malformed JSON throws a clear error.
    */
   it('throws on malformed JSON', () => {
