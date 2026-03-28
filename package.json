@@ -15,10 +15,10 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "test:smoke": "vitest run --reporter=verbose src/tests/smoke",
     "test:unit": "vitest run --reporter=verbose --exclude src/tests/smoke",
-    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "prepare": "husky"
