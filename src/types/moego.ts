@@ -21,6 +21,24 @@ export enum MoeGoEventType {
   CUSTOMER_DELETED = 'CUSTOMER_DELETED',
 }
 
+// ============================================================================
+// ENTITIES
+// ============================================================================
+
+/**
+ * Appointment entity as included in APPOINTMENT_CREATED webhook events.
+ *
+ * @interface MoeGoAppointment
+ * @property {string} id - Unique identifier for the appointment.
+ * @property {string} businessId - ID of the business location where the appointment is scheduled.
+ * @property {string} customerId - ID of the customer who booked the appointment.
+ */
+export interface MoeGoAppointment {
+  id: string;
+  businessId: string;
+  customerId: string;
+}
+
 /**
  * Customer communication and marketing preference settings.
  *
@@ -69,6 +87,10 @@ export interface MoeGoCustomer {
   lastUpdatedTime?: string;
 }
 
+// ============================================================================
+// EVENTS
+// ============================================================================
+
 /**
  * Base MoeGo webhook event.
  *
@@ -91,9 +113,22 @@ export interface MoeGoEvent {
  * @interface MoeGoAppointmentCreatedEvent
  * @extends MoeGoEvent
  * @property {MoeGoEventType.APPOINTMENT_CREATED} type - Event type discriminant.
- * @property {MoeGoCustomer} customer - Full customer details from the MoeGo customer data model.
+ * @property {MoeGoAppointment} appointment - The appointment associated with the event.
  */
 export interface MoeGoAppointmentCreatedEvent extends MoeGoEvent {
   type: MoeGoEventType.APPOINTMENT_CREATED;
+  appointment: MoeGoAppointment;
+}
+
+/**
+ * MoeGo CUSTOMER_CREATED webhook event.
+ *
+ * @interface MoeGoCustomerCreatedEvent
+ * @extends MoeGoEvent
+ * @property {MoeGoEventType.CUSTOMER_CREATED} type - Event type discriminant.
+ * @property {MoeGoCustomer} customer - Full customer details from the MoeGo customer data model.
+ */
+export interface MoeGoCustomerCreatedEvent extends MoeGoEvent {
+  type: MoeGoEventType.CUSTOMER_CREATED;
   customer: MoeGoCustomer;
 }

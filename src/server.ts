@@ -12,10 +12,10 @@
  * @see {@link https://developers.google.com/apps-script/guides/web} Google Apps Script Web Apps
  */
 
-import type { MoeGoAppointmentCreatedEvent } from './types/moego.js';
+import type { MoeGoAppointmentCreatedEvent, MoeGoCustomer } from './types/moego.js';
 
 import { parseWebhookPayload } from '#/webhook/webhook.js';
-import { getAgreementSignLink, getCofLink } from '#/moego/moego.js';
+import { getAgreementSignLink, getCofLink, getCustomer } from '#/moego/moego.js';
 import { buildFormUrl } from '#/form/form.js';
 import { shortenUrl } from '#/shortener/shortener.js';
 import { sendSuccessEmail, sendPartialFailureEmail, sendFullFailureEmail } from '#/email/email.js';
@@ -60,17 +60,40 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     return ContentService.createTextOutput('OK');
   }
 
+  const { appointment } = event;
+
+  // Retrieve customer details — required for email delivery and identification
+  let customer: MoeGoCustomer | null = null;
+
+  try {
+    customer = getCustomer({
+      customerId: appointment.customerId,
+      apiKey: moegoApiKey,
+    });
+  } catch (err) {
+    console.log(`doPost: getCustomer failed — ${String(err)}`);
+  }
+
+  // Customer lookup failed — send full failure email with manual recovery steps
+  if (!customer) {
+    sendFullFailureEmail({
+      firstName: 'Unknown',
+      lastName: 'Unknown',
+      customerId: appointment.customerId,
+    });
+    return ContentService.createTextOutput('OK');
+  }
+
   // Retrieve onboarding links from MoeGo API — each call is wrapped individually
   // to support partial success: if one fails, the others proceed
   let serviceAgreementUrl: string | null = null;
   let smsAgreementUrl: string | null = null;
   let cofUrl: string | null = null;
-  const { customer } = event;
 
   try {
     serviceAgreementUrl = getAgreementSignLink({
       agreementId: moegoServiceAgreementId,
-      customerId: customer.id,
+      customerId: appointment.customerId,
       businessId: moegoBusinessId,
       apiKey: moegoApiKey,
     });
@@ -81,7 +104,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
   try {
     smsAgreementUrl = getAgreementSignLink({
       agreementId: moegoSmsAgreementId,
-      customerId: customer.id,
+      customerId: appointment.customerId,
       businessId: moegoBusinessId,
       apiKey: moegoApiKey,
     });
@@ -91,14 +114,14 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
   try {
     cofUrl = getCofLink({
-      customerId: customer.id,
+      customerId: appointment.customerId,
       apiKey: moegoApiKey,
     });
   } catch (err) {
     console.log(`doPost: cofUrl failed — ${String(err)}`);
   }
 
-  // Construct the pre-filled Google Form URL from whatever links were retrieve
+  // Construct the pre-filled Google Form URL from whatever links were retrieved
   const { url: formUrl, missingFields } = buildFormUrl({
     serviceAgreementUrl,
     smsAgreementUrl,
@@ -110,7 +133,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     sendFullFailureEmail({
       firstName: customer.firstName,
       lastName: customer.lastName,
-      customerId: customer.id,
+      customerId: appointment.customerId,
     });
     return ContentService.createTextOutput('OK');
   }
@@ -118,12 +141,12 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
   // Shorten the form URL via Short.io — falls back to full URL on failure
   const { url: shortUrl, shortened } = shortenUrl(formUrl);
 
-  // One or more API calls failed — send partial failure email with the partial
+  // One or more API calls failed — send partial failure email with the partial URL
   if (missingFields.length > 0) {
     sendPartialFailureEmail({
       firstName: customer.firstName,
       lastName: customer.lastName,
-      customerId: customer.id,
+      customerId: appointment.customerId,
       partialUrl: shortUrl,
       missingFields,
     });

@@ -3,10 +3,12 @@
  *
  * @module
  * @description Handles authentication and communication with the MoeGo REST API.
- * Retrieves per-client agreement sign links and card-on-file link. Agreement
- * sign link retrieval handles both Service Agreement and SMS Agreement via
+ * Retrieves customer details and per-client agreement sign links and card-on-file link.
+ * Agreement sign link retrieval handles both Service Agreement and SMS Agreement via
  * {@link getAgreementSignLink}.
  */
+
+import type { MoeGoCustomer } from '#/types/moego.js';
 
 // ============================================================================
 // CONSTANTS
@@ -63,6 +65,18 @@ export interface GetAgreementSignLinkParams {
  * @property {string} apiKey - The MoeGo API key.
  */
 export interface GetCofLinkParams {
+  customerId: string;
+  apiKey: string;
+}
+
+/**
+ * Parameters for retrieving a customer.
+ *
+ * @interface GetCustomerParams
+ * @property {string} customerId - The MoeGo customer ID.
+ * @property {string} apiKey - The MoeGo API key.
+ */
+export interface GetCustomerParams {
   customerId: string;
   apiKey: string;
 }
@@ -219,4 +233,29 @@ export function getCofLink({ customerId, apiKey }: GetCofLinkParams): string {
   });
 
   return result.link;
+}
+
+/**
+ * Retrieve a customer by ID.
+ *
+ * @function getCustomer
+ * @description Calls the MoeGo Customer API to retrieve full customer details
+ * for the specified customer ID.
+ *
+ * @param {GetCustomerParams} params - The request parameters.
+ * @returns {MoeGoCustomer} The customer details.
+ * @throws {Error} If the API returns a non-200 response.
+ * @throws {Error} If the API call fails due to a network error.
+ *
+ * @example
+ * const customer = getCustomer({
+ *   customerId: event.appointment.customerId,
+ *   apiKey: config.moegoApiKey,
+ * });
+ */
+export function getCustomer({ customerId, apiKey }: GetCustomerParams): MoeGoCustomer {
+  return fetchFromMoeGo<MoeGoCustomer>({
+    path: `/v1/customers/${customerId}`,
+    apiKey,
+  });
 }
