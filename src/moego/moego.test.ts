@@ -3,12 +3,19 @@
  *
  * @module
  * @description Unit tests for the MoeGo API client. Covers authentication
- * header construction, shared API request utility, and agreement sign link
- * retrieval. Agreement sign link retrieval is used for both Service Agreement
- * and SMS Agreement sign links via `getAgreementSignLink`.
+ * header construction, shared API request utility, customer retrieval, agreement
+ * sign link retrieval, and card-on-file link retrieval. Agreement sign link
+ * retrieval is used for both Service Agreement and SMS Agreement sign links
+ * via `getAgreementSignLink`.
  */
 
-import { buildAuthHeader, fetchFromMoeGo, getAgreementSignLink, getCofLink } from './moego.js';
+import {
+  buildAuthHeader,
+  fetchFromMoeGo,
+  getAgreementSignLink,
+  getCofLink,
+  getCustomer,
+} from './moego.js';
 
 import {
   createMockFetchResponse,
@@ -229,6 +236,72 @@ describe('getCofLink', () => {
 
     expect(() =>
       getCofLink({
+        customerId: 'cus_001',
+        apiKey: 'test-api-key',
+      })
+    ).toThrow();
+  });
+});
+
+/**
+ * getCustomer
+ *
+ * @description Tests for customer retrieval. Covers successful retrieval,
+ * non-200 error handling, and network errors.
+ */
+describe('getCustomer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms the customer is successfully retrieved and returned.
+   */
+  it('returns the customer for a valid request', () => {
+    stubUrlFetchApp(
+      createMockFetchResponse(200, {
+        id: 'cus_001',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        phone: '+15550001234',
+      })
+    );
+
+    const result = getCustomer({
+      customerId: 'cus_001',
+      apiKey: 'test-api-key',
+    });
+
+    expect(result.id).toBe('cus_001');
+    expect(result.firstName).toBe('Jane');
+    expect(result.lastName).toBe('Smith');
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when the API returns a non-200 response.
+   */
+  it('throws on non-200 response', () => {
+    stubUrlFetchApp(createMockFetchResponse(404, { message: 'Not found' }));
+
+    expect(() =>
+      getCustomer({
+        customerId: 'cus_001',
+        apiKey: 'test-api-key',
+      })
+    ).toThrow();
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when the API call fails.
+   */
+  it('throws on network error', () => {
+    stubUrlFetchAppNetworkError();
+
+    expect(() =>
+      getCustomer({
         customerId: 'cus_001',
         apiKey: 'test-api-key',
       })

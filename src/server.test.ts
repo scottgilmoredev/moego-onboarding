@@ -34,11 +34,10 @@ const basePayload = {
   type: 'APPOINTMENT_CREATED',
   timestamp: '2024-08-01T12:10:00Z',
   companyId: 'cmp_001',
-  customer: {
-    id: 'cus_001',
-    firstName: 'John',
-    lastName: 'Doe',
-    phone: '+12125551234',
+  appointment: {
+    id: 'apt_001',
+    businessId: 'biz_001',
+    customerId: 'cus_001',
   },
 };
 
@@ -88,6 +87,18 @@ describe('doPost', () => {
       fetch: vi
         .fn()
 
+        // getCustomer
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({
+              id: 'cus_001',
+              firstName: 'John',
+              lastName: 'Doe',
+              phone: '+12125551234',
+            }),
+        })
+
         // Service Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
@@ -135,6 +146,18 @@ describe('doPost', () => {
       fetch: vi
         .fn()
 
+        // getCustomer
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({
+              id: 'cus_001',
+              firstName: 'John',
+              lastName: 'Doe',
+              phone: '+12125551234',
+            }),
+        })
+
         // Service Agreement sign link — fails
         .mockReturnValueOnce({
           getResponseCode: () => 404,
@@ -178,11 +201,26 @@ describe('doPost', () => {
    */
   it('sends full failure email when all MoeGo API calls fail', () => {
     vi.stubGlobal('UrlFetchApp', {
-      // All API calls fail
-      fetch: vi.fn().mockReturnValue({
-        getResponseCode: () => 500,
-        getContentText: () => JSON.stringify({ message: 'Server error' }),
-      }),
+      fetch: vi
+        .fn()
+
+        // getCustomer
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({
+              id: 'cus_001',
+              firstName: 'John',
+              lastName: 'Doe',
+              phone: '+12125551234',
+            }),
+        })
+
+        // All MoeGo API calls fail
+        .mockReturnValue({
+          getResponseCode: () => 500,
+          getContentText: () => JSON.stringify({ message: 'Server error' }),
+        }),
     });
 
     doPost(mockDoPostEvent(basePayload));
@@ -203,6 +241,18 @@ describe('doPost', () => {
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
         .fn()
+
+        // getCustomer
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({
+              id: 'cus_001',
+              firstName: 'John',
+              lastName: 'Doe',
+              phone: '+12125551234',
+            }),
+        })
 
         // Service Agreement sign link
         .mockReturnValueOnce({
@@ -247,11 +297,27 @@ describe('doPost', () => {
    */
   it('returns 200 response for valid payload', () => {
     vi.stubGlobal('UrlFetchApp', {
-      fetch: vi.fn().mockReturnValue({
-        getResponseCode: () => 200,
-        getContentText: () =>
-          JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
-      }),
+      fetch: vi
+        .fn()
+
+        // getCustomer
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({
+              id: 'cus_001',
+              firstName: 'John',
+              lastName: 'Doe',
+              phone: '+12125551234',
+            }),
+        })
+
+        // Remaining calls all succeed (service agreement, sms agreement, cof, short.io)
+        .mockReturnValue({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
+        }),
     });
 
     doPost(mockDoPostEvent(basePayload));

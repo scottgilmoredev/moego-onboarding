@@ -20,11 +20,10 @@ const basePayload = {
   type: 'APPOINTMENT_CREATED',
   timestamp: '2024-08-01T12:10:00Z',
   companyId: 'cmp_001',
-  customer: {
-    id: 'cus_001',
-    firstName: 'John',
-    lastName: 'Doe',
-    phone: '+12125551234',
+  appointment: {
+    id: 'apt_001',
+    businessId: 'biz_001',
+    customerId: 'cus_001',
   },
 };
 
@@ -41,13 +40,14 @@ describe('parseWebhookPayload', () => {
    * @description Confirms a valid APPOINTMENT_CREATED payload is parsed correctly.
    */
   it('parses a valid APPOINTMENT_CREATED payload', () => {
-    const result = parseWebhookPayload(JSON.stringify(basePayload)) as MoeGoAppointmentCreatedEvent;
+    const { type, appointment } = parseWebhookPayload(
+      JSON.stringify(basePayload)
+    ) as MoeGoAppointmentCreatedEvent;
 
-    expect(result.type).toBe('APPOINTMENT_CREATED');
-    expect(result.customer.id).toBe('cus_001');
-    expect(result.customer.firstName).toBe('John');
-    expect(result.customer.lastName).toBe('Doe');
-    expect(result.customer.phone).toBe('+12125551234');
+    expect(type).toBe('APPOINTMENT_CREATED');
+    expect(appointment.id).toBe('apt_001');
+    expect(appointment.businessId).toBe('biz_001');
+    expect(appointment.customerId).toBe('cus_001');
   });
 
   /**
@@ -69,12 +69,12 @@ describe('parseWebhookPayload', () => {
 
   /**
    * @test
-   * @description Confirms a payload missing required customer fields throws a clear error.
+   * @description Confirms a payload missing required appointment fields throws a clear error.
    */
-  it('throws on missing required customer fields', () => {
+  it('throws on missing required appointment fields', () => {
     const raw = JSON.stringify({
       ...basePayload,
-      customer: { id: 'cus_001', firstName: 'John' },
+      appointment: { id: 'apt_001', businessId: 'biz_001' },
     });
 
     expect(() => parseWebhookPayload(raw)).toThrow();

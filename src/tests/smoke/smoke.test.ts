@@ -45,6 +45,18 @@ describe('smoke', () => {
       fetch: vi
         .fn()
 
+        // getCustomer
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({
+              id: 'cus_001',
+              firstName: 'John',
+              lastName: 'Doe',
+              phone: '+12125551234',
+            }),
+        })
+
         // Service Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
@@ -93,11 +105,10 @@ describe('smoke', () => {
           timestamp: '2024-08-01T12:10:00Z',
           companyId: 'cmp_001',
           moegoWebhookSecret: 'test-webhook-secret',
-          customer: {
-            id: 'cus_001',
-            firstName: 'John',
-            lastName: 'Doe',
-            phone: '+12125551234',
+          appointment: {
+            id: 'apt_001',
+            businessId: 'biz_001',
+            customerId: 'cus_001',
           },
         }),
         type: 'application/json',
