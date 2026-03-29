@@ -2,12 +2,18 @@
  * Server Tests
  *
  * @module
- * @description Tests for the Apps Script doPost entrypoint and its helper
- * functions. Covers fetchCustomer, fetchOnboardingLinks, sendOnboardingEmail,
- * and the full doPost orchestration flow.
+ * @description Tests for the Apps Script doGet and doPost entrypoints and their
+ * helper functions. Covers fetchCustomer, fetchOnboardingLinks, sendOnboardingEmail,
+ * the full doPost orchestration flow, and doGet token validation and routing.
  */
 
-import { doPost, fetchCustomer, fetchOnboardingLinks, sendOnboardingEmail } from '#/server.js';
+import {
+  doGet,
+  doPost,
+  fetchCustomer,
+  fetchOnboardingLinks,
+  sendOnboardingEmail,
+} from '#/server.js';
 import {
   createMockFetchResponse,
   stubUrlFetchApp,
@@ -87,6 +93,10 @@ const mockShortIoResponse = createMockFetchResponse(200, {
 const mockErrorResponse = createMockFetchResponse(500, { message: 'Server error' });
 
 const mockNotFoundResponse = createMockFetchResponse(404, { message: 'Not found' });
+
+// ============================================================================
+// doPost
+// ============================================================================
 
 /**
  * doPost
@@ -245,6 +255,10 @@ describe('doPost', () => {
     expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
   });
 });
+
+// ============================================================================
+// HELPERS
+// ============================================================================
 
 /**
  * fetchCustomer
@@ -457,5 +471,84 @@ describe('sendOnboardingEmail', () => {
       'New Client Onboarding — John D.',
       expect.stringContaining('URL shortening failed')
     );
+  });
+});
+
+// ============================================================================
+// doGet
+// ============================================================================
+
+/**
+ * doGet
+ *
+ * @description Tests for the Apps Script doGet entrypoint. Covers valid token,
+ * expired/invalid token, and missing token cases.
+ */
+describe('doGet', () => {
+  const mockTokenPayload = {
+    customerId: 'cus_001',
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
+    smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
+    cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
+  };
+
+  const mockDoGetEvent = (token?: string): GoogleAppsScript.Events.DoGet =>
+    ({ parameter: token ? { token } : {} }) as unknown as GoogleAppsScript.Events.DoGet;
+
+  beforeEach(() => {
+    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn(),
+        setProperty: vi.fn(),
+        deleteProperty: vi.fn(),
+      }),
+    });
+    vi.stubGlobal('HtmlService', {
+      createTemplateFromFile: vi.fn().mockReturnValue({
+        evaluate: vi.fn().mockReturnValue({ setTitle: vi.fn().mockReturnThis() }),
+      }),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * @test
+   * @description Confirms doGet renders the landing page when the token is valid.
+   */
+  it('renders the landing page for a valid token', () => {
+    PropertiesService.getScriptProperties().getProperty = vi
+      .fn()
+      .mockReturnValue(JSON.stringify(mockTokenPayload));
+
+    doGet(mockDoGetEvent('valid-token'));
+
+    expect(HtmlService.createTemplateFromFile).toHaveBeenCalledWith('landing');
+  });
+
+  /**
+   * @test
+   * @description Confirms doGet renders the error page when the token is invalid.
+   */
+  it('renders the error page for an invalid token', () => {
+    PropertiesService.getScriptProperties().getProperty = vi.fn().mockReturnValue(null);
+
+    doGet(mockDoGetEvent('invalid-token'));
+
+    expect(HtmlService.createTemplateFromFile).toHaveBeenCalledWith('error');
+  });
+
+  /**
+   * @test
+   * @description Confirms doGet renders the error page when no token is provided.
+   */
+  it('renders the error page when token is missing', () => {
+    doGet(mockDoGetEvent());
+
+    expect(HtmlService.createTemplateFromFile).toHaveBeenCalledWith('error');
   });
 });

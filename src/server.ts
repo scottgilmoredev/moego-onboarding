@@ -4,10 +4,10 @@
  * Server
  *
  * @module
- * @description Apps Script doPost entrypoint. Receives incoming MoeGo webhook
- * requests and orchestrates the full client onboarding flow by delegating to
- * the webhook, MoeGo API client, form URL builder, URL shortener, and email
- * delivery modules.
+ * @description Apps Script doPost and doGet entrypoints. doPost receives
+ * incoming MoeGo webhook requests and orchestrates the full client onboarding
+ * flow. doGet serves the per-client landing page by validating a token and
+ * rendering the appropriate HTML template.
  *
  * @see {@link https://developers.google.com/apps-script/guides/web} Google Apps Script Web Apps
  */
@@ -16,6 +16,7 @@ import type { MoeGoAppointmentCreatedEvent, MoeGoCustomer } from './types/moego.
 
 import { parseWebhookPayload } from '#/webhook/webhook.js';
 import { getAgreementSignLink, getCofLink, getCustomer } from '#/moego/moego.js';
+import { getToken } from '#/token/token.js';
 import { buildFormUrl } from '#/form/form.js';
 import { shortenUrl } from '#/shortener/shortener.js';
 import { sendSuccessEmail, sendPartialFailureEmail, sendFullFailureEmail } from '#/email/email.js';
@@ -193,6 +194,10 @@ export function sendOnboardingEmail({
   });
 }
 
+// ============================================================================
+// ENTRYPOINTS
+// ============================================================================
+
 /**
  * Handle incoming HTTP POST requests from MoeGo webhooks.
  *
@@ -264,5 +269,35 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
   return ContentService.createTextOutput('OK');
 }
 
-// Expose doPost as a global for the GAS runtime
+/**
+ * Handle incoming HTTP GET requests for the client landing page.
+ *
+ * @function doGet
+ * @description Entry point for the Apps Script web app. Extracts the token
+ * from the request URL, validates it, and serves the landing page or an error
+ * page depending on whether the token is valid and unexpired.
+ *
+ * @param {GoogleAppsScript.Events.DoGet} e - The Apps Script GET event object.
+ * @returns {GoogleAppsScript.HTML.HtmlOutput} HTML response.
+ */
+export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.HtmlOutput {
+  // Extract token from query parameters and validate it
+  const token = e.parameter.token as string | undefined;
+  const payload = token ? getToken(token) : null;
+
+  // Missing, invalid, or expired token — render error page
+  if (!payload) {
+    const errorTemplate = HtmlService.createTemplateFromFile('error');
+    return errorTemplate.evaluate();
+  }
+
+  // Valid token — pass payload to template and render landing page
+  const landingTemplate = HtmlService.createTemplateFromFile('landing');
+  (landingTemplate as unknown as Record<string, unknown>).payload = payload;
+
+  return landingTemplate.evaluate();
+}
+
+// Expose doPost and doGet as globals for the GAS runtime
 (globalThis as unknown as Record<string, unknown>).doPost = doPost;
+(globalThis as unknown as Record<string, unknown>).doGet = doGet;
