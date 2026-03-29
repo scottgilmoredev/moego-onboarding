@@ -2,6 +2,24 @@
 
 ---
 
+## `APPOINTMENT_CREATED` and `CUSTOMER_CREATED` have different payload shapes — 2026-03-29
+
+**Decision:** Treat `APPOINTMENT_CREATED` and `CUSTOMER_CREATED` as distinct payload contracts with different nested structures.
+
+**Context:** When the supported event type was changed from `CUSTOMER_CREATED` to `APPOINTMENT_CREATED`, the webhook validator was not updated to reflect the payload shape difference. `CUSTOMER_CREATED` events nest customer data under `customer`. `APPOINTMENT_CREATED` events nest appointment data under `appointment` with only a `customerId` reference — no customer object is present. Customer details must be fetched separately via `GET /v1/customers/{id}` after the webhook is parsed.
+
+**Alternatives considered:**
+
+- Assume payload shapes are consistent across event types — incorrect; confirmed via delivery log review
+
+**Rationale:** Each MoeGo event type has its own payload contract. Validators, types, and downstream field references must be updated atomically whenever the supported event type changes.
+
+**Consequences:** `getCustomer()` is called in `doPost` after webhook parsing to retrieve customer details. `MoeGoAppointment` interface added. `REQUIRED_APPOINTMENT_FIELDS` replaces `REQUIRED_CUSTOMER_FIELDS` as the active validation constant — the latter is preserved for potential future `CUSTOMER_CREATED` handling.
+
+**Status:** Decided
+
+---
+
 ## `APPOINTMENT_CREATED` replaces `CUSTOMER_CREATED` as supported event — 2026-03-27
 
 **Decision:** `APPOINTMENT_CREATED` is the supported webhook event type. `CUSTOMER_CREATED` is no longer handled.
