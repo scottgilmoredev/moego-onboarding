@@ -54,6 +54,24 @@ export function stubUrlFetchApp(response: MockFetchResponse): void {
 }
 
 /**
+ * Stub UrlFetchApp with a sequence of mock responses.
+ *
+ * @function stubUrlFetchAppSequence
+ * @description Stubs the UrlFetchApp global with a mock fetch implementation
+ * that returns each response in order, one per call.
+ *
+ * @param {MockFetchResponse[]} responses - The ordered mock responses to return.
+ * @returns {void}
+ */
+export function stubUrlFetchAppSequence(responses: MockFetchResponse[]): void {
+  const mock = vi.fn();
+  for (const response of responses) {
+    mock.mockReturnValueOnce(response);
+  }
+  vi.stubGlobal('UrlFetchApp', { fetch: mock });
+}
+
+/**
  * Stub UrlFetchApp to simulate a network error.
  *
  * @function stubUrlFetchAppNetworkError
