@@ -97,6 +97,61 @@ This document mirrors the milestones defined in GitHub and serves as a planning 
 
 ---
 
+## Milestone 7 — Token Generation & Storage
+
+**Goal:** Implement per-client token generation and storage to support the client landing page URL.
+
+**Planned issues:**
+
+- Implement token generation (random, URL-safe)
+- Implement token storage and retrieval via PropertiesService
+- Implement token expiry (7-day TTL) and invalidation
+- Unit tests: token generation, storage/retrieval, expiry, invalidation
+
+---
+
+## Milestone 8 — Client Landing Page
+
+**Goal:** Implement the per-client GAS landing page served via `doGet`, including link rendering and file upload.
+
+**Planned issues:**
+
+- Implement `doGet` entrypoint with token validation
+- Implement HTML landing page template
+- Implement dynamic link rendering from token data (service agreement, SMS agreement, COF)
+- Implement file upload handler (vaccination record → Google Drive)
+- Unit tests: valid token, expired token, invalid token, link rendering, file upload
+
+---
+
+## Milestone 9 — Sheet Integration
+
+**Goal:** Implement Google Sheet row write as the primary delivery mechanism for the client landing page URL.
+
+**Planned issues:**
+
+- Implement Google Sheets client (append row)
+- Implement sheet row write with token URL and client metadata
+- Implement Short.io integration for token URL shortening
+- Implement sheet failure handling (email fallback with token URL and manual recovery steps)
+- Unit tests: successful write, Short.io failure, sheet write failure, failure email content
+
+---
+
+## Milestone 10 — Transition & Cleanup
+
+**Goal:** Retire the Google Form dependency, update configuration, and finalize documentation for the landing page phase.
+
+**Planned issues:**
+
+- Remove Google Form URL builder and related config/env vars
+- Update `doPost` flow to generate token and write sheet row (replacing form URL build + email)
+- Update environment variable documentation and `.env.example`
+- Update end-user setup docs (sheet creation, column configuration, branding)
+- End-to-end test with live MoeGo sandbox and real landing page
+
+---
+
 ## Notes
 
 - This file should always match GitHub milestones.
