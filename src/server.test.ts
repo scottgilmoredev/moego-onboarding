@@ -8,6 +8,11 @@
  */
 
 import { doPost, fetchCustomer, fetchOnboardingLinks, sendOnboardingEmail } from '#/server.js';
+import {
+  createMockFetchResponse,
+  stubUrlFetchApp,
+  stubUrlFetchAppSequence,
+} from '#/tests/utils/gas-mocks.js';
 
 const mockConfig = {
   moegoApiKey: 'test-api-key',
@@ -56,6 +61,33 @@ const mockDoPostEvent = (payload: object): GoogleAppsScript.Events.DoPost =>
     },
   }) as unknown as GoogleAppsScript.Events.DoPost;
 
+const mockCustomerResponse = createMockFetchResponse(200, {
+  id: 'cus_001',
+  firstName: 'John',
+  lastName: 'Doe',
+  phone: '+12125551234',
+});
+
+const mockServiceAgreementResponse = createMockFetchResponse(200, {
+  signUrl: 'https://client.moego.pet/agreement/sign/abc123',
+});
+
+const mockSmsAgreementResponse = createMockFetchResponse(200, {
+  signUrl: 'https://client.moego.pet/agreement/sign/def456',
+});
+
+const mockCofResponse = createMockFetchResponse(200, {
+  link: 'https://client.moego.pet/payment/cof/client?c=ghi789',
+});
+
+const mockShortIoResponse = createMockFetchResponse(200, {
+  shortURL: 'https://abc.short.gy/xyz123',
+});
+
+const mockErrorResponse = createMockFetchResponse(500, { message: 'Server error' });
+
+const mockNotFoundResponse = createMockFetchResponse(404, { message: 'Not found' });
+
 /**
  * doPost
  *
@@ -83,49 +115,13 @@ describe('doPost', () => {
    * and URL is shortened.
    */
   it('sends success email when all API calls succeed', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi
-        .fn()
-
-        // getCustomer
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({
-              id: 'cus_001',
-              firstName: 'John',
-              lastName: 'Doe',
-              phone: '+12125551234',
-            }),
-        })
-
-        // Service Agreement sign link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
-        })
-
-        // SMS Agreement sign link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
-        })
-
-        // Card-on-file link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
-        })
-
-        // Short.io shortened URL
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),
-        }),
-    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockServiceAgreementResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+      mockShortIoResponse,
+    ]);
 
     doPost(mockDoPostEvent(basePayload));
 
@@ -142,48 +138,13 @@ describe('doPost', () => {
    * API call fails.
    */
   it('sends partial failure email when one MoeGo API call fails', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi
-        .fn()
-
-        // getCustomer
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({
-              id: 'cus_001',
-              firstName: 'John',
-              lastName: 'Doe',
-              phone: '+12125551234',
-            }),
-        })
-
-        // Service Agreement sign link — fails
-        .mockReturnValueOnce({
-          getResponseCode: () => 404,
-          getContentText: () => JSON.stringify({ message: 'Not found' }),
-        })
-
-        // SMS Agreement sign link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
-        })
-
-        // Card-on-file link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
-        })
-
-        // Short.io shortened URL
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),
-        }),
-    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockNotFoundResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+      mockShortIoResponse,
+    ]);
 
     doPost(mockDoPostEvent(basePayload));
 
@@ -200,28 +161,12 @@ describe('doPost', () => {
    * API calls fail.
    */
   it('sends full failure email when all MoeGo API calls fail', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi
-        .fn()
-
-        // getCustomer
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({
-              id: 'cus_001',
-              firstName: 'John',
-              lastName: 'Doe',
-              phone: '+12125551234',
-            }),
-        })
-
-        // All MoeGo API calls fail
-        .mockReturnValue({
-          getResponseCode: () => 500,
-          getContentText: () => JSON.stringify({ message: 'Server error' }),
-        }),
-    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockErrorResponse,
+      mockErrorResponse,
+      mockErrorResponse,
+    ]);
 
     doPost(mockDoPostEvent(basePayload));
 
@@ -238,49 +183,13 @@ describe('doPost', () => {
    * note when Short.io API call fails.
    */
   it('sends success email with fallback advisory note when Short.io fails', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi
-        .fn()
-
-        // getCustomer
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({
-              id: 'cus_001',
-              firstName: 'John',
-              lastName: 'Doe',
-              phone: '+12125551234',
-            }),
-        })
-
-        // Service Agreement sign link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
-        })
-
-        // SMS Agreement sign link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
-        })
-
-        // Card-on-file link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
-        })
-
-        // Short.io — fails
-        .mockReturnValueOnce({
-          getResponseCode: () => 500,
-          getContentText: () => JSON.stringify({ message: 'Server error' }),
-        }),
-    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockServiceAgreementResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+      mockErrorResponse,
+    ]);
 
     doPost(mockDoPostEvent(basePayload));
 
@@ -296,29 +205,13 @@ describe('doPost', () => {
    * @description Confirms doPost returns a 200 response for valid payloads.
    */
   it('returns 200 response for valid payload', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi
-        .fn()
-
-        // getCustomer
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({
-              id: 'cus_001',
-              firstName: 'John',
-              lastName: 'Doe',
-              phone: '+12125551234',
-            }),
-        })
-
-        // Remaining calls all succeed (service agreement, sms agreement, cof, short.io)
-        .mockReturnValue({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
-        }),
-    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockServiceAgreementResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+      mockShortIoResponse,
+    ]);
 
     doPost(mockDoPostEvent(basePayload));
 
@@ -330,12 +223,7 @@ describe('doPost', () => {
    * @description Confirms doPost sends full failure email when customer lookup fails.
    */
   it('sends full failure email when customer lookup fails', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi.fn().mockReturnValue({
-        getResponseCode: () => 500,
-        getContentText: () => JSON.stringify({ message: 'Server error' }),
-      }),
-    });
+    stubUrlFetchApp(mockErrorResponse);
 
     doPost(mockDoPostEvent(basePayload));
 
@@ -378,18 +266,7 @@ describe('fetchCustomer', () => {
    * @description Confirms the customer is returned on a successful API call.
    */
   it('returns the customer on success', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi.fn().mockReturnValue({
-        getResponseCode: () => 200,
-        getContentText: () =>
-          JSON.stringify({
-            id: 'cus_001',
-            firstName: 'John',
-            lastName: 'Doe',
-            phone: '+12125551234',
-          }),
-      }),
-    });
+    stubUrlFetchApp(mockCustomerResponse);
 
     const result = fetchCustomer('cus_001', 'test-api-key');
 
@@ -402,12 +279,7 @@ describe('fetchCustomer', () => {
    * @description Confirms null is returned when the API call fails.
    */
   it('returns null on failure', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi.fn().mockReturnValue({
-        getResponseCode: () => 500,
-        getContentText: () => JSON.stringify({ message: 'Server error' }),
-      }),
-    });
+    stubUrlFetchApp(mockErrorResponse);
 
     const result = fetchCustomer('cus_001', 'test-api-key');
 
@@ -422,6 +294,14 @@ describe('fetchCustomer', () => {
  * partial failure, and full failure cases.
  */
 describe('fetchOnboardingLinks', () => {
+  const mockParams = {
+    customerId: 'cus_001',
+    businessId: 'biz_001',
+    serviceAgreementId: 'agr_service',
+    smsAgreementId: 'agr_sms',
+    apiKey: 'test-api-key',
+  };
+
   beforeEach(() => {
     vi.stubGlobal('console', { log: vi.fn() });
   });
@@ -435,39 +315,13 @@ describe('fetchOnboardingLinks', () => {
    * @description Confirms all three links are returned when all API calls succeed.
    */
   it('returns all links on full success', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi
-        .fn()
+    stubUrlFetchAppSequence([
+      mockServiceAgreementResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+    ]);
 
-        // Service Agreement sign link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/abc123' }),
-        })
-
-        // SMS Agreement sign link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
-        })
-
-        // Card-on-file link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
-        }),
-    });
-
-    const result = fetchOnboardingLinks({
-      customerId: 'cus_001',
-      businessId: 'biz_001',
-      serviceAgreementId: 'agr_service',
-      smsAgreementId: 'agr_sms',
-      apiKey: 'test-api-key',
-    });
+    const result = fetchOnboardingLinks(mockParams);
 
     expect(result.serviceAgreementUrl).toBe('https://client.moego.pet/agreement/sign/abc123');
     expect(result.smsAgreementUrl).toBe('https://client.moego.pet/agreement/sign/def456');
@@ -479,38 +333,9 @@ describe('fetchOnboardingLinks', () => {
    * @description Confirms failed calls return null while successful calls proceed.
    */
   it('returns null for failed calls and proceeds with the rest', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi
-        .fn()
+    stubUrlFetchAppSequence([mockNotFoundResponse, mockSmsAgreementResponse, mockCofResponse]);
 
-        // Service Agreement sign link — fails
-        .mockReturnValueOnce({
-          getResponseCode: () => 404,
-          getContentText: () => JSON.stringify({ message: 'Not found' }),
-        })
-
-        // SMS Agreement sign link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ signUrl: 'https://client.moego.pet/agreement/sign/def456' }),
-        })
-
-        // Card-on-file link
-        .mockReturnValueOnce({
-          getResponseCode: () => 200,
-          getContentText: () =>
-            JSON.stringify({ link: 'https://client.moego.pet/payment/cof/client?c=ghi789' }),
-        }),
-    });
-
-    const result = fetchOnboardingLinks({
-      customerId: 'cus_001',
-      businessId: 'biz_001',
-      serviceAgreementId: 'agr_service',
-      smsAgreementId: 'agr_sms',
-      apiKey: 'test-api-key',
-    });
+    const result = fetchOnboardingLinks(mockParams);
 
     expect(result.serviceAgreementUrl).toBeNull();
     expect(result.smsAgreementUrl).toBe('https://client.moego.pet/agreement/sign/def456');
@@ -522,20 +347,9 @@ describe('fetchOnboardingLinks', () => {
    * @description Confirms all links are null when all API calls fail.
    */
   it('returns all null on full failure', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi.fn().mockReturnValue({
-        getResponseCode: () => 500,
-        getContentText: () => JSON.stringify({ message: 'Server error' }),
-      }),
-    });
+    stubUrlFetchApp(mockErrorResponse);
 
-    const result = fetchOnboardingLinks({
-      customerId: 'cus_001',
-      businessId: 'biz_001',
-      serviceAgreementId: 'agr_service',
-      smsAgreementId: 'agr_sms',
-      apiKey: 'test-api-key',
-    });
+    const result = fetchOnboardingLinks(mockParams);
 
     expect(result.serviceAgreementUrl).toBeNull();
     expect(result.smsAgreementUrl).toBeNull();
@@ -558,6 +372,12 @@ describe('sendOnboardingEmail', () => {
     companyId: 'cmp_001',
   };
 
+  const allLinks = {
+    serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
+    smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
+    cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
+  };
+
   beforeEach(() => {
     vi.stubGlobal('console', { log: vi.fn() });
     vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
@@ -573,22 +393,9 @@ describe('sendOnboardingEmail', () => {
    * and URL is shortened.
    */
   it('sends success email when all links are present', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi.fn().mockReturnValue({
-        getResponseCode: () => 200,
-        getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),
-      }),
-    });
+    stubUrlFetchApp(mockShortIoResponse);
 
-    sendOnboardingEmail({
-      customer: mockCustomer,
-      customerId: 'cus_001',
-      links: {
-        serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
-        smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
-        cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
-      },
-    });
+    sendOnboardingEmail({ customer: mockCustomer, customerId: 'cus_001', links: allLinks });
 
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
@@ -602,21 +409,12 @@ describe('sendOnboardingEmail', () => {
    * @description Confirms a partial failure email is sent when one link is missing.
    */
   it('sends partial failure email when one link is missing', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi.fn().mockReturnValue({
-        getResponseCode: () => 200,
-        getContentText: () => JSON.stringify({ shortURL: 'https://abc.short.gy/xyz123' }),
-      }),
-    });
+    stubUrlFetchApp(mockShortIoResponse);
 
     sendOnboardingEmail({
       customer: mockCustomer,
       customerId: 'cus_001',
-      links: {
-        serviceAgreementUrl: null,
-        smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
-        cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
-      },
+      links: { ...allLinks, serviceAgreementUrl: null },
     });
 
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
@@ -634,11 +432,7 @@ describe('sendOnboardingEmail', () => {
     sendOnboardingEmail({
       customer: mockCustomer,
       customerId: 'cus_001',
-      links: {
-        serviceAgreementUrl: null,
-        smsAgreementUrl: null,
-        cofUrl: null,
-      },
+      links: { serviceAgreementUrl: null, smsAgreementUrl: null, cofUrl: null },
     });
 
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
@@ -654,22 +448,9 @@ describe('sendOnboardingEmail', () => {
    * when Short.io fails.
    */
   it('sends success email with fallback advisory note when Short.io fails', () => {
-    vi.stubGlobal('UrlFetchApp', {
-      fetch: vi.fn().mockReturnValue({
-        getResponseCode: () => 500,
-        getContentText: () => JSON.stringify({ message: 'Server error' }),
-      }),
-    });
+    stubUrlFetchApp(mockErrorResponse);
 
-    sendOnboardingEmail({
-      customer: mockCustomer,
-      customerId: 'cus_001',
-      links: {
-        serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
-        smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
-        cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
-      },
-    });
+    sendOnboardingEmail({ customer: mockCustomer, customerId: 'cus_001', links: allLinks });
 
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
