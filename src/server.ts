@@ -6,8 +6,9 @@
  * @module
  * @description Apps Script doPost and doGet entrypoints. doPost receives
  * incoming MoeGo webhook requests and orchestrates the full client onboarding
- * flow. doGet serves the per-client landing page by validating a token and
- * rendering the appropriate HTML template.
+ * flow: token generation, URL shortening, sheet row write, and owner notification.
+ * doGet serves the per-client landing page by validating a token and rendering
+ * the appropriate HTML template.
  *
  * @see {@link https://developers.google.com/apps-script/guides/web} Google Apps Script Web Apps
  */
@@ -16,10 +17,15 @@ import type { MoeGoAppointmentCreatedEvent, MoeGoCustomer } from './types/moego.
 
 import { parseWebhookPayload } from '#/webhook/webhook.js';
 import { getAgreementSignLink, getCofLink, getCustomer } from '#/moego/moego.js';
-import { getToken } from '#/token/token.js';
-import { buildFormUrl } from '#/form/form.js';
-import { shortenUrl } from '#/shortener/shortener.js';
-import { sendSuccessEmail, sendPartialFailureEmail, sendFullFailureEmail } from '#/email/email.js';
+import { generateToken, getToken, storeToken } from '#/token/token.js';
+import { shortenUrlStrict } from '#/shortener/shortener.js';
+import { writeClientRow } from '#/sheet/sheet.js';
+import {
+  sendSuccessEmail,
+  sendFullFailureEmail,
+  sendShortIoFailureEmail,
+  sendSheetWriteFailureEmail,
+} from '#/email/email.js';
 import { getConfig } from '#/utils/config.js';
 import { SUPPORTED_EVENT_TYPES } from '#/utils/constants.js';
 
@@ -157,66 +163,6 @@ export function uploadVaccinationRecord(
   folder.createFile(blob);
 }
 
-/**
- * Build the onboarding form URL and dispatch the appropriate email.
- *
- * @function sendOnboardingEmail
- * @description Constructs the pre-filled Google Form URL from the retrieved
- * onboarding links, shortens it via Short.io, and sends the appropriate
- * email based on how many links were successfully retrieved.
- *
- * @param {object} params - The request parameters.
- * @param {MoeGoCustomer} params.customer - The customer details.
- * @param {string} params.customerId - The MoeGo customer ID.
- * @param {OnboardingLinks} params.links - The retrieved onboarding links.
- */
-export function sendOnboardingEmail({
-  customer,
-  customerId,
-  links,
-}: {
-  customer: MoeGoCustomer;
-  customerId: string;
-  links: OnboardingLinks;
-}): void {
-  const { url: formUrl, missingFields } = buildFormUrl(links);
-
-  // All three API calls failed — send full failure email with manual recovery steps
-  if (missingFields.length === 3) {
-    sendFullFailureEmail({
-      firstName: customer.firstName,
-      lastName: customer.lastName,
-      customerId,
-    });
-
-    return;
-  }
-
-  // Shorten the form URL via Short.io — falls back to full URL on failure
-  const { url: shortUrl, shortened } = shortenUrl(formUrl);
-
-  // One or more API calls failed — send partial failure email with the partial URL
-  if (missingFields.length > 0) {
-    sendPartialFailureEmail({
-      firstName: customer.firstName,
-      lastName: customer.lastName,
-      customerId,
-      partialUrl: shortUrl,
-      missingFields,
-    });
-
-    return;
-  }
-
-  // All API calls succeeded — send success email with the full onboarding link
-  sendSuccessEmail({
-    firstName: customer.firstName,
-    lastName: customer.lastName,
-    url: shortUrl,
-    shortened,
-  });
-}
-
 // ============================================================================
 // ENTRYPOINTS
 // ============================================================================
@@ -226,15 +172,14 @@ export function sendOnboardingEmail({
  *
  * @function doPost
  * @description Entry point for the Apps Script web app. Receives the raw
- * webhook payload from MoeGo, parses and validates it, fetches the customer
- * and per-client onboarding links from the MoeGo API, and dispatches the
- * appropriate email to the business owner.
+ * webhook payload from MoeGo, parses and validates it, skips returning clients,
+ * fetches the customer and per-client onboarding links, generates a token,
+ * shortens the landing page URL, writes the sheet row, and notifies the owner.
  *
  * @param {GoogleAppsScript.Events.DoPost} e - The Apps Script POST event object.
  * @returns {GoogleAppsScript.Content.TextOutput} HTTP response.
  */
 export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.TextOutput {
-  // Parse and validate the incoming webhook payload
   const event = parseWebhookPayload(e.postData.contents) as MoeGoAppointmentCreatedEvent;
   const {
     moegoApiKey,
@@ -242,9 +187,10 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     moegoCompanyId,
     moegoServiceAgreementId,
     moegoSmsAgreementId,
+    landingPageUrl,
   } = getConfig();
 
-  // Ignore events for other companies (in case company scoping fails or the webhook secret is compromised)
+  // Ignore events for other companies
   if (event.companyId !== moegoCompanyId) {
     return ContentService.createTextOutput('OK');
   }
@@ -260,7 +206,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
   const { appointment } = event;
 
-  // Retrieve customer details — required for email delivery and identification
+  // Retrieve customer details — required to check onboarding status and for email delivery
   const customer = fetchCustomer(appointment.customerId, moegoApiKey);
 
   // Customer lookup failed — send full failure email with manual recovery steps
@@ -274,7 +220,12 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     return ContentService.createTextOutput('OK');
   }
 
-  // Retrieve onboarding links from MoeGo API
+  // Skip returning clients — presence of lastAppointmentDate indicates a prior completed appointment
+  if (customer.lastAppointmentDate) {
+    return ContentService.createTextOutput('OK');
+  }
+
+  // Retrieve onboarding links — all three must succeed to generate a token
   const { serviceAgreementUrl, smsAgreementUrl, cofUrl } = fetchOnboardingLinks({
     customerId: appointment.customerId,
     businessId: moegoBusinessId,
@@ -283,10 +234,66 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     apiKey: moegoApiKey,
   });
 
-  sendOnboardingEmail({
-    customer,
+  // Any link failure — send full failure email and abort
+  if (!serviceAgreementUrl || !smsAgreementUrl || !cofUrl) {
+    sendFullFailureEmail({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      customerId: appointment.customerId,
+    });
+
+    return ContentService.createTextOutput('OK');
+  }
+
+  // Generate and store a token with the client's onboarding links
+  const token = generateToken();
+  storeToken(token, {
     customerId: appointment.customerId,
-    links: { serviceAgreementUrl, smsAgreementUrl, cofUrl },
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    serviceAgreementUrl,
+    smsAgreementUrl,
+    cofUrl,
+  });
+
+  // Build the full landing page URL for this client
+  const fullUrl = `${landingPageUrl}?token=${token}`;
+
+  // Shorten the landing page URL — failure triggers Short.io failure email
+  let shortUrl: string;
+  try {
+    shortUrl = shortenUrlStrict(fullUrl);
+  } catch (err) {
+    console.log(`doPost: shortenUrlStrict failed — ${String(err)}`);
+    sendShortIoFailureEmail({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      customerId: appointment.customerId,
+      fullUrl,
+    });
+
+    return ContentService.createTextOutput('OK');
+  }
+
+  // Write the sheet row — failure triggers sheet write failure email
+  try {
+    writeClientRow({ customer, shortUrl });
+  } catch (err) {
+    console.log(`doPost: writeClientRow failed — ${String(err)}`);
+    sendSheetWriteFailureEmail({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      customerId: appointment.customerId,
+      shortUrl,
+    });
+
+    return ContentService.createTextOutput('OK');
+  }
+
+  // All steps succeeded — notify the owner
+  sendSuccessEmail({
+    firstName: customer.firstName,
+    lastName: customer.lastName,
+    shortUrl,
   });
 
   return ContentService.createTextOutput('OK');
@@ -331,7 +338,7 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
   return landingTemplate.evaluate();
 }
 
-// Expose doPost and doGet as globals for the GAS runtime
+// Expose entrypoints as globals for the GAS runtime
 (globalThis as unknown as Record<string, unknown>).doPost = doPost;
 (globalThis as unknown as Record<string, unknown>).doGet = doGet;
 (globalThis as unknown as Record<string, unknown>).uploadVaccinationRecord =

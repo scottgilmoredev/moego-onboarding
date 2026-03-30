@@ -20,10 +20,7 @@ import { IS_GAS_RUNTIME } from '#/utils/constants.js';
  * @property {string} moegoSmsAgreementId - MoeGo SMS Agreement ID.
  * @property {string} shortIoApiKey - Short.io API key.
  * @property {string[]} businessOwnerEmails - Recipient email addresses for onboarding notifications.
- * @property {string} googleFormUrl - Base URL of the onboarding Google Form.
- * @property {string} formEntryServiceAgreement - Google Form entry ID for Service Agreement link field.
- * @property {string} formEntrySmsAgreement - Google Form entry ID for SMS Agreement link field.
- * @property {string} formEntryCof - Google Form entry ID for card-on-file link field.
+ * @property {string} landingPageUrl - Base URL of the deployed GAS web app (without query parameters).
  * @property {string} shortIoDomain - Short.io domain for link shortening.
  * @property {string} moegoWebhookSecret - MoeGo webhook secret token.
  * @property {string} businessName - The business name shown on the landing page.
@@ -40,10 +37,7 @@ export interface Config {
   moegoSmsAgreementId: string;
   shortIoApiKey: string;
   businessOwnerEmails: string[];
-  googleFormUrl: string;
-  formEntryServiceAgreement: string;
-  formEntrySmsAgreement: string;
-  formEntryCof: string;
+  landingPageUrl: string;
   shortIoDomain: string;
   moegoWebhookSecret: string;
   businessName: string;
@@ -101,10 +95,7 @@ export function getConfig(): Config {
     moegoServiceAgreementId: getEnvValue('MOEGO_SERVICE_AGREEMENT_ID'),
     moegoSmsAgreementId: getEnvValue('MOEGO_SMS_AGREEMENT_ID'),
     shortIoApiKey: getEnvValue('SHORTIO_API_KEY'),
-    googleFormUrl: getEnvValue('GOOGLE_FORM_URL'),
-    formEntryServiceAgreement: getEnvValue('FORM_ENTRY_SERVICE_AGREEMENT'),
-    formEntrySmsAgreement: getEnvValue('FORM_ENTRY_SMS_AGREEMENT'),
-    formEntryCof: getEnvValue('FORM_ENTRY_COF'),
+    landingPageUrl: getEnvValue('LANDING_PAGE_URL'),
     shortIoDomain: getEnvValue('SHORTIO_DOMAIN'),
     moegoWebhookSecret: getEnvValue('MOEGO_WEBHOOK_SECRET'),
     businessName: getEnvValue('BUSINESS_NAME'),

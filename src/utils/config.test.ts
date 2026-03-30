@@ -29,10 +29,7 @@ describe('getConfig', () => {
     vi.stubEnv('MOEGO_SMS_AGREEMENT_ID', 'test-sms-agreement-id');
     vi.stubEnv('SHORTIO_API_KEY', 'test-shortio-key');
     vi.stubEnv('BUSINESS_OWNER_EMAILS', 'owner@example.com,another-owner@example.com');
-    vi.stubEnv('GOOGLE_FORM_URL', 'https://docs.google.com/forms/test');
-    vi.stubEnv('FORM_ENTRY_SERVICE_AGREEMENT', 'entry.444');
-    vi.stubEnv('FORM_ENTRY_SMS_AGREEMENT', 'entry.555');
-    vi.stubEnv('FORM_ENTRY_COF', 'entry.666');
+    vi.stubEnv('LANDING_PAGE_URL', 'https://script.google.com/macros/s/abc/exec');
     vi.stubEnv('SHORTIO_DOMAIN', 'abc.short.gy');
     vi.stubEnv('MOEGO_WEBHOOK_SECRET', 'test-webhook-secret');
     vi.stubEnv('BUSINESS_NAME', 'test-business-name');
@@ -51,10 +48,7 @@ describe('getConfig', () => {
     expect(config.moegoSmsAgreementId).toBe('test-sms-agreement-id');
     expect(config.shortIoApiKey).toBe('test-shortio-key');
     expect(config.businessOwnerEmails).toEqual(['owner@example.com', 'another-owner@example.com']);
-    expect(config.googleFormUrl).toBe('https://docs.google.com/forms/test');
-    expect(config.formEntryServiceAgreement).toBe('entry.444');
-    expect(config.formEntrySmsAgreement).toBe('entry.555');
-    expect(config.formEntryCof).toBe('entry.666');
+    expect(config.landingPageUrl).toBe('https://script.google.com/macros/s/abc/exec');
     expect(config.shortIoDomain).toBe('abc.short.gy');
     expect(config.moegoWebhookSecret).toBe('test-webhook-secret');
     expect(config.businessName).toBe('test-business-name');

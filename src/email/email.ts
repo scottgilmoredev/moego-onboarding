@@ -14,14 +14,12 @@ import { getConfig } from '#/utils/config.js';
  * @interface SendSuccessEmailParams
  * @property {string} firstName - The client's first name.
  * @property {string} lastName - The client's last name.
- * @property {string} url - The onboarding form URL, shortened or full.
- * @property {boolean} shortened - Whether the URL was successfully shortened.
+ * @property {string} shortUrl - The shortened landing page URL.
  */
 export interface SendSuccessEmailParams {
   firstName: string;
   lastName: string;
-  url: string;
-  shortened: boolean;
+  shortUrl: string;
 }
 
 /**
@@ -71,28 +69,17 @@ export interface SendPartialFailureEmailParams {
  * sendSuccessEmail({
  *   firstName: customer.firstName,
  *   lastName: customer.lastName,
- *   url: shortenedUrl,
- *   shortened: true,
+ *   shortUrl: 'https://abc.short.gy/xyz123',
  * });
  */
-export function sendSuccessEmail({
-  firstName,
-  lastName,
-  url,
-  shortened,
-}: SendSuccessEmailParams): void {
+export function sendSuccessEmail({ firstName, lastName, shortUrl }: SendSuccessEmailParams): void {
   const { businessOwnerEmails } = getConfig();
 
   // Construct subject with first name and last initial
   const subject = `New Client Onboarding — ${firstName} ${lastName.charAt(0)}.`;
 
-  // Build the fallback advisory note if URL shortening failed
-  const fallbackNote = shortened
-    ? ''
-    : '\n\nNote: URL shortening failed. The link above is unshortened and may span multiple SMS segments if sent as-is. You may wish to shorten it manually before sending to the client.';
-
   // Compose the email body
-  const body = `A new appointment has been created in MoeGo for ${firstName} ${lastName.charAt(0)}. Please send the following onboarding link via SMS.\n\n${url}${fallbackNote}`;
+  const body = `A new appointment has been created in MoeGo for ${firstName} ${lastName.charAt(0)}. Please send the following onboarding link via SMS.\n\n${shortUrl}`;
 
   // Deliver the email via MailApp
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
