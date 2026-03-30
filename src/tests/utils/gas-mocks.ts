@@ -3,9 +3,36 @@
  *
  * @module
  * @description Shared test utilities for mocking Google Apps Script globals
- * in Vitest tests. Provides mock response factories and UrlFetchApp stubs
- * for use across test files.
+ * in Vitest tests. Provides a shared mock config, mock response factories,
+ * and UrlFetchApp stubs for use across test files.
  */
+
+import type { Config } from '#/utils/config.js';
+
+/**
+ * Shared mock configuration for use across all test files.
+ *
+ * @constant mockConfig
+ * @description Covers all required Config fields. Import and pass to
+ * `vi.mock('#/utils/config.js', () => ({ getConfig: () => mockConfig }))`.
+ */
+export const mockConfig: Config = {
+  moegoApiKey: 'test-api-key',
+  moegoCompanyId: 'cmp_001',
+  moegoBusinessId: 'test-business-id',
+  moegoServiceAgreementId: 'agr_service',
+  moegoSmsAgreementId: 'agr_sms',
+  moegoWebhookSecret: 'test-webhook-secret',
+  shortIoApiKey: 'test-shortio-key',
+  shortIoDomain: 'abc.short.gy',
+  businessOwnerEmails: ['owner@example.com', 'another-owner@example.com'],
+  landingPageUrl: 'https://script.google.com/macros/s/abc/exec',
+  driveFolderId: 'test-folder-id',
+  spreadsheetId: 'test-spreadsheet-id',
+  businessName: 'Test Business',
+  businessLogoUrl: 'https://example.com/logo.png',
+  businessPhone: '555-555-5555',
+};
 
 /**
  * Mock UrlFetchApp response object.

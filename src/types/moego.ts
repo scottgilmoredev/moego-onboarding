@@ -71,6 +71,7 @@ export interface MoeGoCustomerPreference {
  * @property {MoeGoCustomerPreference} [preference] - Customer's communication and marketing preferences.
  * @property {string} [createdTime] - When this customer was created.
  * @property {string} [lastUpdatedTime] - When this customer was last modified.
+ * @property {string} [lastAppointmentDate] - Date of the customer's most recent appointment. Present if the customer has completed at least one appointment.
  */
 export interface MoeGoCustomer {
   id: string;
@@ -85,6 +86,7 @@ export interface MoeGoCustomer {
   preference?: MoeGoCustomerPreference;
   createdTime?: string;
   lastUpdatedTime?: string;
+  lastAppointmentDate?: string;
 }
 
 // ============================================================================

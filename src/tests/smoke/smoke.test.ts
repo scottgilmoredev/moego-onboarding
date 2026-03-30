@@ -8,21 +8,8 @@
  */
 
 import { doPost } from '#/server.js';
+import { mockConfig } from '#/tests/utils/gas-mocks.js';
 
-const mockConfig = {
-  moegoApiKey: 'test-api-key',
-  moegoCompanyId: 'cmp_001',
-  moegoBusinessId: 'test-business-id',
-  moegoServiceAgreementId: 'agr_service',
-  moegoSmsAgreementId: 'agr_sms',
-  shortIoApiKey: 'test-shortio-key',
-  shortIoDomain: 'abc.short.gy',
-  businessOwnerEmails: ['owner@example.com', 'another-owner@example.com'],
-  googleFormUrl: 'https://docs.google.com/forms/d/e/test/viewform',
-  formEntryServiceAgreement: 'entry.444',
-  formEntrySmsAgreement: 'entry.555',
-  formEntryCof: 'entry.666',
-};
 vi.mock('#/utils/config.js', () => ({
   getConfig: () => mockConfig,
 }));
@@ -35,11 +22,27 @@ vi.mock('#/utils/config.js', () => ({
  * an email to the business owner.
  */
 describe('smoke', () => {
+  const mockSheet = { appendRow: vi.fn() };
+  const mockSpreadsheet = { getActiveSheet: vi.fn().mockReturnValue(mockSheet) };
+
   beforeEach(() => {
     vi.stubGlobal('console', { log: vi.fn() });
     vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
+    });
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(null),
+        setProperty: vi.fn(),
+        deleteProperty: vi.fn(),
+      }),
+    });
+    vi.stubGlobal('Utilities', {
+      getUuid: vi.fn().mockReturnValue('test-uuid'),
+    });
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue(mockSpreadsheet),
     });
     vi.stubGlobal('UrlFetchApp', {
       fetch: vi
@@ -88,13 +91,14 @@ describe('smoke', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   /**
    * @test
    * @description Confirms doPost processes a valid APPOINTMENT_CREATED payload
-   * end-to-end without throwing and delivers a success email to the business
-   * owner.
+   * end-to-end without throwing, writes the sheet row, and delivers a success
+   * email to the business owner.
    */
   it('processes a valid APPOINTMENT_CREATED webhook end-to-end', () => {
     const mockEvent = {
@@ -123,6 +127,7 @@ describe('smoke', () => {
     } as unknown as GoogleAppsScript.Events.DoPost;
 
     expect(() => doPost(mockEvent)).not.toThrow();
+    expect(mockSheet.appendRow).toHaveBeenCalled();
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
       'New Client Onboarding — John D.',

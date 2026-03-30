@@ -3,8 +3,8 @@
  *
  * @module
  * @description Tests for the Apps Script doGet and doPost entrypoints and their
- * helper functions. Covers fetchCustomer, fetchOnboardingLinks, sendOnboardingEmail,
- * the full doPost orchestration flow, and doGet token validation and routing.
+ * helper functions. Covers fetchCustomer, fetchOnboardingLinks, the full doPost
+ * orchestration flow, doGet token validation and routing, and uploadVaccinationRecord.
  */
 
 import {
@@ -12,32 +12,14 @@ import {
   doPost,
   fetchCustomer,
   fetchOnboardingLinks,
-  sendOnboardingEmail,
   uploadVaccinationRecord,
 } from '#/server.js';
 import {
   createMockFetchResponse,
+  mockConfig,
   stubUrlFetchApp,
   stubUrlFetchAppSequence,
 } from '#/tests/utils/gas-mocks.js';
-
-const mockConfig = {
-  moegoApiKey: 'test-api-key',
-  moegoCompanyId: 'cmp_001',
-  moegoBusinessId: 'test-business-id',
-  moegoServiceAgreementId: 'agr_service',
-  moegoSmsAgreementId: 'agr_sms',
-  moegoWebhookSecret: 'test-webhook-secret',
-  shortIoApiKey: 'test-shortio-key',
-  shortIoDomain: 'abc.short.gy',
-  businessOwnerEmails: ['owner@example.com', 'another-owner@example.com'],
-  googleFormUrl: 'https://docs.google.com/forms/d/e/test/viewform',
-  formEntryServiceAgreement: 'entry.444',
-  formEntrySmsAgreement: 'entry.555',
-  formEntryCof: 'entry.666',
-  driveFolderId: 'test-folder-id',
-  spreadsheetId: 'test-spreadsheet-id',
-};
 
 vi.mock('#/utils/config.js', () => ({
   getConfig: () => mockConfig,
@@ -105,10 +87,13 @@ const mockNotFoundResponse = createMockFetchResponse(404, { message: 'Not found'
  * doPost
  *
  * @description Integration tests for the Apps Script doPost entrypoint.
- * Covers the full onboarding flow for success, partial failure, full failure,
- * and Short.io fallback cases.
+ * Covers the full onboarding flow for success, full link failure, Short.io
+ * failure, sheet write failure, and customer lookup failure cases.
  */
 describe('doPost', () => {
+  const mockSheet = { appendRow: vi.fn() };
+  const mockSpreadsheet = { getActiveSheet: vi.fn().mockReturnValue(mockSheet) };
+
   beforeEach(() => {
     vi.stubGlobal('console', { log: vi.fn() });
     vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
@@ -116,18 +101,32 @@ describe('doPost', () => {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
       MimeType: { TEXT: 'text/plain' },
     });
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(null),
+        setProperty: vi.fn(),
+        deleteProperty: vi.fn(),
+      }),
+    });
+    vi.stubGlobal('Utilities', {
+      getUuid: vi.fn().mockReturnValue('test-uuid'),
+    });
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue(mockSpreadsheet),
+    });
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   /**
    * @test
-   * @description Confirms doPost sends success email when all API calls succeed
-   * and URL is shortened.
+   * @description Confirms doPost sends success email and writes sheet row
+   * when all API calls succeed.
    */
-  it('sends success email when all API calls succeed', () => {
+  it('sends success email and writes sheet row when all API calls succeed', () => {
     stubUrlFetchAppSequence([
       mockCustomerResponse,
       mockServiceAgreementResponse,
@@ -138,6 +137,7 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
+    expect(mockSheet.appendRow).toHaveBeenCalled();
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
       'New Client Onboarding — John D.',
@@ -147,42 +147,20 @@ describe('doPost', () => {
 
   /**
    * @test
-   * @description Confirms doPost sends partial failure email when one MoeGo
+   * @description Confirms doPost sends full failure email when any MoeGo
    * API call fails.
    */
-  it('sends partial failure email when one MoeGo API call fails', () => {
+  it('sends full failure email when any MoeGo API call fails', () => {
     stubUrlFetchAppSequence([
       mockCustomerResponse,
       mockNotFoundResponse,
       mockSmsAgreementResponse,
       mockCofResponse,
-      mockShortIoResponse,
     ]);
 
     doPost(mockDoPostEvent(basePayload));
 
-    expect(MailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com, another-owner@example.com',
-      expect.stringContaining('Partially Unavailable'),
-      expect.stringContaining('cus_001')
-    );
-  });
-
-  /**
-   * @test
-   * @description Confirms doPost sends full failure email when all MoeGo
-   * API calls fail.
-   */
-  it('sends full failure email when all MoeGo API calls fail', () => {
-    stubUrlFetchAppSequence([
-      mockCustomerResponse,
-      mockErrorResponse,
-      mockErrorResponse,
-      mockErrorResponse,
-    ]);
-
-    doPost(mockDoPostEvent(basePayload));
-
+    expect(mockSheet.appendRow).not.toHaveBeenCalled();
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
       expect.stringContaining('Unavailable'),
@@ -192,10 +170,10 @@ describe('doPost', () => {
 
   /**
    * @test
-   * @description Confirms doPost sends success email with fallback advisory
-   * note when Short.io API call fails.
+   * @description Confirms doPost sends Short.io failure email with full token
+   * URL when URL shortening fails.
    */
-  it('sends success email with fallback advisory note when Short.io fails', () => {
+  it('sends Short.io failure email with full token URL when shortening fails', () => {
     stubUrlFetchAppSequence([
       mockCustomerResponse,
       mockServiceAgreementResponse,
@@ -206,10 +184,54 @@ describe('doPost', () => {
 
     doPost(mockDoPostEvent(basePayload));
 
+    expect(mockSheet.appendRow).not.toHaveBeenCalled();
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
-      'New Client Onboarding — John D.',
-      expect.stringContaining('URL shortening failed')
+      expect.stringContaining('URL Shortening Failed'),
+      expect.stringContaining('https://script.google.com/macros/s/abc/exec?token=test-uuid')
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms doPost sends sheet write failure email with shortened
+   * URL when the sheet write fails.
+   */
+  it('sends sheet write failure email with shortened URL when sheet write fails', () => {
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockServiceAgreementResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+      mockShortIoResponse,
+    ]);
+
+    mockSheet.appendRow = vi.fn().mockImplementation(() => {
+      throw new Error('Write failed');
+    });
+
+    doPost(mockDoPostEvent(basePayload));
+
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      expect.stringContaining('Sheet Write Failed'),
+      expect.stringContaining('https://abc.short.gy/xyz123')
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms doPost sends full failure email when customer lookup fails.
+   */
+  it('sends full failure email when customer lookup fails', () => {
+    stubUrlFetchApp(mockErrorResponse);
+
+    doPost(mockDoPostEvent(basePayload));
+
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      expect.stringContaining('Unavailable'),
+      expect.stringContaining('cus_001')
     );
   });
 
@@ -229,22 +251,6 @@ describe('doPost', () => {
     doPost(mockDoPostEvent(basePayload));
 
     expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
-  });
-
-  /**
-   * @test
-   * @description Confirms doPost sends full failure email when customer lookup fails.
-   */
-  it('sends full failure email when customer lookup fails', () => {
-    stubUrlFetchApp(mockErrorResponse);
-
-    doPost(mockDoPostEvent(basePayload));
-
-    expect(MailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com, another-owner@example.com',
-      expect.stringContaining('Unavailable'),
-      expect.stringContaining('cus_001')
-    );
   });
 
   /**
@@ -371,109 +377,6 @@ describe('fetchOnboardingLinks', () => {
     expect(result.serviceAgreementUrl).toBeNull();
     expect(result.smsAgreementUrl).toBeNull();
     expect(result.cofUrl).toBeNull();
-  });
-});
-
-/**
- * sendOnboardingEmail
- *
- * @description Tests for the sendOnboardingEmail helper. Covers success,
- * partial failure, full failure, and Short.io fallback cases.
- */
-describe('sendOnboardingEmail', () => {
-  const mockCustomer = {
-    id: 'cus_001',
-    firstName: 'John',
-    lastName: 'Doe',
-    phone: '+12125551234',
-    companyId: 'cmp_001',
-  };
-
-  const allLinks = {
-    serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
-    smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
-    cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
-  };
-
-  beforeEach(() => {
-    vi.stubGlobal('console', { log: vi.fn() });
-    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  /**
-   * @test
-   * @description Confirms a success email is sent when all links are present
-   * and URL is shortened.
-   */
-  it('sends success email when all links are present', () => {
-    stubUrlFetchApp(mockShortIoResponse);
-
-    sendOnboardingEmail({ customer: mockCustomer, customerId: 'cus_001', links: allLinks });
-
-    expect(MailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com, another-owner@example.com',
-      'New Client Onboarding — John D.',
-      expect.stringContaining('https://abc.short.gy/xyz123')
-    );
-  });
-
-  /**
-   * @test
-   * @description Confirms a partial failure email is sent when one link is missing.
-   */
-  it('sends partial failure email when one link is missing', () => {
-    stubUrlFetchApp(mockShortIoResponse);
-
-    sendOnboardingEmail({
-      customer: mockCustomer,
-      customerId: 'cus_001',
-      links: { ...allLinks, serviceAgreementUrl: null },
-    });
-
-    expect(MailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com, another-owner@example.com',
-      expect.stringContaining('Partially Unavailable'),
-      expect.stringContaining('cus_001')
-    );
-  });
-
-  /**
-   * @test
-   * @description Confirms a full failure email is sent when all links are missing.
-   */
-  it('sends full failure email when all links are missing', () => {
-    sendOnboardingEmail({
-      customer: mockCustomer,
-      customerId: 'cus_001',
-      links: { serviceAgreementUrl: null, smsAgreementUrl: null, cofUrl: null },
-    });
-
-    expect(MailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com, another-owner@example.com',
-      expect.stringContaining('Unavailable'),
-      expect.stringContaining('cus_001')
-    );
-  });
-
-  /**
-   * @test
-   * @description Confirms a success email with fallback advisory note is sent
-   * when Short.io fails.
-   */
-  it('sends success email with fallback advisory note when Short.io fails', () => {
-    stubUrlFetchApp(mockErrorResponse);
-
-    sendOnboardingEmail({ customer: mockCustomer, customerId: 'cus_001', links: allLinks });
-
-    expect(MailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com, another-owner@example.com',
-      'New Client Onboarding — John D.',
-      expect.stringContaining('URL shortening failed')
-    );
   });
 });
 
