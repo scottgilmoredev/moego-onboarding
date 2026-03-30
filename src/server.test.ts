@@ -36,6 +36,7 @@ const mockConfig = {
   formEntrySmsAgreement: 'entry.555',
   formEntryCof: 'entry.666',
   driveFolderId: 'test-folder-id',
+  spreadsheetId: 'test-spreadsheet-id',
 };
 
 vi.mock('#/utils/config.js', () => ({
