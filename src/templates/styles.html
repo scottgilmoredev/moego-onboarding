@@ -174,6 +174,32 @@
     opacity: 0.4;
   }
 
+    /* Upload in progress — prevent re-click */
+  .btn-uploading {
+    cursor: not-allowed;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  /* Upload succeeded */
+  .btn-uploaded {
+    background-color: #28a745;
+    pointer-events: none;
+  }
+
+  .btn-uploaded:hover {
+    background-color: #28a745;
+  }
+
+  /* Upload failed — allow retry */
+  .btn-upload-error {
+    background-color: #dc3545;
+  }
+
+  .btn-upload-error:hover {
+    background-color: #b02a37;
+  }
+
   /* Hidden file input — triggered by the Upload label button */
   #vaccine-upload {
     display: none;

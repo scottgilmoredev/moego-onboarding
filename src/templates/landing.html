@@ -65,14 +65,14 @@
           <a href="<?= payload.cofUrl ?>" target="_blank" class="btn">Add</a>
         </div>
 
-        <!-- File upload: non-functional placeholder — destination TBD -->
+                <!-- File upload: uploads vaccination records to Google Drive via google.script.run -->
         <div class="step">
           <div class="step-info">
             <div class="step-label">Rabies Vaccination Paperwork</div>
             <div class="step-description">Upload a copy of your pet's current vaccination records.</div>
           </div>
-          <label class="btn btn-disabled" for="vaccine-upload">Upload</label>
-          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled />
+          <label class="btn" id="vaccine-label" for="vaccine-upload">Upload</label>
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" />
         </div>
       </div>
 
@@ -80,5 +80,46 @@
         This link expires in 7 days. If you have any questions, please call or text us at <a href="tel:<?= businessPhone ?>" title="Call or text <?= businessName ?>"><?= businessPhone ?></a>.
       </p>
     </div>
+
+    <script>
+      (function () {
+        var input = document.getElementById('vaccine-upload');
+        var label = document.getElementById('vaccine-label');
+
+        input.addEventListener('change', function (e) {
+          var file = e.target.files[0];
+          if (!file) return;
+
+          // Transition to uploading state — prevent re-trigger
+          label.textContent = 'Uploading...';
+          label.classList.add('btn-uploading');
+          input.disabled = true;
+
+          var reader = new FileReader();
+
+          reader.onload = function (event) {
+            // Strip the data URL prefix to get the raw base64 string
+            var base64 = event.target.result.split(',')[1];
+
+            google.script.run
+              .withSuccessHandler(function () {
+                label.textContent = 'Uploaded';
+                label.classList.remove('btn-uploading');
+                label.classList.add('btn-uploaded');
+              })
+              .withFailureHandler(function () {
+                label.textContent = 'Upload failed';
+                label.classList.remove('btn-uploading');
+                label.classList.add('btn-upload-error');
+                // Re-enable so the user can try again
+                input.disabled = false;
+              })
+              .uploadVaccinationRecord(file.name, file.type, base64);
+          };
+
+          reader.readAsDataURL(file);
+        });
+      })();
+    </script>
   </body>
 </html>

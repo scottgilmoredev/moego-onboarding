@@ -13,6 +13,7 @@ import {
   fetchCustomer,
   fetchOnboardingLinks,
   sendOnboardingEmail,
+  uploadVaccinationRecord,
 } from '#/server.js';
 import {
   createMockFetchResponse,
@@ -34,6 +35,7 @@ const mockConfig = {
   formEntryServiceAgreement: 'entry.444',
   formEntrySmsAgreement: 'entry.555',
   formEntryCof: 'entry.666',
+  driveFolderId: 'test-folder-id',
 };
 
 vi.mock('#/utils/config.js', () => ({
@@ -550,5 +552,62 @@ describe('doGet', () => {
     doGet(mockDoGetEvent());
 
     expect(HtmlService.createTemplateFromFile).toHaveBeenCalledWith('error');
+  });
+});
+
+// ============================================================================
+// uploadVaccinationRecord
+// ============================================================================
+
+/**
+ * uploadVaccinationRecord
+ *
+ * @description Tests for the uploadVaccinationRecord server function. Covers
+ * successful file creation and propagation of DriveApp errors.
+ */
+describe('uploadVaccinationRecord', () => {
+  const mockFolder = { createFile: vi.fn() };
+
+  beforeEach(() => {
+    vi.stubGlobal('DriveApp', {
+      getFolderById: vi.fn().mockReturnValue(mockFolder),
+    });
+    vi.stubGlobal('Utilities', {
+      base64Decode: vi.fn().mockReturnValue([1, 2, 3]),
+      newBlob: vi.fn().mockReturnValue({}),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * @test
+   * @description Confirms the file is created in the configured Drive folder
+   * with the correct name and MIME type.
+   */
+  it('creates a file in the configured Drive folder', () => {
+    uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==');
+
+    expect(DriveApp.getFolderById).toHaveBeenCalledWith('test-folder-id');
+    expect(Utilities.base64Decode).toHaveBeenCalledWith('base64data==');
+    expect(Utilities.newBlob).toHaveBeenCalledWith([1, 2, 3], 'application/pdf', 'rabies.pdf');
+    expect(mockFolder.createFile).toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms DriveApp errors propagate to the caller (and are
+   * caught by google.script.run's withFailureHandler on the client).
+   */
+  it('propagates DriveApp errors', () => {
+    DriveApp.getFolderById = vi.fn().mockImplementation(() => {
+      throw new Error('Drive folder not found');
+    });
+
+    expect(() => uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==')).toThrow(
+      'Drive folder not found'
+    );
   });
 });

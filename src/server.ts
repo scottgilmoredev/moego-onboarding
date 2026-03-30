@@ -135,6 +135,29 @@ export function fetchCustomer(customerId: string, apiKey: string): MoeGoCustomer
 }
 
 /**
+ * Upload a vaccination record file to Google Drive.
+ *
+ * @function uploadVaccinationRecord
+ * @description Called via google.script.run from the client landing page.
+ * Decodes the base64-encoded file and creates it in the configured Drive folder.
+ *
+ * @param {string} fileName - The original file name.
+ * @param {string} mimeType - The MIME type of the file.
+ * @param {string} dataBase64 - The base64-encoded file contents.
+ */
+export function uploadVaccinationRecord(
+  fileName: string,
+  mimeType: string,
+  dataBase64: string
+): void {
+  const { driveFolderId } = getConfig();
+  const folder = DriveApp.getFolderById(driveFolderId);
+  const bytes = Utilities.base64Decode(dataBase64);
+  const blob = Utilities.newBlob(bytes, mimeType, fileName);
+  folder.createFile(blob);
+}
+
+/**
  * Build the onboarding form URL and dispatch the appropriate email.
  *
  * @function sendOnboardingEmail
@@ -311,3 +334,5 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
 // Expose doPost and doGet as globals for the GAS runtime
 (globalThis as unknown as Record<string, unknown>).doPost = doPost;
 (globalThis as unknown as Record<string, unknown>).doGet = doGet;
+(globalThis as unknown as Record<string, unknown>).uploadVaccinationRecord =
+  uploadVaccinationRecord;
