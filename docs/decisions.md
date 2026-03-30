@@ -2,6 +2,26 @@
 
 ---
 
+## `APPOINTMENT_CREATED` trigger scoped to first-time clients only — 2026-03-30
+
+**Decision:** `doPost` skips onboarding for customers who have a `lastAppointmentDate` on their MoeGo customer record, treating its presence as confirmation the client has already completed at least one appointment and can be assumed onboarded.
+
+**Context:** The initial implementation triggered the full onboarding flow on every `APPOINTMENT_CREATED` event regardless of whether the customer was new. This caused the owner to receive onboarding notifications for returning clients who had already been onboarded, creating unnecessary noise. The MoeGo Agreement API documents an `AgreementRecord` object that would allow precise signed-status checking per client, but despite being documented it is not exposed via the API at this time. `lastAppointmentDate` is available on the customer record and serves as a reliable proxy — a customer with a prior appointment has already been through onboarding.
+
+**Alternatives considered:**
+
+- Check `AgreementRecord.signedStatus` — not accessible via the API; documented but not implemented by MoeGo
+- No filter — triggers onboarding on every appointment for all clients; produces noise for returning clients
+- Maintain a separate internal list of onboarded customers — adds state management complexity with no benefit over the `lastAppointmentDate` proxy
+
+**Rationale:** `lastAppointmentDate` is the most reliable available signal for "has completed at least one appointment." It requires no additional API calls and no internal state. If MoeGo exposes `AgreementRecord` in future, that would be the preferred mechanism and this check should be updated.
+
+**Consequences:** Customers rebooked before completing onboarding on their first appointment will be silently skipped. This is an accepted edge case. This decision also exposed a process gap: the trigger condition was never formally specified before implementation. Requirements for webhook handlers should explicitly define the target client population going forward.
+
+**Status:** Decided
+
+---
+
 ## `APPOINTMENT_CREATED` and `CUSTOMER_CREATED` have different payload shapes — 2026-03-29
 
 **Decision:** Treat `APPOINTMENT_CREATED` and `CUSTOMER_CREATED` as distinct payload contracts with different nested structures.
