@@ -29,7 +29,8 @@ import { IS_GAS_RUNTIME } from '#/utils/constants.js';
  * @property {string} businessName - The business name shown on the landing page.
  * @property {string} businessLogoUrl - URL of the circular business logo shown on the landing page.
  * @property {string} businessPhone - The business phone number shown on the landing page.
- * @property {string} driveFolderId
+ * @property {string} driveFolderId - Google Drive folder ID for storing onboarding documents.
+ * @property {string} spreadsheetId - Google Sheet ID for appending onboarding rows.
  */
 export interface Config {
   moegoApiKey: string;
@@ -49,6 +50,7 @@ export interface Config {
   businessLogoUrl: string;
   businessPhone: string;
   driveFolderId: string;
+  spreadsheetId: string;
 }
 
 /**
@@ -109,6 +111,7 @@ export function getConfig(): Config {
     businessLogoUrl: getEnvValue('BUSINESS_LOGO_URL'),
     businessPhone: getEnvValue('BUSINESS_PHONE'),
     driveFolderId: getEnvValue('DRIVE_FOLDER_ID'),
+    spreadsheetId: getEnvValue('SPREADSHEET_ID'),
 
     // Parse comma-separated email list into an array
     businessOwnerEmails: getEnvValue('BUSINESS_OWNER_EMAILS')

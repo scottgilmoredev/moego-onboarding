@@ -39,6 +39,7 @@ describe('getConfig', () => {
     vi.stubEnv('BUSINESS_PHONE', '+1234567890');
     vi.stubEnv('BUSINESS_LOGO_URL', 'https://example.com/logo.png');
     vi.stubEnv('DRIVE_FOLDER_ID', 'test-drive-folder-id');
+    vi.stubEnv('SPREADSHEET_ID', 'test-spreadsheet-id');
 
     const { getConfig } = await import('#/utils/config.js');
     const config = getConfig();
@@ -60,6 +61,7 @@ describe('getConfig', () => {
     expect(config.businessPhone).toBe('+1234567890');
     expect(config.businessLogoUrl).toBe('https://example.com/logo.png');
     expect(config.driveFolderId).toBe('test-drive-folder-id');
+    expect(config.spreadsheetId).toBe('test-spreadsheet-id');
   });
 
   /**
