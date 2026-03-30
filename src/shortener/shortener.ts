@@ -69,3 +69,26 @@ export function shortenUrl(longUrl: string): ShortenUrlResult {
     return { url: longUrl, shortened: false };
   }
 }
+
+/**
+ * Shorten a URL via the Short.io API, throwing on failure.
+ *
+ * @function shortenUrlStrict
+ * @description Attempts to shorten the provided URL via the Short.io API.
+ * Throws if the API returns a non-200 response or if a network error occurs.
+ * The full URL is included in the error message so the caller can surface it
+ * to the owner for manual recovery.
+ *
+ * @param {string} longUrl - The full URL to shorten.
+ * @returns {string} The shortened URL.
+ * @throws {Error} If shortening fails for any reason, with the full URL in the message.
+ */
+export function shortenUrlStrict(longUrl: string): string {
+  const { url, shortened } = shortenUrl(longUrl);
+
+  if (!shortened) {
+    throw new Error(`URL shortening failed — shorten manually: ${longUrl}`);
+  }
+
+  return url;
+}

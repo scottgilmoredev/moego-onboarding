@@ -7,7 +7,7 @@
  * with full URL fallback.
  */
 
-import { shortenUrl } from './shortener.js';
+import { shortenUrl, shortenUrlStrict } from './shortener.js';
 
 import {
   createMockFetchResponse,
@@ -77,5 +77,55 @@ describe('shortenUrl', () => {
 
     expect(result.url).toBe(longUrl);
     expect(result.shortened).toBe(false);
+  });
+});
+
+/**
+ * shortenUrlStrict
+ *
+ * @description Tests for strict URL shortening via Short.io. Covers successful
+ * shortening, throwing on API failure, and throwing on network error.
+ */
+describe('shortenUrlStrict', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms the shortened URL is returned on success.
+   */
+  it('returns the shortened URL on success', () => {
+    stubUrlFetchApp(createMockFetchResponse(200, { shortURL: 'https://abc.short.gy/xyz123' }));
+
+    const result = shortenUrlStrict('https://script.google.com/macros/s/abc/exec?token=xyz');
+
+    expect(result).toBe('https://abc.short.gy/xyz123');
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when the Short.io API returns
+   * a non-200 response, with the full URL included in the message.
+   */
+  it('throws with the full URL on non-200 response', () => {
+    stubUrlFetchApp(createMockFetchResponse(402, { message: 'Payment required' }));
+
+    const longUrl = 'https://script.google.com/macros/s/abc/exec?token=xyz';
+
+    expect(() => shortenUrlStrict(longUrl)).toThrow(longUrl);
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown on network error, with the full
+   * URL included in the message.
+   */
+  it('throws with the full URL on network error', () => {
+    stubUrlFetchAppNetworkError();
+
+    const longUrl = 'https://script.google.com/macros/s/abc/exec?token=xyz';
+
+    expect(() => shortenUrlStrict(longUrl)).toThrow(longUrl);
   });
 });
