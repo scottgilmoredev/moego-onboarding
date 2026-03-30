@@ -147,6 +147,109 @@ export function sendFullFailureEmail({
 }
 
 /**
+ * Parameters for sending a Short.io failure email.
+ *
+ * @interface SendShortIoFailureEmailParams
+ * @property {string} firstName - The client's first name.
+ * @property {string} lastName - The client's last name.
+ * @property {string} customerId - The client's MoeGo customer ID for manual recovery.
+ * @property {string} fullUrl - The full unshortened token URL.
+ */
+export interface SendShortIoFailureEmailParams {
+  firstName: string;
+  lastName: string;
+  customerId: string;
+  fullUrl: string;
+}
+
+/**
+ * Parameters for sending a sheet write failure email.
+ *
+ * @interface SendSheetWriteFailureEmailParams
+ * @property {string} firstName - The client's first name.
+ * @property {string} lastName - The client's last name.
+ * @property {string} customerId - The client's MoeGo customer ID for manual recovery.
+ * @property {string} shortUrl - The shortened token URL.
+ */
+export interface SendSheetWriteFailureEmailParams {
+  firstName: string;
+  lastName: string;
+  customerId: string;
+  shortUrl: string;
+}
+
+/**
+ * Send a Short.io failure email to the business owner.
+ *
+ * @function sendShortIoFailureEmail
+ * @description Composes and delivers an email to the business owner when URL
+ * shortening fails. Includes the full token URL so the owner can shorten it
+ * manually before forwarding to the client.
+ *
+ * @param {SendShortIoFailureEmailParams} params - The email parameters.
+ * @returns {void}
+ */
+export function sendShortIoFailureEmail({
+  firstName,
+  lastName,
+  customerId,
+  fullUrl,
+}: SendShortIoFailureEmailParams): void {
+  const { businessOwnerEmails } = getConfig();
+
+  const subject = `Action Required — URL Shortening Failed for ${firstName} ${lastName.charAt(0)}.`;
+
+  const body = `URL shortening failed for ${firstName} ${lastName.charAt(0)}. The onboarding link could not be written to the sheet.
+
+    Customer MoeGo ID: ${customerId}
+
+    Full token URL (shorten manually before sending to the client):
+    ${fullUrl}
+
+    Manual recovery steps:
+    1. Copy the full token URL above.
+    2. Shorten it using Short.io or another URL shortener.
+    3. Send the shortened link to the client via SMS.`;
+
+  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
+}
+
+/**
+ * Send a sheet write failure email to the business owner.
+ *
+ * @function sendSheetWriteFailureEmail
+ * @description Composes and delivers an email to the business owner when the
+ * Google Sheet write fails. Includes the shortened token URL so the owner can
+ * forward it to the client manually.
+ *
+ * @param {SendSheetWriteFailureEmailParams} params - The email parameters.
+ * @returns {void}
+ */
+export function sendSheetWriteFailureEmail({
+  firstName,
+  lastName,
+  customerId,
+  shortUrl,
+}: SendSheetWriteFailureEmailParams): void {
+  const { businessOwnerEmails } = getConfig();
+
+  const subject = `Action Required — Sheet Write Failed for ${firstName} ${lastName.charAt(0)}.`;
+
+  const body = `The sheet row could not be written for ${firstName} ${lastName.charAt(0)}. The shortened onboarding link is below — please forward it to the client via SMS manually.
+
+    Customer MoeGo ID: ${customerId}
+
+    Shortened token URL:
+    ${shortUrl}
+
+    Manual recovery steps:
+    1. Copy the shortened token URL above.
+    2. Send it to the client via SMS.`;
+
+  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
+}
+
+/**
  * Send a partial failure email to the business owner.
  *
  * @function sendPartialFailureEmail

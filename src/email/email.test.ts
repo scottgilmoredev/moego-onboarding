@@ -7,7 +7,13 @@
  * composition and delivery via MailApp.
  */
 
-import { sendSuccessEmail, sendFullFailureEmail, sendPartialFailureEmail } from './email.js';
+import {
+  sendSuccessEmail,
+  sendFullFailureEmail,
+  sendPartialFailureEmail,
+  sendShortIoFailureEmail,
+  sendSheetWriteFailureEmail,
+} from './email.js';
 
 const mockConfig = {
   businessOwnerEmails: ['owner@example.com', 'another-owner@example.com'],
@@ -277,6 +283,142 @@ describe('sendPartialFailureEmail', () => {
     });
 
     const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('manual');
+  });
+});
+
+/**
+ * sendShortIoFailureEmail
+ *
+ * @description Tests for Short.io failure email composition and delivery. Covers
+ * correct recipient, subject, full token URL, customer ID, and manual recovery steps.
+ */
+describe('sendShortIoFailureEmail', () => {
+  beforeEach(() => {
+    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * @test
+   * @description Confirms email is sent to the correct recipient with correct subject.
+   */
+  it('sends to correct recipient with correct subject', () => {
+    sendShortIoFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      fullUrl: 'https://script.google.com/macros/s/abc/exec?token=xyz',
+    });
+
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      'Action Required — URL Shortening Failed for John D.',
+      expect.any(String)
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms the full token URL is included in the body.
+   */
+  it('includes the full token URL in the body', () => {
+    sendShortIoFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      fullUrl: 'https://script.google.com/macros/s/abc/exec?token=xyz',
+    });
+
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('https://script.google.com/macros/s/abc/exec?token=xyz');
+  });
+
+  /**
+   * @test
+   * @description Confirms the customer ID and manual recovery steps are included.
+   */
+  it('includes the customer ID and manual recovery steps', () => {
+    sendShortIoFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      fullUrl: 'https://script.google.com/macros/s/abc/exec?token=xyz',
+    });
+
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('cus_001');
+    expect(body).toContain('manual');
+  });
+});
+
+/**
+ * sendSheetWriteFailureEmail
+ *
+ * @description Tests for sheet write failure email composition and delivery. Covers
+ * correct recipient, subject, shortened token URL, customer ID, and manual recovery steps.
+ */
+describe('sendSheetWriteFailureEmail', () => {
+  beforeEach(() => {
+    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * @test
+   * @description Confirms email is sent to the correct recipient with correct subject.
+   */
+  it('sends to correct recipient with correct subject', () => {
+    sendSheetWriteFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      shortUrl: 'https://abc.short.gy/xyz123',
+    });
+
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      'Action Required — Sheet Write Failed for John D.',
+      expect.any(String)
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms the shortened token URL is included in the body.
+   */
+  it('includes the shortened token URL in the body', () => {
+    sendSheetWriteFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      shortUrl: 'https://abc.short.gy/xyz123',
+    });
+
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('https://abc.short.gy/xyz123');
+  });
+
+  /**
+   * @test
+   * @description Confirms the customer ID and manual recovery steps are included.
+   */
+  it('includes the customer ID and manual recovery steps', () => {
+    sendSheetWriteFailureEmail({
+      firstName: 'John',
+      lastName: 'Doe',
+      customerId: 'cus_001',
+      shortUrl: 'https://abc.short.gy/xyz123',
+    });
+
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('cus_001');
     expect(body).toContain('manual');
   });
 });
