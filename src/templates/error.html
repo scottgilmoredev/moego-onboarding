@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Link unavailable</title>
+    <!-- Styles injected at render time by HtmlService -->
+    <?!= HtmlService.createHtmlOutputFromFile('styles').getContent() ?>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header: circular business logo + name -->
+      <!-- background-image must be inline — URL is injected at render time -->
+      <div class="header">
+        <div
+          class="logo"
+          style="background-image: url('<?= businessLogoUrl ?>');"
+          role="img"
+          aria-label="<?= businessName ?>"
+        ></div>
+        <span class="business-name"><?= businessName ?></span>
+      </div>
+
+      <!-- Error card: shown when the token is missing, invalid, or expired -->
+      <div class="error-card">
+        <p class="error-title">This link is no longer available</p>
+        <p class="error-body">
+          Your onboarding link has expired or is invalid. Please call or text us at
+          <a href="tel:<?= businessPhone ?>" title="Call or text <?= businessName ?>"><?= businessPhone ?></a>
+          and we'll get you set up right away.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

@@ -51,6 +51,14 @@ export default [
     },
   },
   {
+    files: ['scripts/**/*.js', 'esbuild.config.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
     ignores: ['dist/', 'node_modules/'],
   },
 ];

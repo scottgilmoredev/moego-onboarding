@@ -35,6 +35,9 @@ describe('getConfig', () => {
     vi.stubEnv('FORM_ENTRY_COF', 'entry.666');
     vi.stubEnv('SHORTIO_DOMAIN', 'abc.short.gy');
     vi.stubEnv('MOEGO_WEBHOOK_SECRET', 'test-webhook-secret');
+    vi.stubEnv('BUSINESS_NAME', 'test-business-name');
+    vi.stubEnv('BUSINESS_PHONE', '+1234567890');
+    vi.stubEnv('BUSINESS_LOGO_URL', 'https://example.com/logo.png');
 
     const { getConfig } = await import('#/utils/config.js');
     const config = getConfig();
@@ -52,6 +55,9 @@ describe('getConfig', () => {
     expect(config.formEntryCof).toBe('entry.666');
     expect(config.shortIoDomain).toBe('abc.short.gy');
     expect(config.moegoWebhookSecret).toBe('test-webhook-secret');
+    expect(config.businessName).toBe('test-business-name');
+    expect(config.businessPhone).toBe('+1234567890');
+    expect(config.businessLogoUrl).toBe('https://example.com/logo.png');
   });
 
   /**
