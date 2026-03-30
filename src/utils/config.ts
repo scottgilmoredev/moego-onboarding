@@ -26,6 +26,9 @@ import { IS_GAS_RUNTIME } from '#/utils/constants.js';
  * @property {string} formEntryCof - Google Form entry ID for card-on-file link field.
  * @property {string} shortIoDomain - Short.io domain for link shortening.
  * @property {string} moegoWebhookSecret - MoeGo webhook secret token.
+ * @property {string} businessName - The business name shown on the landing page.
+ * @property {string} businessLogoUrl - URL of the circular business logo shown on the landing page.
+ * @property {string} businessPhone - The business phone number shown on the landing page.
  */
 export interface Config {
   moegoApiKey: string;
@@ -41,6 +44,9 @@ export interface Config {
   formEntryCof: string;
   shortIoDomain: string;
   moegoWebhookSecret: string;
+  businessName: string;
+  businessLogoUrl: string;
+  businessPhone: string;
 }
 
 /**
@@ -97,6 +103,9 @@ export function getConfig(): Config {
     formEntryCof: getEnvValue('FORM_ENTRY_COF'),
     shortIoDomain: getEnvValue('SHORTIO_DOMAIN'),
     moegoWebhookSecret: getEnvValue('MOEGO_WEBHOOK_SECRET'),
+    businessName: getEnvValue('BUSINESS_NAME'),
+    businessLogoUrl: getEnvValue('BUSINESS_LOGO_URL'),
+    businessPhone: getEnvValue('BUSINESS_PHONE'),
 
     // Parse comma-separated email list into an array
     businessOwnerEmails: getEnvValue('BUSINESS_OWNER_EMAILS')

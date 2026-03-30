@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "node esbuild.config.js",
+    "preview": "node scripts/preview.js",
     "push": "pnpm build && clasp push",
     "dev": "node --watch dist/server.js",
     "lint": "eslint .",

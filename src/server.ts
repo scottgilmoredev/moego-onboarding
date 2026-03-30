@@ -281,6 +281,8 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
  * @returns {GoogleAppsScript.HTML.HtmlOutput} HTML response.
  */
 export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.HtmlOutput {
+  const { businessName, businessLogoUrl, businessPhone } = getConfig();
+
   // Extract token from query parameters and validate it
   const token = e.parameter.token as string | undefined;
   const payload = token ? getToken(token) : null;
@@ -288,12 +290,20 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
   // Missing, invalid, or expired token — render error page
   if (!payload) {
     const errorTemplate = HtmlService.createTemplateFromFile('error');
+    const errorVars = errorTemplate as unknown as Record<string, unknown>;
+    errorVars.businessName = businessName;
+    errorVars.businessLogoUrl = businessLogoUrl;
+    errorVars.businessPhone = businessPhone;
     return errorTemplate.evaluate();
   }
 
-  // Valid token — pass payload to template and render landing page
+  // Valid token — pass payload and business config to template and render landing page
   const landingTemplate = HtmlService.createTemplateFromFile('landing');
-  (landingTemplate as unknown as Record<string, unknown>).payload = payload;
+  const landingVars = landingTemplate as unknown as Record<string, unknown>;
+  landingVars.payload = payload;
+  landingVars.businessName = businessName;
+  landingVars.businessLogoUrl = businessLogoUrl;
+  landingVars.businessPhone = businessPhone;
 
   return landingTemplate.evaluate();
 }

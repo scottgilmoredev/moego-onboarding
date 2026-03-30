@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Secure your spot</title>
+    <!-- Styles injected at render time by HtmlService -->
+    <?!= HtmlService.createHtmlOutputFromFile('styles').getContent() ?>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header: circular business logo + name -->
+      <!-- background-image must be inline — URL is injected at render time -->
+      <div class="header">
+        <div
+          class="logo"
+          style="background-image: url('<?= businessLogoUrl ?>');"
+          role="img"
+          aria-label="<?= businessName ?>"
+        ></div>
+        <span class="business-name"><?= businessName ?></span>
+      </div>
+
+      <!-- Page title and intro copy rendered directly on the background -->
+      <h1 class="page-title">Secure your spot</h1>
+
+      <div class="page-body">
+        <p>We're so excited to have you here!</p>
+        <p>
+          This is the final step in reserving your grooming appointment with us. To provide a safe,
+          smooth, and personalized experience, we just need a few more details and signed agreements
+          from you. Please take a few moments to complete each step below.
+        </p>
+        <p>
+          We can't wait to meet you and your furry friend, and give them the top-notch grooming
+          experience they deserve!
+        </p>
+      </div>
+
+      <!-- Steps card: one row per onboarding action -->
+      <div class="card">
+        <p class="steps-title">Complete each step to finish your onboarding</p>
+
+        <div class="step">
+          <div class="step-info">
+            <div class="step-label">Service Agreement</div>
+            <div class="step-description">Review and sign our standard service agreement.</div>
+          </div>
+          <a href="<?= payload.serviceAgreementUrl ?>" target="_blank" class="btn">Sign</a>
+        </div>
+
+        <div class="step">
+          <div class="step-info">
+            <div class="step-label">SMS Agreement</div>
+            <div class="step-description">Opt in to receive appointment updates via text.</div>
+          </div>
+          <a href="<?= payload.smsAgreementUrl ?>" target="_blank" class="btn">Sign</a>
+        </div>
+
+        <div class="step">
+          <div class="step-info">
+            <div class="step-label">Card on File</div>
+            <div class="step-description">Securely add a payment method for your appointment.</div>
+          </div>
+          <a href="<?= payload.cofUrl ?>" target="_blank" class="btn">Add</a>
+        </div>
+
+        <!-- File upload: non-functional placeholder — destination TBD -->
+        <div class="step">
+          <div class="step-info">
+            <div class="step-label">Rabies Vaccination Paperwork</div>
+            <div class="step-description">Upload a copy of your pet's current vaccination records.</div>
+          </div>
+          <label class="btn btn-disabled" for="vaccine-upload">Upload</label>
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled />
+        </div>
+      </div>
+
+      <p class="footer">
+        This link expires in 7 days. If you have any questions, please call or text us at <a href="tel:<?= businessPhone ?>" title="Call or text <?= businessName ?>"><?= businessPhone ?></a>.
+      </p>
+    </div>
+  </body>
+</html>
