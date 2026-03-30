@@ -29,6 +29,7 @@ import { IS_GAS_RUNTIME } from '#/utils/constants.js';
  * @property {string} businessName - The business name shown on the landing page.
  * @property {string} businessLogoUrl - URL of the circular business logo shown on the landing page.
  * @property {string} businessPhone - The business phone number shown on the landing page.
+ * @property {string} driveFolderId
  */
 export interface Config {
   moegoApiKey: string;
@@ -47,6 +48,7 @@ export interface Config {
   businessName: string;
   businessLogoUrl: string;
   businessPhone: string;
+  driveFolderId: string;
 }
 
 /**
@@ -106,6 +108,7 @@ export function getConfig(): Config {
     businessName: getEnvValue('BUSINESS_NAME'),
     businessLogoUrl: getEnvValue('BUSINESS_LOGO_URL'),
     businessPhone: getEnvValue('BUSINESS_PHONE'),
+    driveFolderId: getEnvValue('DRIVE_FOLDER_ID'),
 
     // Parse comma-separated email list into an array
     businessOwnerEmails: getEnvValue('BUSINESS_OWNER_EMAILS')
