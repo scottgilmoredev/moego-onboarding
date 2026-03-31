@@ -1,5 +1,16 @@
 # Form Setup — moego-onboarding
 
+> **Deprecated.** The Google Form dependency was removed in Milestone 10.
+> moego-onboarding no longer constructs pre-filled form URLs. The
+> onboarding flow now uses a token-based client landing page served
+> directly by the GAS web app. This document is retained for historical
+> reference only and does not reflect the current implementation.
+>
+> See [Sheet & Drive Setup](sheet-setup.md) for current setup
+> instructions.
+
+---
+
 ## Overview
 
 moego-onboarding constructs a pre-filled Google Form URL for each new client and delivers it to the business owner for distribution. The form itself must be created and configured manually before the app can function. This doc covers creating the form, identifying the field entry IDs required for pre-filling, and configuring the project to use it.

@@ -3,7 +3,7 @@
 ## 1. Project Overview
 
 **Goal:**
-Enable a MoeGo-based pet service business owner to automatically receive a pre-filled client onboarding form URL via email whenever a new client is created in MoeGo, eliminating the need to manually generate and send individual onboarding links.
+Enable a MoeGo-based pet service business owner to automatically receive a shortened client onboarding link via email whenever a new client books an appointment in MoeGo. The link directs the client to a hosted landing page with pre-populated agreement sign links, a card-on-file link, and a vaccination record upload field.
 
 **Core Requirements:**
 
@@ -20,9 +20,11 @@ Enable a MoeGo-based pet service business owner to automatically receive a pre-f
 
 ## 2. Architecture
 
-MoeGo fires `APPOINTMENT_CREATED` webhook → Apps Script `doPost` receives and validates payload → MoeGo API calls retrieve Service Agreement sign link, SMS Agreement sign link, and card-on-file link → Form builder constructs pre-filled Google Form URL → Short.io shortens the URL → `MailApp` delivers email to business owner.
+MoeGo fires `APPOINTMENT_CREATED` webhook → Apps Script `doPost` receives and validates payload → first-time client check (skip returning clients) → MoeGo API calls retrieve Service Agreement sign link, SMS Agreement sign link, and card-on-file link → token generated and stored in PropertiesService → Short.io shortens the landing page token URL → sheet row written → `MailApp` delivers short link to business owner.
 
-On failure: any failed API call results in an email to the business owner containing the partial pre-filled URL, details of the failure(s), and the customer's MoeGo ID for manual recovery. If Short.io shortening fails, the full unshortened URL is delivered with a note that the URL may span multiple SMS segments if sent as-is.
+Client clicks the short link → Apps Script `doGet` validates token and serves the landing page → client signs agreements, saves card on file, and uploads vaccination record → record stored in Google Drive.
+
+On failure: MoeGo API failure triggers a full failure email with the customer ID and manual recovery steps. Short.io failure triggers a failure email with the full unshortened token URL for manual shortening. Sheet write failure triggers a failure email with the shortened URL so the owner can forward it manually.
 
 ---
 
@@ -45,29 +47,30 @@ On failure: any failed API call results in an email to the business owner contai
 **In Scope**
 
 - Receiving and validating `APPOINTMENT_CREATED` webhook events from MoeGo
+- First-time client filtering — returning clients (identified by `lastAppointmentDate`) are skipped
 - Retrieving Service Agreement sign link, SMS Agreement sign link, and card-on-file link per client via MoeGo API
-- Constructing a pre-filled Google Form URL from customer data and retrieved links
-- Shortening the pre-filled URL via Short.io API
-- Delivering the onboarding form URL to the business owner via email
-- Partial and full failure handling with manual recovery support
-- Short.io failure fallback — deliver full unshortened URL with advisory note
+- Generating and storing a per-client token with onboarding links and a 7-day TTL
+- Shortening the token URL via Short.io API
+- Writing the client row (name, phone, short link) to a Google Sheet
+- Serving the per-client landing page via `doGet` with token validation
+- Vaccination record upload to Google Drive via `uploadVaccinationRecord`
+- Delivering the short link to the business owner via email
+- Full failure, Short.io failure, and sheet write failure handling with manual recovery support
 
 **Out of Scope**
 
-- Google Form creation and configuration
-- Direct delivery of the onboarding form URL to the client
+- Direct delivery of the onboarding link to the client (owner forwards via SMS)
 - Automated retry on API failure
 - Support for URL shortening services other than Short.io
 - Support for webhook events other than `APPOINTMENT_CREATED`
 - Vaccination record parsing
-- Any user interface beyond the email delivered to the business owner
 
 **Constraints**
 
 - Apps Script imposes a 6-minute execution limit — the flow must remain lightweight with no polling or retries
 - MoeGo API key must be requested through a Customer Success Manager prior to development of any API-dependent phases
-- The Google Form must be created and configured prior to deployment — field entry IDs must be identified and set in configuration before the app can construct pre-filled URLs — see [Form Setup](form-setup.md)
 - Short.io account and API key must be created and configured by the business owner prior to deployment — see [Short.io Setup](short-io-setup.md)
+- Google Sheet and Drive folder must be created and configured prior to deployment — see [Sheet & Drive Setup](sheet-setup.md)
 - Google Apps Script does not expose incoming HTTP request headers in the DoPost event object. HMAC-SHA256 webhook signature verification is not possible in this runtime. Company ID filtering is the primary security control. A middleware layer for signature verification is tracked as a post-MVP enhancement — see Enhancements.
 
 ---
@@ -80,14 +83,17 @@ Receives and validates incoming MoeGo webhook payloads. Verifies event type is `
 **moego/**
 MoeGo API client. Handles authentication and retrieves the Service Agreement sign link, SMS Agreement sign link, and card-on-file link for a given customer.
 
-**form/**
-Constructs the pre-filled Google Form URL from customer data and retrieved links.
+**token/**
+Generates per-client tokens (random UUID), stores them in PropertiesService with a 7-day TTL and onboarding link payload, and retrieves and validates them on request.
 
 **shortener/**
-Shortens the pre-filled Google Form URL via the Short.io API. Falls back to the full URL if shortening fails.
+Shortens the token URL via the Short.io API. `shortenUrl` falls back to the full URL on failure; `shortenUrlStrict` throws so callers can handle failure explicitly.
+
+**sheet/**
+Writes the client row (name, phone, short link) to the configured Google Sheet via `SpreadsheetApp`.
 
 **email/**
-Composes and delivers email to the business owner via `MailApp`. Handles success, partial failure, full failure, and Short.io fallback cases.
+Composes and delivers email to the business owner via `MailApp`. Handles success, full failure, Short.io failure, and sheet write failure cases.
 
 **types/**
 Shared TypeScript types and interfaces across modules.
@@ -96,7 +102,7 @@ Shared TypeScript types and interfaces across modules.
 Shared utility and helper functions.
 
 **server.ts**
-Apps Script `doPost` entrypoint. Orchestrates the full onboarding flow by delegating to the above modules.
+Apps Script `doPost` and `doGet` entrypoints. `doPost` orchestrates the full onboarding flow. `doGet` validates a token and serves the client landing page. `uploadVaccinationRecord` handles file uploads from the landing page to Google Drive.
 
 ---
 
@@ -150,20 +156,23 @@ Implement `doPost`, wire all modules together, integration tests with mocked glo
 
 All sensitive values are stored as environment variables and must never be committed to version control. Provide a `.env.example` file with placeholder values.
 
-| Variable                       | Required | Description                                                                        |
-| ------------------------------ | -------- | ---------------------------------------------------------------------------------- |
-| `MOEGO_API_KEY`                | Yes      | MoeGo API key — issued by Customer Success Manager                                 |
-| `MOEGO_COMPANY_ID`             | Yes      | MoeGo company ID                                                                   |
-| `MOEGO_BUSINESS_ID`            | Yes      | MoeGo business ID                                                                  |
-| `MOEGO_SERVICE_AGREEMENT_ID`   | Yes      | MoeGo Service Agreement ID                                                         |
-| `MOEGO_SMS_AGREEMENT_ID`       | Yes      | MoeGo SMS Agreement ID                                                             |
-| `SHORTIO_API_KEY`              | Yes      | Short.io API access token — see [Short.io Setup](short-io-setup.md)                |
-| `BUSINESS_OWNER_EMAIL`         | Yes      | Recipient email address for onboarding notifications                               |
-| `GOOGLE_FORM_URL`              | Yes      | Base URL of the onboarding Google Form — see [Form Setup](form-setup.md)           |
-| `FORM_ENTRY_SERVICE_AGREEMENT` | Yes      | Google Form entry ID for Service Agreement link field                              |
-| `FORM_ENTRY_SMS_AGREEMENT`     | Yes      | Google Form entry ID for SMS Agreement link field                                  |
-| `FORM_ENTRY_COF`               | Yes      | Google Form entry ID for card-on-file link field                                   |
-| `SHORTIO_DOMAIN`               | Yes      | Short.io domain assigned to your account — see [Short.io Setup](short-io-setup.md) |
+| Variable                     | Required | Description                                                                                       |
+| ---------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `MOEGO_API_KEY`              | Yes      | MoeGo API key — issued by Customer Success Manager                                                |
+| `MOEGO_COMPANY_ID`           | Yes      | MoeGo company ID                                                                                  |
+| `MOEGO_BUSINESS_ID`          | Yes      | MoeGo business ID                                                                                 |
+| `MOEGO_SERVICE_AGREEMENT_ID` | Yes      | MoeGo Service Agreement ID                                                                        |
+| `MOEGO_SMS_AGREEMENT_ID`     | Yes      | MoeGo SMS Agreement ID                                                                            |
+| `MOEGO_WEBHOOK_SECRET`       | Yes      | MoeGo webhook secret for payload validation                                                       |
+| `SHORTIO_API_KEY`            | Yes      | Short.io API access token — see [Short.io Setup](short-io-setup.md)                               |
+| `SHORTIO_DOMAIN`             | Yes      | Short.io domain assigned to your account — see [Short.io Setup](short-io-setup.md)                |
+| `BUSINESS_OWNER_EMAIL`       | Yes      | Comma-separated owner email addresses for onboarding notifications                                |
+| `BUSINESS_NAME`              | Yes      | Business name displayed on the client landing page                                                |
+| `BUSINESS_PHONE`             | Yes      | Business phone displayed on the landing page error screen                                         |
+| `BUSINESS_LOGO_URL`          | Yes      | Public URL of the business logo image                                                             |
+| `DRIVE_FOLDER_ID`            | Yes      | Google Drive folder ID for vaccination record uploads — see [Sheet & Drive Setup](sheet-setup.md) |
+| `SPREADSHEET_ID`             | Yes      | Google Sheet spreadsheet ID for client row writes — see [Sheet & Drive Setup](sheet-setup.md)     |
+| `LANDING_PAGE_URL`           | Yes      | Deployed GAS web app URL used to construct per-client token links                                 |
 
 ---
 

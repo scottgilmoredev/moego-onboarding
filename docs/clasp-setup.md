@@ -62,13 +62,15 @@ Place in `dist/`:
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
   "oauthScopes": [
-    "https://www.googleapis.com/auth/gmail.send",
-    "https://www.googleapis.com/auth/script.external_request"
+    "https://www.googleapis.com/auth/script.send_mail",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
   ]
 }
 ```
 
-The `gmail.send` scope is required for `MailApp.sendEmail()`. The `script.external_request` scope is required for `UrlFetchApp` calls to the MoeGo and Short.io APIs.
+The `script.send_mail` scope is required for `MailApp.sendEmail()`. The `script.external_request` scope is required for `UrlFetchApp` calls to the MoeGo and Short.io APIs. The `spreadsheets` scope is required for `SpreadsheetApp` sheet row writes. The `drive` scope is required for `DriveApp` vaccination record uploads.
 
 `appsscript.json` is excluded from the `.gitignore` pattern `dist/*` via:
 
