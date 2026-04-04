@@ -71,8 +71,13 @@
             <div class="step-label">Rabies Vaccination Paperwork</div>
             <div class="step-description">Upload a copy of your pet's current vaccination records.</div>
           </div>
+          <? if (payload.uploaded) { ?>
+          <label class="btn btn-uploaded" id="vaccine-label">Uploaded</label>
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled />
+          <? } else { ?>
           <label class="btn" id="vaccine-label" for="vaccine-upload">Upload</label>
           <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" />
+          <? } ?>
         </div>
       </div>
 
