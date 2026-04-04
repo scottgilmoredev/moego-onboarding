@@ -85,6 +85,7 @@
       (function () {
         var input = document.getElementById('vaccine-upload');
         var label = document.getElementById('vaccine-label');
+        var token = '<?= token ?>';
 
         input.addEventListener('change', function (e) {
           var file = e.target.files[0];
@@ -106,6 +107,8 @@
                 label.textContent = 'Uploaded';
                 label.classList.remove('btn-uploading');
                 label.classList.add('btn-uploaded');
+                // Detach label from input to prevent re-trigger
+                label.removeAttribute('for');
               })
               .withFailureHandler(function () {
                 label.textContent = 'Upload failed';
@@ -114,7 +117,7 @@
                 // Re-enable so the user can try again
                 input.disabled = false;
               })
-              .uploadVaccinationRecord(file.name, file.type, base64);
+              .uploadVaccinationRecord(file.name, file.type, base64, token);
           };
 
           reader.readAsDataURL(file);
