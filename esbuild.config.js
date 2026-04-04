@@ -20,6 +20,13 @@ await esbuild.build({
   // iife wraps output so GAS can call doPost/doGet as globals
   format: 'iife',
   globalName: 'exports',
+  banner: {
+    js: `
+      function doPost(e) { return exports.doPost(e); }
+      function doGet(e) { return exports.doGet(e); }
+      function uploadVaccinationRecord(fileName, mimeType, dataBase64) { return exports.uploadVaccinationRecord(fileName, mimeType, dataBase64); }
+    `,
+  },
 });
 
 // Copy HTML templates to dist/ for Clasp deployment

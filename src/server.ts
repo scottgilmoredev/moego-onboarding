@@ -16,7 +16,12 @@
 import type { MoeGoAppointmentCreatedEvent, MoeGoCustomer } from './types/moego.js';
 
 import { parseWebhookPayload } from '#/webhook/webhook.js';
-import { getAgreementSignLink, getCofLink, getCustomer } from '#/moego/moego.js';
+import {
+  getAgreementSignLink,
+  getCofLink,
+  getCustomer,
+  hasFinishedAppointments,
+} from '#/moego/moego.js';
 import { generateToken, getToken, storeToken } from '#/token/token.js';
 import { shortenUrlStrict } from '#/shortener/shortener.js';
 import { writeClientRow } from '#/sheet/sheet.js';
@@ -160,6 +165,7 @@ export function uploadVaccinationRecord(
   const folder = DriveApp.getFolderById(driveFolderId);
   const bytes = Utilities.base64Decode(dataBase64);
   const blob = Utilities.newBlob(bytes, mimeType, fileName);
+
   folder.createFile(blob);
 }
 
@@ -220,8 +226,29 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     return ContentService.createTextOutput('OK');
   }
 
-  // Skip returning clients — presence of lastAppointmentDate indicates a prior completed appointment
-  if (customer.lastAppointmentDate) {
+  // Skip returning clients — any finished appointment confirms prior onboarding
+  let returningClient: boolean;
+
+  try {
+    returningClient = hasFinishedAppointments({
+      customerId: appointment.customerId,
+      companyId: moegoCompanyId,
+      businessId: moegoBusinessId,
+      apiKey: moegoApiKey,
+    });
+  } catch (err) {
+    console.log(`doPost: hasFinishedAppointments failed — ${String(err)}`);
+
+    sendFullFailureEmail({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      customerId: appointment.customerId,
+    });
+
+    return ContentService.createTextOutput('OK');
+  }
+
+  if (returningClient) {
     return ContentService.createTextOutput('OK');
   }
 
@@ -247,6 +274,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
   // Generate and store a token with the client's onboarding links
   const token = generateToken();
+
   storeToken(token, {
     customerId: appointment.customerId,
     expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
@@ -260,10 +288,12 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
   // Shorten the landing page URL — failure triggers Short.io failure email
   let shortUrl: string;
+
   try {
     shortUrl = shortenUrlStrict(fullUrl);
   } catch (err) {
     console.log(`doPost: shortenUrlStrict failed — ${String(err)}`);
+
     sendShortIoFailureEmail({
       firstName: customer.firstName,
       lastName: customer.lastName,
@@ -279,6 +309,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     writeClientRow({ customer, shortUrl });
   } catch (err) {
     console.log(`doPost: writeClientRow failed — ${String(err)}`);
+
     sendSheetWriteFailureEmail({
       firstName: customer.firstName,
       lastName: customer.lastName,
@@ -321,15 +352,18 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
   if (!payload) {
     const errorTemplate = HtmlService.createTemplateFromFile('error');
     const errorVars = errorTemplate as unknown as Record<string, unknown>;
+
     errorVars.businessName = businessName;
     errorVars.businessLogoUrl = businessLogoUrl;
     errorVars.businessPhone = businessPhone;
+
     return errorTemplate.evaluate();
   }
 
   // Valid token — pass payload and business config to template and render landing page
   const landingTemplate = HtmlService.createTemplateFromFile('landing');
   const landingVars = landingTemplate as unknown as Record<string, unknown>;
+
   landingVars.payload = payload;
   landingVars.businessName = businessName;
   landingVars.businessLogoUrl = businessLogoUrl;

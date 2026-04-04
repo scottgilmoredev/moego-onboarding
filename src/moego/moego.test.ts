@@ -15,6 +15,7 @@ import {
   getAgreementSignLink,
   getCofLink,
   getCustomer,
+  hasFinishedAppointments,
 } from './moego.js';
 
 import {
@@ -237,6 +238,88 @@ describe('getCofLink', () => {
     expect(() =>
       getCofLink({
         customerId: 'cus_001',
+        apiKey: 'test-api-key',
+      })
+    ).toThrow();
+  });
+});
+
+/**
+ * hasFinishedAppointments
+ *
+ * @description Tests for finished appointment lookup. Covers returning client
+ * detection, new client detection, non-200 error handling, and network errors.
+ */
+describe('hasFinishedAppointments', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms true is returned when the customer has at least one
+   * finished appointment.
+   */
+  it('returns true when the customer has finished appointments', () => {
+    stubUrlFetchApp(createMockFetchResponse(200, { appointments: [{ id: 'apt_001' }] }));
+
+    const result = hasFinishedAppointments({
+      customerId: 'cus_001',
+      companyId: 'cmp_001',
+      businessId: 'biz_001',
+      apiKey: 'test-api-key',
+    });
+
+    expect(result).toBe(true);
+  });
+
+  /**
+   * @test
+   * @description Confirms false is returned when the customer has no finished
+   * appointments.
+   */
+  it('returns false when the customer has no finished appointments', () => {
+    stubUrlFetchApp(createMockFetchResponse(200, { appointments: [] }));
+
+    const result = hasFinishedAppointments({
+      customerId: 'cus_001',
+      companyId: 'cmp_001',
+      businessId: 'biz_001',
+      apiKey: 'test-api-key',
+    });
+
+    expect(result).toBe(false);
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when the API returns a non-200 response.
+   */
+  it('throws on non-200 response', () => {
+    stubUrlFetchApp(createMockFetchResponse(500, { message: 'Server error' }));
+
+    expect(() =>
+      hasFinishedAppointments({
+        customerId: 'cus_001',
+        companyId: 'cmp_001',
+        businessId: 'biz_001',
+        apiKey: 'test-api-key',
+      })
+    ).toThrow();
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when the API call fails.
+   */
+  it('throws on network error', () => {
+    stubUrlFetchAppNetworkError();
+
+    expect(() =>
+      hasFinishedAppointments({
+        customerId: 'cus_001',
+        companyId: 'cmp_001',
+        businessId: 'biz_001',
         apiKey: 'test-api-key',
       })
     ).toThrow();

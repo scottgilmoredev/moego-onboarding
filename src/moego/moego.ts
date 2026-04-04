@@ -81,6 +81,22 @@ export interface GetCustomerParams {
   apiKey: string;
 }
 
+/**
+ * Parameters for checking whether a customer has finished appointments.
+ *
+ * @interface HasFinishedAppointmentsParams
+ * @property {string} customerId - The MoeGo customer ID.
+ * @property {string} companyId - The MoeGo company ID.
+ * @property {string} businessId - The MoeGo business ID.
+ * @property {string} apiKey - The MoeGo API key.
+ */
+export interface HasFinishedAppointmentsParams {
+  customerId: string;
+  companyId: string;
+  businessId: string;
+  apiKey: string;
+}
+
 // ============================================================================
 // UTILITIES
 // ============================================================================
@@ -155,6 +171,43 @@ export function fetchFromMoeGo<T>({ path, params, apiKey }: FetchFromMoeGoParams
   }
 
   // Parse and return the response body
+  return JSON.parse(response.getContentText()) as T;
+}
+
+/**
+ * Make an authenticated POST request to the MoeGo API.
+ *
+ * @function postToMoeGo
+ * @description Constructs and executes an authenticated POST request to the
+ * MoeGo API. Handles authentication headers, response code validation, and
+ * JSON parsing.
+ *
+ * @template T - The expected response body type.
+ * @param {string} path - The API endpoint path.
+ * @param {unknown} body - The request body to serialize as JSON.
+ * @param {string} apiKey - The MoeGo API key.
+ * @returns {T} The parsed response body.
+ * @throws {Error} If the API returns a non-200 response.
+ * @throws {Error} If the API call fails due to a network error.
+ */
+function postToMoeGo<T>(path: string, body: unknown, apiKey: string): T {
+  const response = UrlFetchApp.fetch(`${MOEGO_BASE_URL}${path}`, {
+    method: 'post',
+    headers: {
+      Authorization: buildAuthHeader(apiKey),
+      'Content-Type': 'application/json',
+    },
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true,
+  });
+
+  const responseCode = response.getResponseCode();
+  if (responseCode !== 200) {
+    throw new Error(
+      `MoeGo API error: POST ${path} returned ${responseCode} — ${response.getContentText()}`
+    );
+  }
+
   return JSON.parse(response.getContentText()) as T;
 }
 
@@ -258,4 +311,40 @@ export function getCustomer({ customerId, apiKey }: GetCustomerParams): MoeGoCus
     path: `/v1/customers/${customerId}`,
     apiKey,
   });
+}
+
+/**
+ * Check whether a customer has any finished appointments at a business.
+ *
+ * @function hasFinishedAppointments
+ * @description Calls the MoeGo Appointments API to determine whether the given
+ * customer has at least one completed appointment at the specified business.
+ * Used to distinguish new clients from returning clients in `doPost`.
+ *
+ * @param {HasFinishedAppointmentsParams} params - The request parameters.
+ * @returns {boolean} True if the customer has at least one finished appointment.
+ * @throws {Error} If the API returns a non-200 response.
+ * @throws {Error} If the API call fails due to a network error.
+ */
+export function hasFinishedAppointments({
+  customerId,
+  companyId,
+  businessId,
+  apiKey,
+}: HasFinishedAppointmentsParams): boolean {
+  const result = postToMoeGo<{ appointments: unknown[] }>(
+    '/v1/appointments:list',
+    {
+      pagination: { pageSize: 1, pageToken: '1' },
+      companyId,
+      businessIds: [businessId],
+      filter: {
+        customerIds: [customerId],
+        statuses: ['FINISHED'],
+      },
+    },
+    apiKey
+  );
+
+  return (result.appointments?.length ?? 0) > 0;
 }
