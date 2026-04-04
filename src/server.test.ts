@@ -108,6 +108,7 @@ describe('doPost', () => {
     });
     vi.stubGlobal('PropertiesService', {
       getScriptProperties: vi.fn().mockReturnValue({
+        getProperties: vi.fn().mockReturnValue({}),
         getProperty: vi.fn().mockReturnValue(null),
         setProperty: vi.fn(),
         deleteProperty: vi.fn(),
