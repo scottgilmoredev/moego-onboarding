@@ -17,6 +17,7 @@
  * @property {string} serviceAgreementUrl - The client's MoeGo service agreement sign link.
  * @property {string} smsAgreementUrl - The client's MoeGo SMS agreement sign link.
  * @property {string} cofUrl - The client's MoeGo card-on-file link.
+ * @property {boolean} [uploaded] - Whether the client has uploaded their vaccination record.
  */
 export interface TokenPayload {
   customerId: string;
@@ -26,6 +27,7 @@ export interface TokenPayload {
   serviceAgreementUrl: string;
   smsAgreementUrl: string;
   cofUrl: string;
+  uploaded?: boolean;
 }
 
 /**
