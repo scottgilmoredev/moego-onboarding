@@ -7,7 +7,7 @@
  * expiry handling, and missing token handling.
  */
 
-import { generateToken, storeToken, getToken } from './token.js';
+import { generateToken, storeToken, getToken, purgeExpiredTokens } from './token.js';
 import type { TokenPayload } from './token.js';
 
 const basePayload: TokenPayload = {
@@ -87,6 +87,7 @@ describe('storeToken', () => {
 
     vi.stubGlobal('PropertiesService', {
       getScriptProperties: vi.fn().mockReturnValue({
+        getProperties: vi.fn().mockReturnValue({}),
         setProperty: mockSetProperty,
         getProperty: vi.fn(),
         deleteProperty: vi.fn(),
@@ -96,6 +97,101 @@ describe('storeToken', () => {
     storeToken('test-token', basePayload);
 
     expect(mockSetProperty).toHaveBeenCalledWith('test-token', JSON.stringify(basePayload));
+  });
+});
+
+/**
+ * purgeExpiredTokens
+ *
+ * @description Tests for expired token purging. Covers expired entry deletion,
+ * unexpired entry retention, non-token entry skipping, and no-op on empty properties.
+ */
+describe('purgeExpiredTokens', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * @test
+   * @description Confirms expired token entries are deleted from ScriptProperties.
+   */
+  it('deletes expired token entries', () => {
+    const expiredPayload: TokenPayload = { ...basePayload, expiresAt: Date.now() - 1 };
+    const deleteProperty = vi.fn();
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperties: vi.fn().mockReturnValue({
+          'expired-token': JSON.stringify(expiredPayload),
+        }),
+        deleteProperty,
+      }),
+    });
+
+    purgeExpiredTokens();
+
+    expect(deleteProperty).toHaveBeenCalledWith('expired-token');
+  });
+
+  /**
+   * @test
+   * @description Confirms unexpired token entries are not deleted.
+   */
+  it('skips unexpired token entries', () => {
+    const deleteProperty = vi.fn();
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperties: vi.fn().mockReturnValue({
+          'valid-token': JSON.stringify(basePayload),
+        }),
+        deleteProperty,
+      }),
+    });
+
+    purgeExpiredTokens();
+
+    expect(deleteProperty).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms entries that cannot be parsed as a TokenPayload are skipped.
+   */
+  it('skips non-token entries', () => {
+    const deleteProperty = vi.fn();
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperties: vi.fn().mockReturnValue({
+          'some-other-key': 'not-json',
+        }),
+        deleteProperty,
+      }),
+    });
+
+    purgeExpiredTokens();
+
+    expect(deleteProperty).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms no deletions occur when ScriptProperties is empty.
+   */
+  it('no-ops when ScriptProperties is empty', () => {
+    const deleteProperty = vi.fn();
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperties: vi.fn().mockReturnValue({}),
+        deleteProperty,
+      }),
+    });
+
+    purgeExpiredTokens();
+
+    expect(deleteProperty).not.toHaveBeenCalled();
   });
 });
 

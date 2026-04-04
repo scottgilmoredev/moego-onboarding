@@ -41,17 +41,45 @@ export function generateToken(): string {
 }
 
 /**
+ * Purge expired tokens from ScriptProperties.
+ *
+ * @function purgeExpiredTokens
+ * @description Iterates all ScriptProperties entries and deletes any that can
+ * be parsed as a TokenPayload with an expired expiresAt timestamp. Entries that
+ * cannot be parsed are skipped.
+ *
+ * @returns {void}
+ */
+export function purgeExpiredTokens(): void {
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+
+  for (const [key, value] of Object.entries(all)) {
+    try {
+      const payload = JSON.parse(value) as TokenPayload;
+
+      if (typeof payload.expiresAt === 'number' && Date.now() > payload.expiresAt) {
+        props.deleteProperty(key);
+      }
+    } catch {
+      // not a token entry — skip
+    }
+  }
+}
+
+/**
  * Store a token and its payload in ScriptProperties.
  *
  * @function storeToken
- * @description Serializes the token payload and stores it in ScriptProperties
- * keyed by the token value.
+ * @description Purges expired tokens, then serializes the token payload and
+ * stores it in ScriptProperties keyed by the token value.
  *
  * @param {string} token - The token to use as the storage key.
  * @param {TokenPayload} payload - The payload to store.
  * @returns {void}
  */
 export function storeToken(token: string, payload: TokenPayload): void {
+  purgeExpiredTokens();
   PropertiesService.getScriptProperties().setProperty(token, JSON.stringify(payload));
 }
 
