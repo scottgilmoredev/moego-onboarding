@@ -512,10 +512,22 @@ describe('doGet', () => {
  * uploadVaccinationRecord
  *
  * @description Tests for the uploadVaccinationRecord server function. Covers
- * successful file creation and propagation of DriveApp errors.
+ * filename prefixing, token invalidation, fallback for missing token, and
+ * propagation of DriveApp errors.
  */
 describe('uploadVaccinationRecord', () => {
   const mockFolder = { createFile: vi.fn() };
+  const mockDeleteProperty = vi.fn();
+
+  const mockPayload = {
+    customerId: 'cus_001',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
+    smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
+    cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
+  };
 
   beforeEach(() => {
     vi.stubGlobal('DriveApp', {
@@ -525,24 +537,53 @@ describe('uploadVaccinationRecord', () => {
       base64Decode: vi.fn().mockReturnValue([1, 2, 3]),
       newBlob: vi.fn().mockReturnValue({}),
     });
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(JSON.stringify(mockPayload)),
+        deleteProperty: mockDeleteProperty,
+      }),
+    });
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   /**
    * @test
-   * @description Confirms the file is created in the configured Drive folder
-   * with the correct name and MIME type.
+   * @description Confirms the file is created with a client-prefixed filename
+   * and the token is invalidated after a successful upload.
    */
-  it('creates a file in the configured Drive folder', () => {
-    uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==');
+  it('creates a prefixed file and invalidates the token', () => {
+    uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token');
 
-    expect(DriveApp.getFolderById).toHaveBeenCalledWith('test-folder-id');
-    expect(Utilities.base64Decode).toHaveBeenCalledWith('base64data==');
-    expect(Utilities.newBlob).toHaveBeenCalledWith([1, 2, 3], 'application/pdf', 'rabies.pdf');
+    expect(Utilities.newBlob).toHaveBeenCalledWith(
+      [1, 2, 3],
+      'application/pdf',
+      'Jane_Smith_rabies.pdf'
+    );
     expect(mockFolder.createFile).toHaveBeenCalled();
+    expect(mockDeleteProperty).toHaveBeenCalledWith('test-token');
+  });
+
+  /**
+   * @test
+   * @description Confirms the file is created with the original filename when
+   * the token is not found, and no deleteProperty call is made.
+   */
+  it('uploads with original filename and skips token invalidation when token is not found', () => {
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(null),
+        deleteProperty: mockDeleteProperty,
+      }),
+    });
+
+    uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token');
+
+    expect(Utilities.newBlob).toHaveBeenCalledWith([1, 2, 3], 'application/pdf', 'rabies.pdf');
+    expect(mockDeleteProperty).not.toHaveBeenCalled();
   });
 
   /**
@@ -555,8 +596,8 @@ describe('uploadVaccinationRecord', () => {
       throw new Error('Drive folder not found');
     });
 
-    expect(() => uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==')).toThrow(
-      'Drive folder not found'
-    );
+    expect(() =>
+      uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token')
+    ).toThrow('Drive folder not found');
   });
 });

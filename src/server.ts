@@ -150,23 +150,40 @@ export function fetchCustomer(customerId: string, apiKey: string): MoeGoCustomer
  *
  * @function uploadVaccinationRecord
  * @description Called via google.script.run from the client landing page.
- * Decodes the base64-encoded file and creates it in the configured Drive folder.
+ * Resolves the client name from the token payload to prefix the filename, then
+ * decodes the base64-encoded file and creates it in the configured Drive folder.
+ * Invalidates the token after a successful upload. Falls back to the original
+ * filename if the token cannot be resolved.
  *
  * @param {string} fileName - The original file name.
  * @param {string} mimeType - The MIME type of the file.
  * @param {string} dataBase64 - The base64-encoded file contents.
+ * @param {string} token - The client's landing page token.
  */
 export function uploadVaccinationRecord(
   fileName: string,
   mimeType: string,
-  dataBase64: string
+  dataBase64: string,
+  token: string
 ): void {
   const { driveFolderId } = getConfig();
+  const payload = getToken(token);
+
+  // Prefix filename with client name if token resolves
+  const resolvedFileName = payload
+    ? `${payload.firstName}_${payload.lastName}_${fileName}`
+    : fileName;
+
   const folder = DriveApp.getFolderById(driveFolderId);
   const bytes = Utilities.base64Decode(dataBase64);
-  const blob = Utilities.newBlob(bytes, mimeType, fileName);
+  const blob = Utilities.newBlob(bytes, mimeType, resolvedFileName);
 
   folder.createFile(blob);
+
+  // Invalidate the token after successful upload
+  if (payload) {
+    PropertiesService.getScriptProperties().deleteProperty(token);
+  }
 }
 
 // ============================================================================
@@ -366,6 +383,7 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
   const landingTemplate = HtmlService.createTemplateFromFile('landing');
   const landingVars = landingTemplate as unknown as Record<string, unknown>;
 
+  landingVars.token = token;
   landingVars.payload = payload;
   landingVars.businessName = businessName;
   landingVars.businessLogoUrl = businessLogoUrl;
