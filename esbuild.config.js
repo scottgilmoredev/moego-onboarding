@@ -24,7 +24,7 @@ await esbuild.build({
     js: `
       function doPost(e) { return exports.doPost(e); }
       function doGet(e) { return exports.doGet(e); }
-      function uploadVaccinationRecord(fileName, mimeType, dataBase64) { return exports.uploadVaccinationRecord(fileName, mimeType, dataBase64); }
+      function uploadVaccinationRecord(fileName, mimeType, dataBase64, token) { return exports.uploadVaccinationRecord(fileName, mimeType, dataBase64, token); }
     `,
   },
 });
