@@ -12,6 +12,8 @@ import type { TokenPayload } from './token.js';
 
 const basePayload: TokenPayload = {
   customerId: 'cus_001',
+  firstName: 'Jane',
+  lastName: 'Smith',
   expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
   serviceAgreementUrl: 'https://example.com/service-agreement',
   smsAgreementUrl: 'https://example.com/sms-agreement',

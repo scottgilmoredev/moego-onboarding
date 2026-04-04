@@ -11,6 +11,8 @@
  *
  * @interface TokenPayload
  * @property {string} customerId - The client's MoeGo customer ID.
+ * @property {string} firstName - The client's first name.
+ * @property {string} lastName - The client's last name.
  * @property {number} expiresAt - Unix timestamp (ms) after which the token is invalid.
  * @property {string} serviceAgreementUrl - The client's MoeGo service agreement sign link.
  * @property {string} smsAgreementUrl - The client's MoeGo SMS agreement sign link.
@@ -18,6 +20,8 @@
  */
 export interface TokenPayload {
   customerId: string;
+  firstName: string;
+  lastName: string;
   expiresAt: number;
   serviceAgreementUrl: string;
   smsAgreementUrl: string;
