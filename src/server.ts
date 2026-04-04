@@ -277,6 +277,8 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
   storeToken(token, {
     customerId: appointment.customerId,
+    firstName: customer.firstName,
+    lastName: customer.lastName,
     expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
     serviceAgreementUrl,
     smsAgreementUrl,
