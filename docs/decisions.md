@@ -2,6 +2,25 @@
 
 ---
 
+## First-time client check migrated to Aggregation API — 2026-04-02
+
+**Decision:** Replace `lastAppointmentDate` on the customer record with `lastAppointment` from the MoeGo Aggregation API (`LookupClientPetProfile`) as the mechanism for detecting returning clients.
+
+**Context:** `lastAppointmentDate` on the `MoeGoCustomer` object proved unreliable — observed values include future dates, suggesting the field is populated with next appointment date in some or all cases. The Aggregation API explicitly separates `lastAppointment` (most recent completed appointment) and `nextAppointment` (upcoming appointment). Per API docs: "Only completed appointments are considered when determining the last visit." Absence of `lastAppointment` in the response confirms the client has no prior completed appointments at this business — i.e. they are a new client.
+
+**Alternatives considered:**
+
+- Retain `lastAppointmentDate` — confirmed unreliable; produces false positives for new clients with upcoming appointments
+- Check `AgreementRecord.signedStatus` — still not accessible via the API
+
+**Rationale:** `LookupClientPetProfile` is purpose-built for this scenario and its `lastAppointment` field has a clearly documented and reliable definition scoped to completed appointments only.
+
+**Consequences:** `doPost` requires an additional API call after `fetchCustomer` — `LookupClientPetProfile` with the customer's phone number and business ID. The `lastAppointmentDate` field and related logic are removed. `MoeGoCustomer` type updated accordingly.
+
+**Status:** Decided
+
+---
+
 ## `APPOINTMENT_CREATED` trigger scoped to first-time clients only — 2026-03-30
 
 **Decision:** `doPost` skips onboarding for customers who have a `lastAppointmentDate` on their MoeGo customer record, treating its presence as confirmation the client has already completed at least one appointment and can be assumed onboarded.

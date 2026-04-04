@@ -75,6 +75,11 @@ const mockShortIoResponse = createMockFetchResponse(200, {
   shortURL: 'https://abc.short.gy/xyz123',
 });
 
+const mockNoFinishedAppointmentsResponse = createMockFetchResponse(200, { appointments: [] });
+const mockHasFinishedAppointmentsResponse = createMockFetchResponse(200, {
+  appointments: [{ id: 'apt_000' }],
+});
+
 const mockErrorResponse = createMockFetchResponse(500, { message: 'Server error' });
 
 const mockNotFoundResponse = createMockFetchResponse(404, { message: 'Not found' });
@@ -129,6 +134,7 @@ describe('doPost', () => {
   it('sends success email and writes sheet row when all API calls succeed', () => {
     stubUrlFetchAppSequence([
       mockCustomerResponse,
+      mockNoFinishedAppointmentsResponse,
       mockServiceAgreementResponse,
       mockSmsAgreementResponse,
       mockCofResponse,
@@ -153,6 +159,7 @@ describe('doPost', () => {
   it('sends full failure email when any MoeGo API call fails', () => {
     stubUrlFetchAppSequence([
       mockCustomerResponse,
+      mockNoFinishedAppointmentsResponse,
       mockNotFoundResponse,
       mockSmsAgreementResponse,
       mockCofResponse,
@@ -176,6 +183,7 @@ describe('doPost', () => {
   it('sends Short.io failure email with full token URL when shortening fails', () => {
     stubUrlFetchAppSequence([
       mockCustomerResponse,
+      mockNoFinishedAppointmentsResponse,
       mockServiceAgreementResponse,
       mockSmsAgreementResponse,
       mockCofResponse,
@@ -200,6 +208,7 @@ describe('doPost', () => {
   it('sends sheet write failure email with shortened URL when sheet write fails', () => {
     stubUrlFetchAppSequence([
       mockCustomerResponse,
+      mockNoFinishedAppointmentsResponse,
       mockServiceAgreementResponse,
       mockSmsAgreementResponse,
       mockCofResponse,
@@ -242,6 +251,7 @@ describe('doPost', () => {
   it('returns 200 response for valid payload', () => {
     stubUrlFetchAppSequence([
       mockCustomerResponse,
+      mockNoFinishedAppointmentsResponse,
       mockServiceAgreementResponse,
       mockSmsAgreementResponse,
       mockCofResponse,
@@ -251,6 +261,38 @@ describe('doPost', () => {
     doPost(mockDoPostEvent(basePayload));
 
     expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
+  });
+
+  /**
+   * @test
+   * @description Confirms doPost skips returning clients silently.
+   */
+  it('skips returning clients without sending email or writing sheet row', () => {
+    stubUrlFetchAppSequence([mockCustomerResponse, mockHasFinishedAppointmentsResponse]);
+
+    doPost(mockDoPostEvent(basePayload));
+
+    expect(mockSheet.appendRow).not.toHaveBeenCalled();
+    expect(MailApp.sendEmail).not.toHaveBeenCalled();
+    expect(ContentService.createTextOutput).toHaveBeenCalledWith('OK');
+  });
+
+  /**
+   * @test
+   * @description Confirms doPost sends full failure email when the finished
+   * appointments check fails.
+   */
+  it('sends full failure email when finished appointments check fails', () => {
+    stubUrlFetchAppSequence([mockCustomerResponse, mockErrorResponse]);
+
+    doPost(mockDoPostEvent(basePayload));
+
+    expect(mockSheet.appendRow).not.toHaveBeenCalled();
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      expect.stringContaining('Unavailable'),
+      expect.stringContaining('cus_001')
+    );
   });
 
   /**
