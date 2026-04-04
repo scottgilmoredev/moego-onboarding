@@ -553,9 +553,19 @@ describe('uploadVaccinationRecord', () => {
   /**
    * @test
    * @description Confirms the file is created with a client-prefixed filename
-   * and the token is invalidated after a successful upload.
+   * and the token is marked as uploaded after a successful upload.
    */
-  it('creates a prefixed file and invalidates the token', () => {
+  it('creates a prefixed file and marks the token as uploaded', () => {
+    const mockSetProperty = vi.fn();
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(JSON.stringify(mockPayload)),
+        setProperty: mockSetProperty,
+        deleteProperty: mockDeleteProperty,
+      }),
+    });
+
     uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token');
 
     expect(Utilities.newBlob).toHaveBeenCalledWith(
@@ -564,18 +574,24 @@ describe('uploadVaccinationRecord', () => {
       'Jane_Smith_rabies.pdf'
     );
     expect(mockFolder.createFile).toHaveBeenCalled();
-    expect(mockDeleteProperty).toHaveBeenCalledWith('test-token');
+    expect(mockSetProperty).toHaveBeenCalledWith(
+      'test-token',
+      JSON.stringify({ ...mockPayload, uploaded: true })
+    );
   });
 
   /**
    * @test
    * @description Confirms the file is created with the original filename when
-   * the token is not found, and no deleteProperty call is made.
+   * the token is not found, and no setProperty call is made.
    */
-  it('uploads with original filename and skips token invalidation when token is not found', () => {
+  it('uploads with original filename and skips token update when token is not found', () => {
+    const mockSetProperty = vi.fn();
+
     vi.stubGlobal('PropertiesService', {
       getScriptProperties: vi.fn().mockReturnValue({
         getProperty: vi.fn().mockReturnValue(null),
+        setProperty: mockSetProperty,
         deleteProperty: mockDeleteProperty,
       }),
     });
@@ -583,7 +599,7 @@ describe('uploadVaccinationRecord', () => {
     uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token');
 
     expect(Utilities.newBlob).toHaveBeenCalledWith([1, 2, 3], 'application/pdf', 'rabies.pdf');
-    expect(mockDeleteProperty).not.toHaveBeenCalled();
+    expect(mockSetProperty).not.toHaveBeenCalled();
   });
 
   /**

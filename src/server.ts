@@ -180,9 +180,12 @@ export function uploadVaccinationRecord(
 
   folder.createFile(blob);
 
-  // Invalidate the token after successful upload
+  // Mark the token as uploaded to prevent re-upload on page revisit
   if (payload) {
-    PropertiesService.getScriptProperties().deleteProperty(token);
+    PropertiesService.getScriptProperties().setProperty(
+      token,
+      JSON.stringify({ ...payload, uploaded: true })
+    );
   }
 }
 
