@@ -436,6 +436,8 @@ describe('fetchOnboardingLinks', () => {
 describe('doGet', () => {
   const mockTokenPayload = {
     customerId: 'cus_001',
+    firstName: 'John',
+    lastName: 'Doe',
     expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
     serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
     smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
