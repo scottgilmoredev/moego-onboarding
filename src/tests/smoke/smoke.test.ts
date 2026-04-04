@@ -60,6 +60,12 @@ describe('smoke', () => {
             }),
         })
 
+        // hasFinishedAppointments — no finished appointments (new client)
+        .mockReturnValueOnce({
+          getResponseCode: () => 200,
+          getContentText: () => JSON.stringify({ appointments: [] }),
+        })
+
         // Service Agreement sign link
         .mockReturnValueOnce({
           getResponseCode: () => 200,
