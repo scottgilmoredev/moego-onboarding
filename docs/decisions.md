@@ -2,20 +2,40 @@
 
 ---
 
-## First-time client check migrated to Aggregation API — 2026-04-02
+## First-time client check migrated to `ListAppointments` — 2026-04-02
 
-**Decision:** Replace `lastAppointmentDate` on the customer record with `lastAppointment` from the MoeGo Aggregation API (`LookupClientPetProfile`) as the mechanism for detecting returning clients.
+**Decision:** Replace `lastAppointmentDate` on the customer record with a `POST /v1/appointments:list` call filtered to `FINISHED` status as the mechanism for detecting returning clients.
 
-**Context:** `lastAppointmentDate` on the `MoeGoCustomer` object proved unreliable — observed values include future dates, suggesting the field is populated with next appointment date in some or all cases. The Aggregation API explicitly separates `lastAppointment` (most recent completed appointment) and `nextAppointment` (upcoming appointment). Per API docs: "Only completed appointments are considered when determining the last visit." Absence of `lastAppointment` in the response confirms the client has no prior completed appointments at this business — i.e. they are a new client.
+**Context:** `lastAppointmentDate` on the `MoeGoCustomer` object proved unreliable — observed values include future dates, suggesting the field reflects next appointment date in some or all cases. The MoeGo Aggregation API (`LookupClientPetProfile`) was considered as an alternative but is pure gRPC and inaccessible from `UrlFetchApp`. `ListAppointments` is a REST endpoint that accepts a `filter.statuses` array — filtering to `FINISHED` and checking for a non-empty result is a reliable signal that the client has at least one completed appointment on record.
 
 **Alternatives considered:**
 
 - Retain `lastAppointmentDate` — confirmed unreliable; produces false positives for new clients with upcoming appointments
-- Check `AgreementRecord.signedStatus` — still not accessible via the API
+- `LookupClientPetProfile` (Aggregation API) — purpose-built but gRPC-only; not accessible from GAS `UrlFetchApp`
+- Check `AgreementRecord.signedStatus` — not accessible via the API
 
-**Rationale:** `LookupClientPetProfile` is purpose-built for this scenario and its `lastAppointment` field has a clearly documented and reliable definition scoped to completed appointments only.
+**Rationale:** `ListAppointments` with `FINISHED` status filter is the most reliable available REST signal for confirmed completed appointments. An empty `appointments` array confirms the client is new.
 
-**Consequences:** `doPost` requires an additional API call after `fetchCustomer` — `LookupClientPetProfile` with the customer's phone number and business ID. The `lastAppointmentDate` field and related logic are removed. `MoeGoCustomer` type updated accordingly.
+**Consequences:** `doPost` requires an additional API call after `getCustomer` — `hasFinishedAppointments` with the customer ID, company ID, and business ID. The `lastAppointmentDate` field and related logic are removed. `MoeGoCustomer` type updated accordingly. Pagination must include `pageToken: "1"` or the API returns 500. **Known edge case:** a client who completes an appointment without finishing onboarding will be permanently skipped on all future webhooks. The owner must manually re-trigger onboarding for these clients — no automated mechanism exists yet.
+
+**Status:** Decided
+
+---
+
+## Token marked `uploaded` instead of deleted after vaccination record upload — 2026-04-10
+
+**Decision:** After a successful vaccination record upload, the token payload is updated with `uploaded: true` rather than deleted from ScriptProperties.
+
+**Context:** The initial implementation deleted the token on upload to prevent re-submission. This was identified as incorrect — the token also stores the client's onboarding links (service agreement, SMS agreement, card on file). Deleting the token on upload would revoke access to those links before the client has necessarily completed those steps.
+
+**Alternatives considered:**
+
+- Delete token on upload — prevents re-upload but locks the client out of onboarding links if they haven't completed the other steps first
+- No post-upload state change — allows unlimited re-uploads for the life of the token
+
+**Rationale:** Tracking `uploaded: true` in the payload preserves link access while preventing re-upload. On page load, `doGet` passes the full payload to the template — the upload step renders as already-completed if `payload.uploaded` is true.
+
+**Consequences:** `TokenPayload` has an optional `uploaded` field. `uploadVaccinationRecord` calls `setProperty` with the updated payload after a successful upload. Multiple uploads within a single session are still technically possible if the client does not refresh the page — the client-side button disable covers this case. The owner has noted this edge case is acceptable for now and wants to observe real usage before adding additional constraints.
 
 **Status:** Decided
 

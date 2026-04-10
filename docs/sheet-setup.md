@@ -19,17 +19,14 @@ required environment variables.
 3. Rename the spreadsheet to `moego-onboarding`
 4. Add the following column headers in row 1, in order:
 
-| Column | Header             |
-| ------ | ------------------ |
-| A      | First Name         |
-| B      | Last Name          |
-| C      | Phone              |
-| D      | Onboarding Link    |
-| E      | Vaccination Record |
-
-Column E (Vaccination Record) will be empty at the time the row is
-written. It is reserved for a future enhancement that sends the Drive
-file URL to the sheet after the client uploads their vaccination record.
+| Column | Header          |
+| ------ | --------------- |
+| A      | First Name      |
+| B      | Last Name       |
+| C      | Phone           |
+| D      | Onboarding Link |
+| E      | Customer ID     |
+| F      | Sent At         |
 
 ### Getting the Spreadsheet ID
 
@@ -146,7 +143,7 @@ Full list of required Script Properties for this project:
 | `MOEGO_WEBHOOK_SECRET`       | MoeGo webhook secret for payload validation                     |
 | `SHORTIO_API_KEY`            | Short.io API access token                                       |
 | `SHORTIO_DOMAIN`             | Short.io domain assigned to your account                        |
-| `BUSINESS_OWNER_EMAIL`       | Comma-separated list of owner email addresses for notifications |
+| `BUSINESS_OWNER_EMAILS`      | Comma-separated list of owner email addresses for notifications |
 | `BUSINESS_NAME`              | Business name displayed on the landing page                     |
 | `BUSINESS_PHONE`             | Business phone displayed on the error page                      |
 | `BUSINESS_LOGO_URL`          | Public URL of the business logo image                           |
