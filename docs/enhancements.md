@@ -76,15 +76,13 @@ https://dev.bitly.com
 
 **Multi-Business Owner Support**
 
-The current implementation is scoped to a single business owner with a fixed Google Form and configuration. Scaling to multiple business owners would require:
+The current implementation is scoped to a single business owner. Scaling to multiple business owners would require:
 
-- Per-owner configuration (MoeGo credentials, Google Form URL, field entry IDs, Short.io API key, recipient email)
-- A mechanism for routing incoming webhooks to the correct owner's configuration
-- Per-owner Google Forms, as each owner's form URL and field entry IDs will differ
+- A separate GAS deployment per owner, each running under the owner's own Google account — a shared deployment is not appropriate, as `MailApp` always sends from the deploying account with no override, and the broad `drive` OAuth scope would grant a single deploying account access to all owners' Drive storage
+- Per-owner Script Properties (MoeGo credentials, Short.io API key, Drive folder ID, spreadsheet ID, landing page URL, business branding)
+- A mechanism for routing incoming webhooks to the correct owner's deployment
 
-A form builder component that programmatically creates and configures the Google Form for each owner via the Google Forms API would be a natural companion to this enhancement, eliminating the need for manual form creation and configuration per owner. The Google Forms API supports programmatic form creation and is worth evaluating when scoping this enhancement.
-
-https://developers.google.com/forms/api/reference/rest
+A deployment automation tool that provisions a new GAS project, configures Script Properties, and sets up the Sheet and Drive folder for each new owner would significantly reduce manual setup overhead at scale. Having the script provision its own Drive folder on first run would also allow switching from the broad `drive` scope to the narrower `drive.file` scope, restricting Drive access to only files and folders the script itself creates.
 
 ---
 

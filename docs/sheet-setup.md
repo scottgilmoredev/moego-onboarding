@@ -127,6 +127,8 @@ SpreadsheetApp and DriveApp to function:
 }
 ```
 
+**Drive scope note:** `https://www.googleapis.com/auth/drive` grants read/write access to the deploying account's entire Drive. GAS does not support folder-scoped permissions — there is no mechanism to restrict access to a specific folder ID. The narrower `drive.file` scope only covers files and folders the script itself created, and is not reliable for accessing a pre-existing folder via `getFolderById`. For a single-owner internal deployment where the Drive folder is created manually, the broad `drive` scope is the accepted approach.
+
 ---
 
 ## Environment Variable Reference
