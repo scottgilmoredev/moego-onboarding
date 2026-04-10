@@ -84,6 +84,8 @@ The current implementation is scoped to a single business owner. Scaling to mult
 
 A deployment automation tool that provisions a new GAS project, configures Script Properties, and sets up the Sheet and Drive folder for each new owner would significantly reduce manual setup overhead at scale. Having the script provision its own Drive folder on first run would also allow switching from the broad `drive` scope to the narrower `drive.file` scope, restricting Drive access to only files and folders the script itself creates.
 
+**Note:** GAS is appropriate for single-owner use but its constraints compound quickly at scale — the script always runs as the deploying account, OAuth scopes are coarse, there is no per-user auth, and there is no header access for webhook verification. A proper backend (e.g. Cloud Run, Lambda) with per-owner OAuth is the recommended path for multi-owner expansion rather than working around GAS limitations.
+
 ---
 
 **Vaccination Record Parsing**
