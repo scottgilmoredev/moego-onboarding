@@ -133,3 +133,55 @@ pnpm push         ← clasp pushes dist/ to GAS
        ↓
 Test in GAS editor
 ```
+
+---
+
+## Deploying Updates
+
+You do not need a new deployment URL for every code change. Use **Edit deployment** to deploy a new version under the existing URL:
+
+1. Save your code in the editor
+2. Click **Deploy → Manage deployments**
+3. Select your active deployment and click the pencil icon
+4. In the **Version** dropdown, select **New version**
+5. Click **Deploy**
+
+| Action             | When to use                                    | Result                 |
+| ------------------ | ---------------------------------------------- | ---------------------- |
+| Edit (New version) | Code changes, bug fixes — 99% of the time      | Same URL, updated code |
+| New deployment     | Separate environments (staging vs. production) | New URL, new code      |
+
+> **Head deployment:** Under **Deploy → Test deployments**, the Head URL always runs the latest saved code without versioning. Use this for local testing only — it requires a logged-in Google session and will not work for MoeGo webhooks.
+
+---
+
+## Authorizing OAuth Scopes
+
+The first time the script runs after a new deployment or scope change, GAS will prompt for OAuth authorization. To trigger and complete this manually before any client traffic arrives, run the following function directly from the GAS editor:
+
+```javascript
+function triggerAuth() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.create('Auth Test');
+  console.log('Spreadsheet Access: OK');
+
+  const files = DriveApp.getFiles();
+  console.log('Drive Access: OK');
+
+  const response = UrlFetchApp.fetch('https://google.com');
+  console.log('External Request: OK');
+
+  return 'All scopes authorized.';
+}
+```
+
+This confirms each OAuth scope is granted but does not verify access to a specific folder or spreadsheet. To confirm the configured Drive folder is accessible, run:
+
+```javascript
+function testFolderAccess() {
+  const folderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
+  const folder = DriveApp.getFolderById(folderId);
+  console.log('Folder name: ' + folder.getName());
+}
+```
+
+> **Note:** The "unverified app" warning shown during authorization is expected for GAS projects that have not gone through Google's OAuth verification process. Click **Advanced → Go to [project name] (unsafe)** to proceed. This is a one-time prompt per Google account.
