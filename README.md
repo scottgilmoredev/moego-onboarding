@@ -4,15 +4,18 @@
 
 ## Overview
 
-Automates the client onboarding process for MoeGo-based pet service businesses. When a new client is created in MoeGo, this tool automatically retrieves their unique agreement signing links and card-on-file link, constructs a pre-filled Google Form URL, and emails it to the business owner for review and distribution to the client — reducing manual link generation and delivery to a single step.
+Automates the client onboarding process for MoeGo-based pet service businesses. When a new appointment is created in MoeGo, this tool retrieves the client's unique agreement signing links and card-on-file link, generates a personalized token-based landing page URL, and emails it to the business owner — reducing manual link generation and delivery to a single step.
 
 ## Features
 
 - Listens for `APPOINTMENT_CREATED` webhook events from MoeGo
+- Detects first-time clients via the MoeGo Appointments API — skips returning clients automatically
 - Retrieves per-client agreement sign links and card-on-file link via MoeGo API
-- Constructs a pre-filled Google Form URL with client data and links
-- Emails the business owner with the pre-filled form URL for review and client delivery
-- Graceful failure handling — partial failures email the business owner with the failed fields, partial URL, and customer MoeGo ID for manual recovery
+- Generates a unique, expiring token URL pointing to a personalized client landing page
+- Shortens the token URL via Short.io and emails it to the business owner for delivery
+- Landing page renders the client's onboarding steps — agreements, card on file, and vaccination record upload
+- Vaccination records uploaded directly to Google Drive, prefixed with the client's name
+- Graceful failure handling — partial failures email the business owner with recovery details and the customer's MoeGo ID
 
 ## Tech Stack
 
@@ -32,7 +35,8 @@ Automates the client onboarding process for MoeGo-based pet service businesses. 
 - A Google account with Apps Script access and the Apps Script API enabled
 - Clasp installed and configured — see [Clasp Setup](docs/clasp-setup.md)
 - A MoeGo account with API access and a Customer Success Manager-issued API key
-- A configured Google Form for client onboarding
+- A Google Sheet and Google Drive folder — see [Sheet & Drive Setup](docs/sheet-setup.md)
+- A Short.io account with an API key and custom domain — see [Short.io Setup](docs/short-io-setup.md)
 
 ### Installation
 
@@ -63,23 +67,20 @@ pnpm run test
 pnpm run build
 ```
 
-### Local Dev Server
-
-```bash
-pnpm run dev
-```
-
 ## Project Structure
 
 ```
 src/
  ┣ webhook/       # MoeGo webhook receiver and validation
- ┣ moego/         # MoeGo API client (agreements, customer COF link)
- ┣ form/          # Google Form pre-filled URL construction
+ ┣ moego/         # MoeGo API client (agreements, appointments, customer data)
+ ┣ token/         # Per-client token generation, storage, and expiry
+ ┣ sheet/         # Google Sheets client for client row writes
+ ┣ shortener/     # Short.io URL shortening
  ┣ email/         # Email delivery to business owner
  ┣ types/         # Shared TypeScript types
  ┣ utils/         # Shared utilities and helpers
- ┣ server.ts      # Apps Script web app entrypoint (doPost)
+ ┣ templates/     # HTML templates for landing page and error page
+ ┣ server.ts      # Apps Script web app entrypoint (doPost, doGet, uploadVaccinationRecord)
 ```
 
 ## CI/CD
@@ -95,3 +96,6 @@ See [Milestones](docs/milestones.md) for planned enhancements and future develop
 - [Development Plan](docs/development-plan.md)
 - [Milestones](docs/milestones.md)
 - [Clasp Setup](docs/clasp-setup.md)
+- [Sheet & Drive Setup](docs/sheet-setup.md)
+- [Short.io Setup](docs/short-io-setup.md)
+- [E2E Testing Guide](docs/e2e-testing.md)

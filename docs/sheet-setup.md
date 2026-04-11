@@ -66,6 +66,8 @@ Copy the value after `/folders/`. Set it in your environment:
 DRIVE_FOLDER_ID=<your-folder-id>
 ```
 
+**If the folder is in a different Google account:** Share the folder with the deploying account (the Gmail address the GAS project is deployed under) with at least Editor access. Standard `DriveApp.getFolderById()` will work without any code changes — no Drive API v2 or `supportsAllDrives` configuration is needed for personal Drive folders shared via standard folder sharing. The `supportsAllDrives` flag is only required for Shared Drives (workspace-level shared drives).
+
 ---
 
 ## Business Branding

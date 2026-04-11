@@ -30,6 +30,7 @@ import {
   sendFullFailureEmail,
   sendShortIoFailureEmail,
   sendSheetWriteFailureEmail,
+  sendUploadNotificationEmail,
 } from '#/email/email.js';
 import { getConfig } from '#/utils/config.js';
 import { SUPPORTED_EVENT_TYPES } from '#/utils/constants.js';
@@ -178,14 +179,20 @@ export function uploadVaccinationRecord(
   const bytes = Utilities.base64Decode(dataBase64);
   const blob = Utilities.newBlob(bytes, mimeType, resolvedFileName);
 
-  folder.createFile(blob);
+  const file = folder.createFile(blob);
 
-  // Mark the token as uploaded to prevent re-upload on page revisit
+  // Mark the token as uploaded and notify the owner
   if (payload) {
     PropertiesService.getScriptProperties().setProperty(
       token,
       JSON.stringify({ ...payload, uploaded: true })
     );
+
+    sendUploadNotificationEmail({
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      fileUrl: file.getUrl(),
+    });
   }
 }
 
