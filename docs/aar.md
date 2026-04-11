@@ -1,5 +1,85 @@
 # After Action Review — moego-onboarding
 
+---
+
+**Date:** 2026-04-10
+**Scope:** Milestones 7–10 — Custom Client Landing Page Phase
+**Participants:** Solo
+
+---
+
+## What Was Planned
+
+Milestones 7–10 replaced the Google Form-based onboarding flow with a custom per-client landing page. The plan: generate a unique expiring token per client, store it in ScriptProperties with the client's onboarding links, deliver a shortened token URL to the business owner, and serve a personalized HTML landing page via `doGet` that renders the client's agreements, card-on-file link, and vaccination record upload. Milestone 10 added first-time client detection via the MoeGo API, returning client skipping, token storage management, file upload improvements, and documentation cleanup.
+
+The plan assumed the MoeGo Aggregation API (`LookupClientPetProfile`) would be accessible for first-time client detection, that esbuild globals would work for `google.script.run` callable functions the same way they did for `doPost`, and that all Script Property key names would be consistent between `.env.example` and the deployed project.
+
+---
+
+## What Actually Happened
+
+All milestones shipped. The landing page flow is operational in production. Several significant deviations occurred:
+
+**Aggregation API inaccessible** — `LookupClientPetProfile` is pure gRPC and not accessible from `UrlFetchApp`. Replaced with `POST /v1/appointments:list` filtered to `FINISHED` status, which is a REST endpoint and works correctly. `pageToken: "1"` is required in the pagination object or the API returns 500.
+
+**`lastAppointmentDate` unreliable** — the initial first-time client check used `lastAppointmentDate` on the customer record. This field was observed to contain future dates (next appointment) rather than the most recent past appointment, producing false positives. Replaced with the `ListAppointments` approach above.
+
+**GAS Drive error page from misconfigured Script Property** — `getConfig()` threw on `BUSINESS_OWNER_EMAIL` vs `BUSINESS_OWNER_EMAILS` mismatch. `doPost` had no top-level try/catch so the throw surfaced as a Drive error page. Multiple wrong diagnoses (auth, stale deployment, wrong URL) before root cause was identified via GCP logs. See postmortem: `2026-04-02-gas-drive-error-script-property.md`.
+
+**`google.script.run` callable functions require top-level declarations** — `doGet` and `uploadVaccinationRecord` were assigned to `globalThis` following the same pattern as `doPost`. `google.script.run` requires genuine top-level function declarations, not `globalThis` assignments. Fixed via esbuild `banner` option. See postmortem: `2026-04-02-gas-globals-not-exposed-iife.md`.
+
+**curl `-X POST` incompatible with GAS redirect** — GAS redirects POST requests. Using `-X POST` with `-L` causes curl to reissue the redirect as POST rather than GET, resulting in a redirect loop. The correct pattern is `-L` with `-d` (which implicitly sends POST) and without `-X POST`.
+
+**Token deletion on upload revoked onboarding link access** — the initial upload implementation deleted the token after upload to prevent re-submission. Identified as incorrect — the token also stores the client's agreement and COF links. Replaced with an `uploaded: boolean` flag in the payload. Upload step renders as already-completed on page revisit if `payload.uploaded` is true.
+
+**Drive folder ownership constraint** — the deploying account cannot access a Drive folder it doesn't own or have access to. Moving the folder to the owner's account required sharing it with the deploying Gmail account. `drive` OAuth scope grants full Drive access — no folder-scoped permissions exist in GAS.
+
+---
+
+## Why the Difference
+
+**GAS platform constraints continued to surface despite prior phase learnings.** The `google.script.run` top-level declaration requirement and the Drive error page behavior are both GAS-specific constraints that were not researched before implementation. The prior AAR identified "audit GAS platform constraints before planning" as an improvement — this was not applied thoroughly enough going into this phase.
+
+**The Aggregation API assumption was not verified before planning.** The API docs described `LookupClientPetProfile` without indicating it was gRPC-only. A live test before scoping would have caught this immediately.
+
+**Script Property key naming was not validated before E2E testing.** A pre-E2E checklist that cross-references `.env.example` against deployed Script Properties would have caught the `BUSINESS_OWNER_EMAILS` mismatch before the first curl attempt.
+
+**Token lifecycle design had an unconsidered dependency.** The initial decision to delete the token on upload did not account for the token being the only mechanism for accessing the onboarding links. A fuller review of what the token represents — not just a re-upload prevention mechanism but the client's entire onboarding session — would have caught this.
+
+---
+
+## Sustains
+
+- **TDD discipline held throughout.** All features were test-driven. The mock sequence approach for `doPost` continued to provide reliable coverage of the full orchestration flow.
+- **GCP logs as the primary debugging tool.** After the prior AAR, GCP logging was used immediately on the first E2E failure and identified the root cause within a single session.
+- **Graceful failure handling extended cleanly.** Adding the `hasFinishedAppointments` failure path and the sheet write failure path required only localized changes — the failure handling architecture scaled well.
+- **Modular token design.** `generateToken`, `storeToken`, `getToken`, and `purgeExpiredTokens` remained independently testable and composable throughout the phase.
+
+---
+
+## Improvements
+
+- **Verify all third-party API transports before planning.** Confirm whether an endpoint is REST or gRPC before scoping any feature that depends on it from `UrlFetchApp`.
+- **Cross-reference Script Properties against `.env.example` before first E2E test.** Add this as a required step in the E2E checklist.
+- **Research `google.script.run` callable function requirements before implementing any client-callable GAS functions.** The distinction between web app entrypoints and `google.script.run` callable functions should be understood upfront.
+- **Review the full token lifecycle before any change that touches token state.** The token is the client's onboarding session — any operation that modifies or deletes it must consider all downstream consumers.
+- **Document Drive scope and folder ownership constraints before deploying to a new account.** The requirement to share the folder with the deploying account is non-obvious and should be in the setup docs before the first deployment attempt.
+
+---
+
+## Actions
+
+| Action                                                                            | Owner           | By When           |
+| --------------------------------------------------------------------------------- | --------------- | ----------------- |
+| Add `google.script.run` banner pattern to `docs/clasp-setup.md`                   | scottgilmoredev | Done — 2026-04-10 |
+| Document Drive scope limitations and shared folder setup in `docs/sheet-setup.md` | scottgilmoredev | Done — 2026-04-10 |
+| Add pre-E2E Script Properties cross-reference step to `docs/e2e-testing.md`       | scottgilmoredev | Next doc pass     |
+| Write postmortems for Drive error page and GAS globals incidents                  | scottgilmoredev | Done — 2026-04-10 |
+
+---
+
+---
+
 **Date:** 2026-03-28
 **Scope:** Full project — Milestones 0 through 6
 **Participants:** Solo
