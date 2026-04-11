@@ -13,6 +13,7 @@ import {
   sendPartialFailureEmail,
   sendShortIoFailureEmail,
   sendSheetWriteFailureEmail,
+  sendUploadNotificationEmail,
 } from './email.js';
 
 const mockConfig = {
@@ -326,6 +327,55 @@ describe('sendShortIoFailureEmail', () => {
  * @description Tests for sheet write failure email composition and delivery. Covers
  * correct recipient, subject, shortened token URL, customer ID, and manual recovery steps.
  */
+/**
+ * sendUploadNotificationEmail
+ *
+ * @description Tests for the upload notification email. Covers correct
+ * recipient, subject, and Drive file URL in the body.
+ */
+describe('sendUploadNotificationEmail', () => {
+  beforeEach(() => {
+    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * @test
+   * @description Confirms email is sent to the correct recipient with correct subject.
+   */
+  it('sends to correct recipient with correct subject', () => {
+    sendUploadNotificationEmail({
+      firstName: 'Jane',
+      lastName: 'Smith',
+      fileUrl: 'https://drive.google.com/file/d/abc123',
+    });
+
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      'Vaccination Record Uploaded — Jane S.',
+      expect.any(String)
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms the Drive file URL is included in the body.
+   */
+  it('includes the Drive file URL in the body', () => {
+    sendUploadNotificationEmail({
+      firstName: 'Jane',
+      lastName: 'Smith',
+      fileUrl: 'https://drive.google.com/file/d/abc123',
+    });
+
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('https://drive.google.com/file/d/abc123');
+  });
+});
+
 describe('sendSheetWriteFailureEmail', () => {
   beforeEach(() => {
     vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
