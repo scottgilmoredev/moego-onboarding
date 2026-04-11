@@ -237,6 +237,45 @@ export function sendSheetWriteFailureEmail({
 }
 
 /**
+ * Parameters for sending an upload notification email.
+ *
+ * @interface SendUploadNotificationEmailParams
+ * @property {string} firstName - The client's first name.
+ * @property {string} lastName - The client's last name.
+ * @property {string} fileUrl - The Google Drive URL of the uploaded file.
+ */
+export interface SendUploadNotificationEmailParams {
+  firstName: string;
+  lastName: string;
+  fileUrl: string;
+}
+
+/**
+ * Send an upload notification email to the business owner.
+ *
+ * @function sendUploadNotificationEmail
+ * @description Composes and delivers an email to the business owner when a
+ * client uploads their vaccination record. Includes the client's name and a
+ * direct link to the uploaded file in Google Drive.
+ *
+ * @param {SendUploadNotificationEmailParams} params - The email parameters.
+ * @returns {void}
+ */
+export function sendUploadNotificationEmail({
+  firstName,
+  lastName,
+  fileUrl,
+}: SendUploadNotificationEmailParams): void {
+  const { businessOwnerEmails } = getConfig();
+
+  const subject = `Vaccination Record Uploaded — ${firstName} ${lastName.charAt(0)}.`;
+
+  const body = `${firstName} ${lastName.charAt(0)}. has uploaded their vaccination record.\n\nView the file in Google Drive:\n${fileUrl}`;
+
+  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
+}
+
+/**
  * Send a partial failure email to the business owner.
  *
  * @function sendPartialFailureEmail
