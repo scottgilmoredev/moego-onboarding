@@ -516,7 +516,8 @@ describe('doGet', () => {
  * propagation of DriveApp errors.
  */
 describe('uploadVaccinationRecord', () => {
-  const mockFolder = { createFile: vi.fn() };
+  const mockFile = { getUrl: vi.fn().mockReturnValue('https://drive.google.com/file/d/abc123') };
+  const mockFolder = { createFile: vi.fn().mockReturnValue(mockFile) };
   const mockDeleteProperty = vi.fn();
 
   const mockPayload = {
@@ -530,6 +531,7 @@ describe('uploadVaccinationRecord', () => {
   };
 
   beforeEach(() => {
+    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('DriveApp', {
       getFolderById: vi.fn().mockReturnValue(mockFolder),
     });
@@ -552,10 +554,10 @@ describe('uploadVaccinationRecord', () => {
 
   /**
    * @test
-   * @description Confirms the file is created with a client-prefixed filename
-   * and the token is marked as uploaded after a successful upload.
+   * @description Confirms the file is created with a client-prefixed filename,
+   * the token is marked as uploaded, and the owner is notified with the Drive URL.
    */
-  it('creates a prefixed file and marks the token as uploaded', () => {
+  it('creates a prefixed file, marks the token as uploaded, and notifies the owner', () => {
     const mockSetProperty = vi.fn();
 
     vi.stubGlobal('PropertiesService', {
@@ -578,14 +580,19 @@ describe('uploadVaccinationRecord', () => {
       'test-token',
       JSON.stringify({ ...mockPayload, uploaded: true })
     );
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      'Vaccination Record Uploaded — Jane S.',
+      expect.stringContaining('https://drive.google.com/file/d/abc123')
+    );
   });
 
   /**
    * @test
-   * @description Confirms the file is created with the original filename when
-   * the token is not found, and no setProperty call is made.
+   * @description Confirms the file is created with the original filename,
+   * no token update is made, and no notification is sent when the token is not found.
    */
-  it('uploads with original filename and skips token update when token is not found', () => {
+  it('uploads with original filename and skips token update and notification when token is not found', () => {
     const mockSetProperty = vi.fn();
 
     vi.stubGlobal('PropertiesService', {
@@ -600,6 +607,7 @@ describe('uploadVaccinationRecord', () => {
 
     expect(Utilities.newBlob).toHaveBeenCalledWith([1, 2, 3], 'application/pdf', 'rabies.pdf');
     expect(mockSetProperty).not.toHaveBeenCalled();
+    expect(MailApp.sendEmail).not.toHaveBeenCalled();
   });
 
   /**
