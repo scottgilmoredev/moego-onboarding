@@ -76,7 +76,7 @@
             <div class="step-upload-error" id="vaccine-error" style="display:none;"></div>
           </div>
           <label class="btn" id="vaccine-label" for="vaccine-upload">Upload</label>
-          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" />
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" />
         </div>
       </div>
 
@@ -92,7 +92,8 @@
         var statusEl = document.getElementById('vaccine-status');
         var errorEl = document.getElementById('vaccine-error');
         var token = '<?= token ?>';
-        var uploadCount = <?= payload.uploadCount || 0 ?>;
+        var uploadCount = parseInt(input.dataset.uploadCount, 10) || 0;
+        var businessPhone = input.dataset.businessPhone;
         var UPLOAD_CAP = 5;
 
         function showStatus(text) {
@@ -165,7 +166,7 @@
                 label.setAttribute('for', 'vaccine-upload');
                 input.disabled = false;
                 input.value = '';
-                errorEl.textContent = 'Upload failed — please try again or call us at <?= businessPhone ?>';
+                errorEl.textContent = 'Upload failed — please try again or call us at ' + businessPhone;
                 errorEl.style.display = 'block';
               })
               .uploadVaccinationRecord(file.name, file.type, base64, token);
