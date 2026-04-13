@@ -9,7 +9,7 @@ This guide covers end-to-end validation of the deployed GAS web app. It assumes 
 ## Prerequisites
 
 - GAS web app deployed and `LANDING_PAGE_URL` set in Script Properties
-- All Script Properties configured (see [sheet-setup.md](sheet-setup.md))
+- All Script Properties configured (see [sheet-setup.md](sheet-setup.md)) — cross-reference against `.env.example` to confirm every required variable is present and correctly named before proceeding
 - Google Sheet and Drive folder created and accessible
 - A test customer in MoeGo with no prior finished appointments (to exercise the new client path)
 
