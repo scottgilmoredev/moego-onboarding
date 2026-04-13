@@ -12,6 +12,7 @@ import {
   doPost,
   fetchCustomer,
   fetchOnboardingLinks,
+  retriggerOnboarding,
   uploadVaccinationRecord,
 } from '#/server.js';
 import {
@@ -723,5 +724,237 @@ describe('uploadVaccinationRecord', () => {
     expect(() =>
       uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token')
     ).toThrow('Drive folder not found');
+  });
+});
+
+// ============================================================================
+// retriggerOnboarding
+// ============================================================================
+
+/**
+ * retriggerOnboarding
+ *
+ * @description Tests for the retriggerOnboarding owner tool. Covers the happy
+ * path with an existing sheet row, the skipped-client path with no row, customer
+ * lookup failure, onboarding link failure, Short.io failure, and sheet write failure.
+ */
+describe('retriggerOnboarding', () => {
+  const existingRowsWithClient = [
+    [
+      'Last Name',
+      'First Name',
+      'Phone',
+      'Customer ID',
+      'Onboarding Link',
+      'Sent At',
+      'Vaccination Records',
+    ],
+    ['Doe', 'John', '+12125551234', 'cus_001', 'https://abc.short.gy/old', '2026-04-01 10:00', ''],
+  ];
+
+  const existingRowsWithoutClient = [
+    [
+      'Last Name',
+      'First Name',
+      'Phone',
+      'Customer ID',
+      'Onboarding Link',
+      'Sent At',
+      'Vaccination Records',
+    ],
+  ];
+
+  function makeMockSheet(rows: unknown[][]) {
+    return {
+      appendRow: vi.fn(),
+      getDataRange: vi.fn().mockReturnValue({ getValues: vi.fn().mockReturnValue(rows) }),
+      insertRowBefore: vi.fn(),
+      getRange: vi.fn().mockReturnValue({ setValues: vi.fn() }),
+    };
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperties: vi.fn().mockReturnValue({}),
+        getProperty: vi.fn().mockReturnValue(null),
+        setProperty: vi.fn(),
+        deleteProperty: vi.fn(),
+      }),
+    });
+    vi.stubGlobal('Utilities', {
+      getUuid: vi.fn().mockReturnValue('test-uuid'),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms the existing sheet row is updated and a success email
+   * is sent when the client already has a row.
+   */
+  it('updates existing sheet row and sends success email when client row exists', () => {
+    const mockSheet = makeMockSheet(existingRowsWithClient);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockServiceAgreementResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+      mockShortIoResponse,
+    ]);
+
+    retriggerOnboarding('cus_001');
+
+    // updateClientOnboardingLink updates cols E-F on row 2
+    expect(mockSheet.getRange).toHaveBeenCalledWith(2, 5, 1, 2);
+    expect(mockSheet.insertRowBefore).not.toHaveBeenCalled();
+    expect(mockSheet.appendRow).not.toHaveBeenCalled();
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      'New Client Onboarding — John D.',
+      expect.stringContaining('https://abc.short.gy/xyz123')
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms a new sheet row is inserted and a success email is
+   * sent when the client was previously skipped and has no existing row.
+   */
+  it('inserts new sheet row and sends success email when client has no existing row', () => {
+    const mockSheet = makeMockSheet(existingRowsWithoutClient);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockServiceAgreementResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+      mockShortIoResponse,
+    ]);
+
+    retriggerOnboarding('cus_001');
+
+    expect(mockSheet.appendRow).toHaveBeenCalled();
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      'New Client Onboarding — John D.',
+      expect.stringContaining('https://abc.short.gy/xyz123')
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms a full failure email is sent when customer lookup fails.
+   */
+  it('sends full failure email when customer lookup fails', () => {
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({
+        getActiveSheet: vi.fn().mockReturnValue(makeMockSheet(existingRowsWithClient)),
+      }),
+    });
+    stubUrlFetchApp(mockErrorResponse);
+
+    retriggerOnboarding('cus_001');
+
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      expect.stringContaining('Unavailable'),
+      expect.stringContaining('cus_001')
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms a full failure email is sent when any onboarding
+   * link fetch fails.
+   */
+  it('sends full failure email when onboarding link fetch fails', () => {
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({
+        getActiveSheet: vi.fn().mockReturnValue(makeMockSheet(existingRowsWithClient)),
+      }),
+    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockNotFoundResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+    ]);
+
+    retriggerOnboarding('cus_001');
+
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      expect.stringContaining('Unavailable'),
+      expect.stringContaining('cus_001')
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms a Short.io failure email is sent when URL shortening fails.
+   */
+  it('sends Short.io failure email when URL shortening fails', () => {
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({
+        getActiveSheet: vi.fn().mockReturnValue(makeMockSheet(existingRowsWithClient)),
+      }),
+    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockServiceAgreementResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+      mockErrorResponse,
+    ]);
+
+    retriggerOnboarding('cus_001');
+
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      expect.stringContaining('URL Shortening Failed'),
+      expect.stringContaining('https://script.google.com/macros/s/abc/exec?token=test-uuid')
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms a sheet write failure email is sent when the sheet
+   * update throws.
+   */
+  it('sends sheet write failure email when sheet update fails', () => {
+    const mockSheet = makeMockSheet(existingRowsWithClient);
+    mockSheet.getRange = vi.fn().mockImplementation(() => {
+      throw new Error('Write failed');
+    });
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+    stubUrlFetchAppSequence([
+      mockCustomerResponse,
+      mockServiceAgreementResponse,
+      mockSmsAgreementResponse,
+      mockCofResponse,
+      mockShortIoResponse,
+    ]);
+
+    retriggerOnboarding('cus_001');
+
+    expect(MailApp.sendEmail).toHaveBeenCalledWith(
+      'owner@example.com, another-owner@example.com',
+      expect.stringContaining('Sheet Write Failed'),
+      expect.stringContaining('https://abc.short.gy/xyz123')
+    );
   });
 });

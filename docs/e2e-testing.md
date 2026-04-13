@@ -89,6 +89,23 @@ To verify the returning client check:
 
 ---
 
+## Re-trigger Verification
+
+To verify the re-trigger flow:
+
+1. Use the test customer from the initial flow (they should have an existing sheet row)
+2. Follow the steps in [retrigger-guide.md](retrigger-guide.md) to invoke `retriggerOnboarding` from the GAS editor with the customer's ID
+3. Confirm the owner receives a success email with a new shortened link
+4. Confirm the Onboarding Link and Sent At columns in the sheet row are updated with the new values
+
+To verify the skipped-client path (no existing row):
+
+1. Use a test customer whose webhook was previously skipped (returning client) and who has no sheet row
+2. Invoke `retriggerOnboarding` with their Customer ID
+3. Confirm a new row is inserted in alphabetical order and the owner receives a success email
+
+---
+
 ## Failure Spot-Checks
 
 ### Full failure email

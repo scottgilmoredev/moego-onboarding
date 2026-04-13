@@ -34,20 +34,25 @@ export function appendSheetRow(values: SheetCellValue[]): void {
  * Format a timestamp as a human-readable string for sheet display.
  *
  * @function formatTimestamp
- * @description Returns a UTC timestamp string in `YYYY-MM-DD HH:MM` format.
+ * @description Returns an Eastern time timestamp string in `YYYY-MM-DD HH:MM` format.
  *
  * @param {number} ms - Unix timestamp in milliseconds.
  * @returns {string} Formatted timestamp string.
  */
 export function formatTimestamp(ms: number): string {
-  const d = new Date(ms);
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const hh = String(d.getUTCHours()).padStart(2, '0');
-  const min = String(d.getUTCMinutes()).padStart(2, '0');
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(ms));
 
-  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
 }
 
 /**
@@ -101,6 +106,46 @@ export function writeVaccinationRecord({
 
   // Column G is column 7 (1-based), rowIndex is 0-based so add 1
   sheet.getRange(rowIndex + 1, 7).setValue(updated);
+}
+
+/**
+ * Update the onboarding link and sent-at timestamp for an existing client row.
+ *
+ * @function updateClientOnboardingLink
+ * @description Finds the client's row by customerId (column D) and overwrites
+ * the Onboarding Link (column E) and Sent At (column F) with the new values.
+ * Returns true if the row was found and updated, false if the customerId is not
+ * present in the sheet.
+ *
+ * @param {object} params - The parameters.
+ * @param {string} params.customerId - The client's MoeGo customer ID.
+ * @param {string} params.shortUrl - The new shortened onboarding URL.
+ * @returns {boolean} True if the row was found and updated, false otherwise.
+ */
+export function updateClientOnboardingLink({
+  customerId,
+  shortUrl,
+}: {
+  customerId: string;
+  shortUrl: string;
+}): boolean {
+  const { spreadsheetId } = getConfig();
+  const sheet = SpreadsheetApp.openById(spreadsheetId).getActiveSheet();
+  const allRows = sheet.getDataRange().getValues() as string[][];
+
+  // Find the row index (0-based) where column D matches customerId, skipping header
+  const rowIndex = allRows.findIndex((r, i) => i > 0 && r[3] === customerId);
+
+  if (rowIndex === -1) {
+    return false;
+  }
+
+  const sentAt = formatTimestamp(Date.now());
+
+  // Columns E-F are cols 5-6 (1-based); rowIndex is 0-based so add 1
+  sheet.getRange(rowIndex + 1, 5, 1, 2).setValues([[shortUrl, sentAt]]);
+
+  return true;
 }
 
 export function writeClientRow({
