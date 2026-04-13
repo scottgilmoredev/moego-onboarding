@@ -37,24 +37,6 @@ export interface SendFullFailureEmailParams {
 }
 
 /**
- * Parameters for sending a partial failure email.
- *
- * @interface SendPartialFailureEmailParams
- * @property {string} firstName - The client's first name.
- * @property {string} lastName - The client's last name.
- * @property {string} customerId - The client's MoeGo customer ID for manual recovery.
- * @property {string} partialUrl - The partial pre-filled Google Form URL with available fields populated.
- * @property {string[]} missingFields - Names of fields that could not be populated due to API failures.
- */
-export interface SendPartialFailureEmailParams {
-  firstName: string;
-  lastName: string;
-  customerId: string;
-  partialUrl: string;
-  missingFields: string[];
-}
-
-/**
  * Send a success email to the business owner.
  *
  * @function sendSuccessEmail
@@ -113,21 +95,12 @@ export function sendFullFailureEmail({
   // Construct subject with first name and last initial
   const subject = `Action Required — Onboarding Links Unavailable for ${firstName} ${lastName.charAt(0)}.`;
 
-  // Compose the email body with customer ID and manual recovery steps
-  const body = `The onboarding links could not be automatically retrieved for ${firstName} ${lastName.charAt(0)}. All MoeGo API calls failed and no onboarding link could be generated.
+  // Compose the email body with customer ID and retrigger instructions
+  const body = `The onboarding links could not be automatically retrieved for ${firstName} ${lastName.charAt(0)}. No onboarding link was generated and no sheet row was written.
 
-    Customer MoeGo ID: ${customerId}
+Customer ID: ${customerId}
 
-    Manual recovery steps:
-    1. Log in to MoeGo and locate the client using the customer ID above.
-    2. Retrieve the following links manually from the client's profile in MoeGo:
-      - Service Agreement link
-      - SMS Agreement link
-      - Card-on-file link
-    3. Construct the pre-filled onboarding form URL manually using the form entry IDs
-      from your environment configuration and the links retrieved from MoeGo.
-    4. Shorten the completed link using Short.io before sending to the client.
-    5. Send the completed link to the client via SMS.`;
+To send this client an onboarding link, use the re-trigger tool from the GAS editor once the issue is resolved. You will need the Customer ID above. See the retrigger guide for instructions.`;
 
   // Deliver the email via MailApp
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
@@ -186,17 +159,17 @@ export function sendShortIoFailureEmail({
 
   const subject = `Action Required — URL Shortening Failed for ${firstName} ${lastName.charAt(0)}.`;
 
-  const body = `URL shortening failed for ${firstName} ${lastName.charAt(0)}. The onboarding link could not be written to the sheet.
+  const body = `URL shortening failed for ${firstName} ${lastName.charAt(0)}. The onboarding link was generated but could not be shortened.
 
-    Customer MoeGo ID: ${customerId}
+Customer ID: ${customerId}
 
-    Full token URL (shorten manually before sending to the client):
-    ${fullUrl}
+Full onboarding link:
+${fullUrl}
 
-    Manual recovery steps:
-    1. Copy the full token URL above.
-    2. Shorten it using Short.io or another URL shortener.
-    3. Send the shortened link to the client via SMS.`;
+Options:
+- Send the full link above directly to the client via SMS
+- Shorten it manually in Short.io to get the branded link, then send to the client
+- Use the re-trigger tool from the GAS editor once Short.io is restored to generate a new shortened link`;
 
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }
@@ -222,16 +195,12 @@ export function sendSheetWriteFailureEmail({
 
   const subject = `Action Required — Sheet Write Failed for ${firstName} ${lastName.charAt(0)}.`;
 
-  const body = `The sheet row could not be written for ${firstName} ${lastName.charAt(0)}. The shortened onboarding link is below — please forward it to the client via SMS manually.
+  const body = `The sheet row could not be written for ${firstName} ${lastName.charAt(0)}. The onboarding link was generated and shortened successfully — please send it to the client via SMS manually.
 
-    Customer MoeGo ID: ${customerId}
+Customer ID: ${customerId}
 
-    Shortened token URL:
-    ${shortUrl}
-
-    Manual recovery steps:
-    1. Copy the shortened token URL above.
-    2. Send it to the client via SMS.`;
+Shortened onboarding link:
+${shortUrl}`;
 
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }
@@ -272,65 +241,5 @@ export function sendUploadNotificationEmail({
 
   const body = `${firstName} ${lastName.charAt(0)}. has uploaded their vaccination record.\n\nView the file in Google Drive:\n${fileUrl}`;
 
-  MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
-}
-
-/**
- * Send a partial failure email to the business owner.
- *
- * @function sendPartialFailureEmail
- * @description Composes and delivers an email to the business owner when one
- * or more MoeGo API calls fail. Contains the partial pre-filled URL with
- * available fields, identifies which fields failed, the customer's MoeGo ID,
- * and inline manual recovery steps.
- *
- * @param {SendPartialFailureEmailParams} params - The email parameters.
- * @returns {void}
- *
- * @example
- * sendPartialFailureEmail({
- *   firstName: customer.firstName,
- *   lastName: customer.lastName,
- *   customerId: customer.id,
- *   partialUrl: formUrlResult.url,
- *   missingFields: formUrlResult.missingFields,
- * });
- */
-export function sendPartialFailureEmail({
-  firstName,
-  lastName,
-  customerId,
-  partialUrl,
-  missingFields,
-}: SendPartialFailureEmailParams): void {
-  const { businessOwnerEmails } = getConfig();
-
-  // Construct subject with first name and last initial
-  const subject = `Action Required — Onboarding Links Partially Unavailable for ${firstName} ${lastName.charAt(0)}.`;
-
-  // Build the missing fields list
-  const missingFieldsList = missingFields.map(field => `  - ${field}`).join('\n');
-
-  // Compose the email body with partial URL, missing fields, customer ID, and manual recovery steps
-  const body = `Some onboarding links could not be automatically retrieved for ${firstName} ${lastName.charAt(0)}. The partial onboarding link below is missing the following fields:
-
-    ${missingFieldsList}
-
-    Partial onboarding link (missing fields not included):
-    ${partialUrl}
-
-    Customer MoeGo ID: ${customerId}
-
-    Manual recovery steps:
-    1. Log in to MoeGo and locate the client using the customer ID above.
-    2. Retrieve the missing link(s) manually from the client's profile in MoeGo.
-    3. Append each missing link to the partial URL above using the following format:
-      &entry.ENTRY_ID=LINK_VALUE
-      Replace ENTRY_ID with the corresponding form entry ID from your environment
-      configuration and LINK_VALUE with the URL-encoded link retrieved from MoeGo.
-    4. Shorten the completed link using Short.io before sending to the client.
-    5. Send the completed link to the client via SMS.`;
-
-  // Deliver the email via MailApp
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }

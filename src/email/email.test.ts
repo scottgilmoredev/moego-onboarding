@@ -3,14 +3,13 @@
  *
  * @module
  * @description Unit tests for the email delivery module. Covers success email,
- * partial failure email, full failure email, and Short.io fallback email
- * composition and delivery via MailApp.
+ * full failure email, Short.io fallback email, sheet write failure email, and
+ * upload notification email composition and delivery via MailApp.
  */
 
 import {
   sendSuccessEmail,
   sendFullFailureEmail,
-  sendPartialFailureEmail,
   sendShortIoFailureEmail,
   sendSheetWriteFailureEmail,
   sendUploadNotificationEmail,
@@ -115,9 +114,9 @@ describe('sendFullFailureEmail', () => {
 
   /**
    * @test
-   * @description Confirms full failure email body contains manual recovery steps.
+   * @description Confirms full failure email body contains retrigger instructions.
    */
-  it('includes manual recovery steps in the body', () => {
+  it('includes retrigger instructions in the body', () => {
     sendFullFailureEmail({
       firstName: 'John',
       lastName: 'Doe',
@@ -125,7 +124,7 @@ describe('sendFullFailureEmail', () => {
     });
 
     const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
-    expect(body).toContain('manual');
+    expect(body).toContain('re-trigger tool');
   });
 
   /**
@@ -141,115 +140,6 @@ describe('sendFullFailureEmail', () => {
 
     const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).not.toContain('https://');
-  });
-});
-
-/**
- * sendPartialFailureEmail
- *
- * @description Tests for partial failure email composition and delivery. Covers
- * correct recipient, subject, body content including failed fields, partial URL,
- * customer MoeGo ID, and manual recovery steps.
- */
-describe('sendPartialFailureEmail', () => {
-  beforeEach(() => {
-    vi.stubGlobal('MailApp', {
-      sendEmail: vi.fn(),
-    });
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  /**
-   * @test
-   * @description Confirms partial failure email is sent with correct recipient
-   * and subject.
-   */
-  it('sends partial failure email to correct recipient with correct subject', () => {
-    sendPartialFailureEmail({
-      firstName: 'John',
-      lastName: 'Doe',
-      customerId: 'cus_001',
-      partialUrl: 'https://abc.short.gy/xyz123',
-      missingFields: ['serviceAgreementUrl'],
-    });
-
-    expect(MailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com, another-owner@example.com',
-      'Action Required — Onboarding Links Partially Unavailable for John D.',
-      expect.any(String)
-    );
-  });
-
-  /**
-   * @test
-   * @description Confirms partial failure email body contains the partial URL.
-   */
-  it('includes the partial URL in the body', () => {
-    sendPartialFailureEmail({
-      firstName: 'John',
-      lastName: 'Doe',
-      customerId: 'cus_001',
-      partialUrl: 'https://abc.short.gy/xyz123',
-      missingFields: ['serviceAgreementUrl'],
-    });
-
-    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
-    expect(body).toContain('https://abc.short.gy/xyz123');
-  });
-
-  /**
-   * @test
-   * @description Confirms partial failure email body contains the customer MoeGo ID.
-   */
-  it('includes the customer MoeGo ID in the body', () => {
-    sendPartialFailureEmail({
-      firstName: 'John',
-      lastName: 'Doe',
-      customerId: 'cus_001',
-      partialUrl: 'https://abc.short.gy/xyz123',
-      missingFields: ['serviceAgreementUrl'],
-    });
-
-    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
-    expect(body).toContain('cus_001');
-  });
-
-  /**
-   * @test
-   * @description Confirms partial failure email body identifies each missing field.
-   */
-  it('identifies all missing fields in the body', () => {
-    sendPartialFailureEmail({
-      firstName: 'John',
-      lastName: 'Doe',
-      customerId: 'cus_001',
-      partialUrl: 'https://abc.short.gy/xyz123',
-      missingFields: ['serviceAgreementUrl', 'cofUrl'],
-    });
-
-    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
-    expect(body).toContain('serviceAgreementUrl');
-    expect(body).toContain('cofUrl');
-  });
-
-  /**
-   * @test
-   * @description Confirms partial failure email body contains manual recovery steps.
-   */
-  it('includes manual recovery steps in the body', () => {
-    sendPartialFailureEmail({
-      firstName: 'John',
-      lastName: 'Doe',
-      customerId: 'cus_001',
-      partialUrl: 'https://abc.short.gy/xyz123',
-      missingFields: ['serviceAgreementUrl'],
-    });
-
-    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
-    expect(body).toContain('manual');
   });
 });
 
@@ -305,9 +195,9 @@ describe('sendShortIoFailureEmail', () => {
 
   /**
    * @test
-   * @description Confirms the customer ID and manual recovery steps are included.
+   * @description Confirms the customer ID and recovery options are included.
    */
-  it('includes the customer ID and manual recovery steps', () => {
+  it('includes the customer ID and recovery options', () => {
     sendShortIoFailureEmail({
       firstName: 'John',
       lastName: 'Doe',
@@ -317,7 +207,7 @@ describe('sendShortIoFailureEmail', () => {
 
     const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('cus_001');
-    expect(body).toContain('manual');
+    expect(body).toContain('re-trigger tool');
   });
 });
 
@@ -422,9 +312,9 @@ describe('sendSheetWriteFailureEmail', () => {
 
   /**
    * @test
-   * @description Confirms the customer ID and manual recovery steps are included.
+   * @description Confirms the customer ID is included in the body.
    */
-  it('includes the customer ID and manual recovery steps', () => {
+  it('includes the customer ID in the body', () => {
     sendSheetWriteFailureEmail({
       firstName: 'John',
       lastName: 'Doe',
@@ -434,6 +324,5 @@ describe('sendSheetWriteFailureEmail', () => {
 
     const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('cus_001');
-    expect(body).toContain('manual');
   });
 });
