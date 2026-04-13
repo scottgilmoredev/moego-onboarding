@@ -2,6 +2,70 @@
 
 ---
 
+**Date:** 2026-04-13
+**Scope:** Milestone 11 — Owner Tooling & Sheet Management
+**Participants:** Solo
+
+---
+
+## What Was Planned
+
+Milestone 11 scoped three features: sheet structure improvements (#115 — column reorder, alphabetical insert, Vaccination Records column), writing the Drive file URL back to the sheet on upload (#122), and an owner re-trigger mechanism for expired or skipped clients (#123). File upload was assumed to be single-upload per client based on the existing `uploaded: boolean` flag.
+
+---
+
+## What Actually Happened
+
+All issues shipped. Several unplanned fixes were required along the way:
+
+**Multi-upload requirement discovered post-planning** — the `uploaded: boolean` flag permanently blocked re-upload after the first file. Post-launch it was recognized that clients with multiple pets need to upload one vaccination record per pet. A pet count analysis against live customer data (max 4 pets, avg 1.22) informed a cap of 5. `uploaded: boolean` was replaced with `uploadCount: number`, and file naming was updated to append a `_N` suffix on subsequent uploads to avoid Drive filename collisions. This was not in scope for Milestone 11 but was resolved as part of the same branch.
+
+**`formatTimestamp` timezone fix silently regressed** — the function had previously been updated to use `Intl.DateTimeFormat` with `America/New_York`. During the `writeClientRow` refactor, the file was rewritten and the UTC implementation was restored. The regression was not caught until E2E testing, when timestamps in the sheet appeared as UTC rather than Eastern time.
+
+**`sendPartialFailureEmail` was dead code** — the function was never called from `doPost` and referenced the old Google Form URL construction flow that was removed when the landing page replaced the form. It was not cleaned up during the Milestone 7–10 phase transition. Removed in Milestone 11 when the failure email copy was updated to reference `retriggerOnboarding`.
+
+**Failure email copy referenced old Google Form recovery steps** — all three failure emails directed the owner to manually reconstruct a pre-filled form URL. These instructions were meaningless after the landing page replaced the form. Updated to reference `retriggerOnboarding` for the full failure case and simplified the Short.io and sheet write failure cases.
+
+**`pointer-events: none` blocked cursor CSS on upload button states** — cursor styles (`progress`, `not-allowed`) were not applying to the upload button during and after upload. Root cause: `pointer-events: none` prevents CSS cursor properties from rendering even though it does not block JS-side event prevention. Removed from all upload button state classes.
+
+---
+
+## Why the Difference
+
+**Multi-upload was a known edge case that was deferred without a plan.** The owner noted multi-pet clients during the upload cap discussion but no issue was created at the time. It surfaced as a real requirement only after the feature was in use.
+
+**The timezone fix regression was caused by a full-file rewrite during refactoring.** When `writeClientRow` was restructured, the entire `sheet.ts` file was effectively rewritten without a line-by-line review of what was changing. A targeted edit to the alphabetical insert logic would not have touched `formatTimestamp`.
+
+**Dead code from the form era was never audited after the landing page transition.** The Milestone 7–10 AAR did not include a review of whether all existing code paths still made sense in the new architecture. `sendPartialFailureEmail` and the failure email copy were direct casualties of this gap.
+
+**`pointer-events: none` is a commonly misapplied CSS pattern.** It is frequently used to prevent user interaction but blocks cursor CSS as a side effect. The correct approach for preventing re-click without losing cursor feedback is JS-side event guarding, which was already in place.
+
+---
+
+## Sustains
+
+- **TDD continued to catch regressions quickly.** The timezone regression and cursor issue were caught during E2E review rather than in production.
+- **Incremental commits by concern worked well.** Breaking changes into focused commits (token model, file naming, sheet write, cursor states) made individual pieces reviewable and revertable.
+- **Pet count analysis before setting the upload cap.** Using real customer data to justify the cap of 5 was the right approach — it avoided both an arbitrary limit and an open-ended one.
+
+---
+
+## Improvements
+
+- **Review all touched functions when doing a file-level rewrite.** If a refactor requires restructuring a file significantly, treat it as a full re-review of every function in that file, not just the ones being changed.
+- **Audit existing code paths when replacing a major flow.** When a significant architectural change ships (form → landing page, or similar), review all dependent functions for references to the old flow before closing the phase.
+- **Create issues for known edge cases at the time they are identified.** If a limitation is noted during planning or review ("multi-pet clients may need multiple uploads"), capture it as an issue immediately rather than accepting it as a known gap with no tracking.
+
+---
+
+## Actions
+
+| Action                                                                      | Owner           | By When           |
+| --------------------------------------------------------------------------- | --------------- | ----------------- |
+| Add pre-E2E Script Properties cross-reference step to `docs/e2e-testing.md` | scottgilmoredev | Done — 2026-04-13 |
+
+---
+
 **Date:** 2026-04-10
 **Scope:** Milestones 7–10 — Custom Client Landing Page Phase
 **Participants:** Solo
@@ -73,7 +137,7 @@ All milestones shipped. The landing page flow is operational in production. Seve
 | --------------------------------------------------------------------------------- | --------------- | ----------------- |
 | Add `google.script.run` banner pattern to `docs/clasp-setup.md`                   | scottgilmoredev | Done — 2026-04-10 |
 | Document Drive scope limitations and shared folder setup in `docs/sheet-setup.md` | scottgilmoredev | Done — 2026-04-10 |
-| Add pre-E2E Script Properties cross-reference step to `docs/e2e-testing.md`       | scottgilmoredev | Next doc pass     |
+| Add pre-E2E Script Properties cross-reference step to `docs/e2e-testing.md`       | scottgilmoredev | Done — 2026-04-13 |
 | Write postmortems for Drive error page and GAS globals incidents                  | scottgilmoredev | Done — 2026-04-10 |
 
 ---
