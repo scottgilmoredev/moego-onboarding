@@ -22,7 +22,69 @@
 
 ---
 
-## Token marked `uploaded` instead of deleted after vaccination record upload — 2026-04-10
+## `uploadCount` replaces `uploaded` boolean — supports multiple vaccination record uploads with cap — 2026-04-13
+
+**Decision:** `TokenPayload.uploaded: boolean` is replaced with `uploadCount: number`. Uploads are permitted up to a cap of 5. Each successful upload increments the count. The cap is enforced server-side in `uploadVaccinationRecord` before any Drive or sheet write occurs.
+
+**Context:** The `uploaded: boolean` flag was introduced to prevent re-submission while preserving access to onboarding links. Post-launch it was recognized that clients with multiple pets need to upload a vaccination record for each pet. A boolean flag permanently blocks re-upload after the first file regardless of pet count.
+
+**Alternatives considered:**
+
+- Retain `uploaded: boolean` — blocks multi-upload entirely; unacceptable for multi-pet clients
+- Unlimited uploads — no cap; acceptable risk but leaves the door open to accidental or malicious spam
+- Per-pet tracking — more precise but requires the pet list to be fetched and stored at token generation time
+
+**Rationale:** An upload count with a cap is the simplest model that covers the real use case. The cap of 5 was derived from a `ListAllPets` API analysis showing a maximum of 4 pets per customer across the owner's client base. 5 gives one slot of headroom. The count is stored in the token payload — no additional storage required.
+
+**Consequences:** `TokenPayload` has `uploadCount?: number` (treated as 0 if absent). File naming appends a `_N` suffix (e.g. `_2`, `_3`) on subsequent uploads to avoid Drive filename collisions. The landing page upload step reflects current count and disables the upload control when the cap is reached. Supersedes _Token marked `uploaded` instead of deleted after vaccination record upload_.
+
+**Status:** Decided
+
+---
+
+## Sheet column structure — 7-column layout with alphabetical insert by last name — 2026-04-13
+
+**Decision:** The Google Sheet uses a fixed 7-column layout: Last Name (A), First Name (B), Phone (C), Customer ID (D), Onboarding Link (E), Sent At (F), Vaccination Records (G). New rows are inserted alphabetically by last name rather than appended to the bottom.
+
+**Context:** The original sheet structure appended rows in arrival order and had no dedicated column for vaccination record tracking. The owner requested a column reorder to match how they naturally look up clients (by last name). Vaccination Records was added as a dedicated column when the file upload feature was scoped, replacing the pre-baked Drive URL column from the original design.
+
+**Alternatives considered:**
+
+- Append new rows to bottom — simpler to implement but produces an unordered list that grows harder to scan over time
+- Drive URL column baked at row-write time — not viable since uploads happen after the row is written
+
+**Rationale:** Alphabetical order by last name gives the owner a scannable roster without sorting. Customer ID in a fixed column (D) is required by `writeVaccinationRecord` for O(n) row lookup at upload time. Vaccination Records in the last column (G) allows the upload handler to append entries without needing to know the full row structure.
+
+**Consequences:** `writeClientRow` uses `insertRowBefore` rather than `appendRow`. Row lookup in `writeVaccinationRecord` scans column D for a matching Customer ID. Multiple vaccination record entries are newline-separated within a single cell. `formatTimestamp` uses `Intl.DateTimeFormat` with `America/New_York` for consistent Eastern time display.
+
+**Status:** Decided
+
+---
+
+## Vaccination record filename convention — `LastName_FirstName_vaccination.ext` — 2026-04-13
+
+**Decision:** Uploaded vaccination record files are renamed to `LastName_FirstName_vaccination.ext` in Google Drive. Subsequent uploads by the same client append a numeric suffix: `_2`, `_3`, etc.
+
+**Context:** Clients upload files from their own devices with arbitrary filenames (e.g. `IMG_4521.jpg`, `photo.png`). Without renaming, the Drive folder becomes unidentifiable as volume grows.
+
+**Alternatives considered:**
+
+- Retain original filename — unidentifiable at volume
+- Rename with timestamp only — sortable but not immediately identifiable by client
+
+**Rationale:** Last name first matches how the owner looks up clients. Including `vaccination` in the filename makes the file type immediately clear without opening it. The numeric suffix on subsequent uploads avoids Drive creating duplicate-named files (`vaccination (1).jpg`) and matches the sheet entry count.
+
+**Consequences:** `uploadVaccinationRecord` resolves the filename from the token payload. If the token cannot be resolved (edge case), the original filename is preserved as a fallback. The suffix counter is derived from `uploadCount` at the time of upload, so suffixes are deterministic across sessions.
+
+**Status:** Decided
+
+---
+
+## ~~Token marked `uploaded` instead of deleted after vaccination record upload — 2026-04-10~~
+
+**Superseded by:** _`uploadCount` replaces `uploaded` boolean — supports multiple vaccination record uploads with cap — 2026-04-13_
+
+**Decision:** After a successful vaccination record upload, the token payload is updated with `uploaded: true` rather than deleted from ScriptProperties.
 
 **Decision:** After a successful vaccination record upload, the token payload is updated with `uploaded: true` rather than deleted from ScriptProperties.
 
