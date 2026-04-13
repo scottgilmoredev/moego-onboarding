@@ -7,7 +7,12 @@
  * sheet-not-found errors.
  */
 
-import { appendSheetRow, writeClientRow, writeVaccinationRecord } from './sheet.js';
+import {
+  appendSheetRow,
+  updateClientOnboardingLink,
+  writeClientRow,
+  writeVaccinationRecord,
+} from './sheet.js';
 
 const mockConfig = {
   spreadsheetId: 'test-spreadsheet-id',
@@ -238,6 +243,115 @@ describe('writeClientRow', () => {
 
     expect(() =>
       writeClientRow({ customer: mockCustomer, shortUrl: 'https://abc.short.gy/xyz123' })
+    ).toThrow('Spreadsheet not found');
+  });
+});
+
+/**
+ * updateClientOnboardingLink
+ *
+ * @description Tests for the updateClientOnboardingLink function. Covers
+ * updating the onboarding link and sentAt for a found row, returning false
+ * when the customerId is not found, and SpreadsheetApp error propagation.
+ */
+describe('updateClientOnboardingLink', () => {
+  const mockSetValues = vi.fn();
+
+  const existingRows = [
+    [
+      'Last Name',
+      'First Name',
+      'Phone',
+      'Customer ID',
+      'Onboarding Link',
+      'Sent At',
+      'Vaccination Records',
+    ],
+    ['Doe', 'John', '+12125551234', 'cus_001', 'https://abc.short.gy/old', '2026-04-01 10:00', ''],
+    [
+      'Taylor',
+      'Bob',
+      '+14045550002',
+      'cus_003',
+      'https://abc.short.gy/bbb',
+      '2026-04-01 11:00',
+      '',
+    ],
+  ];
+
+  function makeMockSheet(rows: unknown[][]) {
+    return {
+      getDataRange: vi.fn().mockReturnValue({ getValues: vi.fn().mockReturnValue(rows) }),
+      getRange: vi.fn().mockReturnValue({ setValues: mockSetValues }),
+    };
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms cols E and F are updated and true is returned when
+   * the customerId is found.
+   */
+  it('updates cols E and F and returns true when customerId is found', () => {
+    const mockSheet = makeMockSheet(existingRows);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+
+    const result = updateClientOnboardingLink({
+      customerId: 'cus_001',
+      shortUrl: 'https://abc.short.gy/new',
+    });
+
+    expect(result).toBe(true);
+    // cus_001 is in row 2 (1-based); cols E-F start at col 5, span 2
+    expect(mockSheet.getRange).toHaveBeenCalledWith(2, 5, 1, 2);
+    const written = mockSetValues.mock.calls[0][0][0];
+    expect(written[0]).toBe('https://abc.short.gy/new');
+    expect(typeof written[1]).toBe('string');
+    expect(written[1].length).toBeGreaterThan(0);
+  });
+
+  /**
+   * @test
+   * @description Confirms false is returned and no write occurs when the
+   * customerId is not found.
+   */
+  it('returns false and does not write when customerId is not found', () => {
+    const mockSheet = makeMockSheet(existingRows);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+
+    const result = updateClientOnboardingLink({
+      customerId: 'cus_999',
+      shortUrl: 'https://abc.short.gy/new',
+    });
+
+    expect(result).toBe(false);
+    expect(mockSetValues).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms SpreadsheetApp errors propagate to the caller.
+   */
+  it('propagates SpreadsheetApp errors', () => {
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockImplementation(() => {
+        throw new Error('Spreadsheet not found');
+      }),
+    });
+
+    expect(() =>
+      updateClientOnboardingLink({
+        customerId: 'cus_001',
+        shortUrl: 'https://abc.short.gy/new',
+      })
     ).toThrow('Spreadsheet not found');
   });
 });

@@ -24,7 +24,11 @@ import {
 } from '#/moego/moego.js';
 import { generateToken, getToken, storeToken } from '#/token/token.js';
 import { shortenUrlStrict } from '#/shortener/shortener.js';
-import { writeClientRow, writeVaccinationRecord } from '#/sheet/sheet.js';
+import {
+  updateClientOnboardingLink,
+  writeClientRow,
+  writeVaccinationRecord,
+} from '#/sheet/sheet.js';
 import {
   sendSuccessEmail,
   sendFullFailureEmail,
@@ -207,6 +211,114 @@ export function uploadVaccinationRecord(
       fileUrl: file.getUrl(),
     });
   }
+}
+
+// ============================================================================
+// OWNER TOOLS
+// ============================================================================
+
+/**
+ * Re-trigger the onboarding flow for a given customer.
+ *
+ * @function retriggerOnboarding
+ * @description Owner-invocable function for reissuing an onboarding link to a
+ * client whose token has expired or who was skipped on the initial webhook. Fetches
+ * the customer and onboarding links, generates a new token, shortens the URL, and
+ * updates the existing sheet row or inserts a new one if none exists. Sends the same
+ * success email as the initial flow on completion. Called from the GAS editor by
+ * wrapping it in a zero-argument function with the customerId hardcoded.
+ *
+ * @param {string} customerId - The MoeGo customer ID to re-trigger onboarding for.
+ * @returns {void}
+ */
+export function retriggerOnboarding(customerId: string): void {
+  const {
+    moegoApiKey,
+    moegoBusinessId,
+    moegoServiceAgreementId,
+    moegoSmsAgreementId,
+    landingPageUrl,
+  } = getConfig();
+
+  const customer = fetchCustomer(customerId, moegoApiKey);
+
+  if (!customer) {
+    sendFullFailureEmail({ firstName: 'Unknown', lastName: 'Unknown', customerId });
+    return;
+  }
+
+  const { serviceAgreementUrl, smsAgreementUrl, cofUrl } = fetchOnboardingLinks({
+    customerId,
+    businessId: moegoBusinessId,
+    serviceAgreementId: moegoServiceAgreementId,
+    smsAgreementId: moegoSmsAgreementId,
+    apiKey: moegoApiKey,
+  });
+
+  if (!serviceAgreementUrl || !smsAgreementUrl || !cofUrl) {
+    sendFullFailureEmail({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      customerId,
+    });
+    return;
+  }
+
+  const token = generateToken();
+
+  storeToken(token, {
+    customerId,
+    firstName: customer.firstName,
+    lastName: customer.lastName,
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    serviceAgreementUrl,
+    smsAgreementUrl,
+    cofUrl,
+  });
+
+  const fullUrl = `${landingPageUrl}?token=${token}`;
+
+  let shortUrl: string;
+
+  try {
+    shortUrl = shortenUrlStrict(fullUrl);
+  } catch (err) {
+    console.log(`retriggerOnboarding: shortenUrlStrict failed — ${String(err)}`);
+
+    sendShortIoFailureEmail({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      customerId,
+      fullUrl,
+    });
+
+    return;
+  }
+
+  try {
+    const updated = updateClientOnboardingLink({ customerId, shortUrl });
+
+    if (!updated) {
+      writeClientRow({ customer, shortUrl });
+    }
+  } catch (err) {
+    console.log(`retriggerOnboarding: sheet write failed — ${String(err)}`);
+
+    sendSheetWriteFailureEmail({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      customerId,
+      shortUrl,
+    });
+
+    return;
+  }
+
+  sendSuccessEmail({
+    firstName: customer.firstName,
+    lastName: customer.lastName,
+    shortUrl,
+  });
 }
 
 // ============================================================================
@@ -420,3 +532,4 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
 (globalThis as unknown as Record<string, unknown>).doGet = doGet;
 (globalThis as unknown as Record<string, unknown>).uploadVaccinationRecord =
   uploadVaccinationRecord;
+(globalThis as unknown as Record<string, unknown>).retriggerOnboarding = retriggerOnboarding;
