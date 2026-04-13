@@ -549,6 +549,33 @@ describe('uploadVaccinationRecord', () => {
     cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
   };
 
+  const mockSetValue = vi.fn();
+  const mockSheetForUpload = {
+    getDataRange: vi.fn().mockReturnValue({
+      getValues: vi.fn().mockReturnValue([
+        [
+          'Last Name',
+          'First Name',
+          'Phone',
+          'Customer ID',
+          'Onboarding Link',
+          'Sent At',
+          'Vaccination Records',
+        ],
+        [
+          'Smith',
+          'Jane',
+          '+14045551234',
+          'cus_001',
+          'https://abc.short.gy/xyz123',
+          '2026-04-13 10:00',
+          '',
+        ],
+      ]),
+    }),
+    getRange: vi.fn().mockReturnValue({ setValue: mockSetValue }),
+  };
+
   beforeEach(() => {
     vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('DriveApp', {
@@ -564,6 +591,11 @@ describe('uploadVaccinationRecord', () => {
         deleteProperty: mockDeleteProperty,
       }),
     });
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi
+        .fn()
+        .mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheetForUpload) }),
+    });
   });
 
   afterEach(() => {
@@ -573,11 +605,11 @@ describe('uploadVaccinationRecord', () => {
 
   /**
    * @test
-   * @description Confirms the file is created with a client-prefixed filename,
-   * uploadCount is set to 1 on the first upload, and the owner is notified with
-   * the Drive URL.
+   * @description Confirms the file is renamed to LastName_FirstName_vaccination.ext,
+   * uploadCount is set to 1 on the first upload, the owner is notified, and the
+   * Drive URL is written to the sheet.
    */
-  it('creates a prefixed file, sets uploadCount to 1 on first upload, and notifies the owner', () => {
+  it('renames file, sets uploadCount to 1 on first upload, notifies owner, and writes to sheet', () => {
     const mockSetProperty = vi.fn();
 
     vi.stubGlobal('PropertiesService', {
@@ -593,7 +625,7 @@ describe('uploadVaccinationRecord', () => {
     expect(Utilities.newBlob).toHaveBeenCalledWith(
       [1, 2, 3],
       'application/pdf',
-      'Jane_Smith_rabies.pdf'
+      'Smith_Jane_vaccination.pdf'
     );
     expect(mockFolder.createFile).toHaveBeenCalled();
     expect(mockSetProperty).toHaveBeenCalledWith(
@@ -603,6 +635,9 @@ describe('uploadVaccinationRecord', () => {
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
       'Vaccination Record Uploaded — Jane S.',
+      expect.stringContaining('https://drive.google.com/file/d/abc123')
+    );
+    expect(mockSetValue).toHaveBeenCalledWith(
       expect.stringContaining('https://drive.google.com/file/d/abc123')
     );
   });

@@ -24,7 +24,7 @@ import {
 } from '#/moego/moego.js';
 import { generateToken, getToken, storeToken } from '#/token/token.js';
 import { shortenUrlStrict } from '#/shortener/shortener.js';
-import { writeClientRow } from '#/sheet/sheet.js';
+import { writeClientRow, writeVaccinationRecord } from '#/sheet/sheet.js';
 import {
   sendSuccessEmail,
   sendFullFailureEmail,
@@ -170,9 +170,10 @@ export function uploadVaccinationRecord(
   const { driveFolderId } = getConfig();
   const payload = getToken(token);
 
-  // Prefix filename with client name if token resolves
+  // Rename file to LastName_FirstName_vaccination.ext if token resolves
+  const ext = fileName.includes('.') ? fileName.slice(fileName.lastIndexOf('.')) : '';
   const resolvedFileName = payload
-    ? `${payload.firstName}_${payload.lastName}_${fileName}`
+    ? `${payload.lastName}_${payload.firstName}_vaccination${ext}`
     : fileName;
 
   // Enforce upload cap
@@ -198,6 +199,11 @@ export function uploadVaccinationRecord(
     sendUploadNotificationEmail({
       firstName: payload.firstName,
       lastName: payload.lastName,
+      fileUrl: file.getUrl(),
+    });
+
+    writeVaccinationRecord({
+      customerId: payload.customerId,
       fileUrl: file.getUrl(),
     });
   }
