@@ -605,11 +605,11 @@ describe('uploadVaccinationRecord', () => {
 
   /**
    * @test
-   * @description Confirms the file is created with a client-prefixed filename,
-   * uploadCount is set to 1 on the first upload, and the owner is notified with
-   * the Drive URL.
+   * @description Confirms the file is renamed to LastName_FirstName_vaccination.ext,
+   * uploadCount is set to 1 on the first upload, the owner is notified, and the
+   * Drive URL is written to the sheet.
    */
-  it('creates a prefixed file, sets uploadCount to 1 on first upload, and notifies the owner', () => {
+  it('renames file, sets uploadCount to 1 on first upload, notifies owner, and writes to sheet', () => {
     const mockSetProperty = vi.fn();
 
     vi.stubGlobal('PropertiesService', {
@@ -625,7 +625,7 @@ describe('uploadVaccinationRecord', () => {
     expect(Utilities.newBlob).toHaveBeenCalledWith(
       [1, 2, 3],
       'application/pdf',
-      'Jane_Smith_rabies.pdf'
+      'Smith_Jane_vaccination.pdf'
     );
     expect(mockFolder.createFile).toHaveBeenCalled();
     expect(mockSetProperty).toHaveBeenCalledWith(

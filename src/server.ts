@@ -170,9 +170,10 @@ export function uploadVaccinationRecord(
   const { driveFolderId } = getConfig();
   const payload = getToken(token);
 
-  // Prefix filename with client name if token resolves
+  // Rename file to LastName_FirstName_vaccination.ext if token resolves
+  const ext = fileName.includes('.') ? fileName.slice(fileName.lastIndexOf('.')) : '';
   const resolvedFileName = payload
-    ? `${payload.firstName}_${payload.lastName}_${fileName}`
+    ? `${payload.lastName}_${payload.firstName}_vaccination${ext}`
     : fileName;
 
   // Enforce upload cap
