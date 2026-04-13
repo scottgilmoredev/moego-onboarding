@@ -67,18 +67,16 @@
 
                 <!-- File upload: uploads vaccination records to Google Drive via google.script.run -->
         <!-- Initial state and cap enforcement handled by the script below -->
-        <div class="step step-upload">
-          <div class="step-row">
-            <div class="step-info">
-              <div class="step-label">Rabies Vaccination Paperwork</div>
-              <div class="step-description">Upload a copy of your pet's current vaccination records.</div>
-            </div>
-            <label class="btn" id="vaccine-label" for="vaccine-upload">Upload</label>
-            <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" />
+        <div class="step">
+          <div class="step-info">
+            <div class="step-label">Rabies Vaccination Paperwork</div>
+            <div class="step-description">Upload a copy of your pet's current vaccination records.</div>
+            <!-- Upload count and error messages injected by script -->
+            <div class="step-upload-status" id="vaccine-status" style="display:none;"></div>
+            <div class="step-upload-error" id="vaccine-error" style="display:none;"></div>
           </div>
-          <!-- Upload count and error messages rendered below the button row -->
-          <div class="step-upload-status" id="vaccine-status" style="display:none;"></div>
-          <div class="step-upload-error" id="vaccine-error" style="display:none;"></div>
+          <label class="btn" id="vaccine-label" for="vaccine-upload">Upload</label>
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" />
         </div>
       </div>
 
@@ -159,7 +157,7 @@
                   } else {
                     resetToUpload();
                   }
-                }, 3000);
+                }, 2000);
               })
               .withFailureHandler(function () {
                 // Reset button to allow retry and show error with phone fallback

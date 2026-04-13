@@ -141,19 +141,6 @@
     margin-top: 2px;
   }
 
-  /* Upload step — wraps the button row and status/error messages */
-  .step-upload {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .step-row {
-    align-items: center;
-    display: flex;
-    gap: 16px;
-    justify-content: space-between;
-    width: 100%;
-  }
 
   /* =========================================================================
      Buttons
@@ -211,7 +198,6 @@
     background-color: #888c96;
     cursor: not-allowed;
     opacity: 0.5;
-    pointer-events: none;
   }
 
   .btn-limit-reached:hover {
@@ -228,8 +214,9 @@
   }
 
   .step-upload-status {
-    color: #888c96;
+    color: #333333;
     font-size: 13px;
+    font-weight: 600;
     margin-top: 4px;
   }
 
