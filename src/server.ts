@@ -175,17 +175,24 @@ export function uploadVaccinationRecord(
     ? `${payload.firstName}_${payload.lastName}_${fileName}`
     : fileName;
 
+  // Enforce upload cap
+  const uploadCount = payload?.uploadCount ?? 0;
+
+  if (uploadCount >= 5) {
+    throw new Error('Upload limit reached');
+  }
+
   const folder = DriveApp.getFolderById(driveFolderId);
   const bytes = Utilities.base64Decode(dataBase64);
   const blob = Utilities.newBlob(bytes, mimeType, resolvedFileName);
 
   const file = folder.createFile(blob);
 
-  // Mark the token as uploaded and notify the owner
+  // Increment upload count and notify the owner
   if (payload) {
     PropertiesService.getScriptProperties().setProperty(
       token,
-      JSON.stringify({ ...payload, uploaded: true })
+      JSON.stringify({ ...payload, uploadCount: uploadCount + 1 })
     );
 
     sendUploadNotificationEmail({

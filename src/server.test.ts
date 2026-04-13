@@ -512,8 +512,8 @@ describe('doGet', () => {
  * uploadVaccinationRecord
  *
  * @description Tests for the uploadVaccinationRecord server function. Covers
- * filename prefixing, token invalidation, fallback for missing token, and
- * propagation of DriveApp errors.
+ * filename prefixing, upload count tracking, upload cap enforcement, fallback
+ * for missing token, and propagation of DriveApp errors.
  */
 describe('uploadVaccinationRecord', () => {
   const mockFile = { getUrl: vi.fn().mockReturnValue('https://drive.google.com/file/d/abc123') };
@@ -555,9 +555,10 @@ describe('uploadVaccinationRecord', () => {
   /**
    * @test
    * @description Confirms the file is created with a client-prefixed filename,
-   * the token is marked as uploaded, and the owner is notified with the Drive URL.
+   * uploadCount is set to 1 on the first upload, and the owner is notified with
+   * the Drive URL.
    */
-  it('creates a prefixed file, marks the token as uploaded, and notifies the owner', () => {
+  it('creates a prefixed file, sets uploadCount to 1 on first upload, and notifies the owner', () => {
     const mockSetProperty = vi.fn();
 
     vi.stubGlobal('PropertiesService', {
@@ -578,13 +579,58 @@ describe('uploadVaccinationRecord', () => {
     expect(mockFolder.createFile).toHaveBeenCalled();
     expect(mockSetProperty).toHaveBeenCalledWith(
       'test-token',
-      JSON.stringify({ ...mockPayload, uploaded: true })
+      JSON.stringify({ ...mockPayload, uploadCount: 1 })
     );
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
       'Vaccination Record Uploaded — Jane S.',
       expect.stringContaining('https://drive.google.com/file/d/abc123')
     );
+  });
+
+  /**
+   * @test
+   * @description Confirms uploadCount is incremented on subsequent uploads.
+   */
+  it('increments uploadCount on subsequent uploads', () => {
+    const mockSetProperty = vi.fn();
+    const payloadWithCount = { ...mockPayload, uploadCount: 2 };
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(JSON.stringify(payloadWithCount)),
+        setProperty: mockSetProperty,
+        deleteProperty: mockDeleteProperty,
+      }),
+    });
+
+    uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token');
+
+    expect(mockSetProperty).toHaveBeenCalledWith(
+      'test-token',
+      JSON.stringify({ ...payloadWithCount, uploadCount: 3 })
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms upload is rejected and no file is created when uploadCount
+   * has reached the cap of 5.
+   */
+  it('throws and does not upload when uploadCount has reached the cap', () => {
+    const payloadAtCap = { ...mockPayload, uploadCount: 5 };
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(JSON.stringify(payloadAtCap)),
+        deleteProperty: mockDeleteProperty,
+      }),
+    });
+
+    expect(() =>
+      uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token')
+    ).toThrow('Upload limit reached');
+    expect(mockFolder.createFile).not.toHaveBeenCalled();
   });
 
   /**

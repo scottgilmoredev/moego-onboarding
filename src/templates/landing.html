@@ -66,18 +66,17 @@
         </div>
 
                 <!-- File upload: uploads vaccination records to Google Drive via google.script.run -->
+        <!-- Initial state and cap enforcement handled by the script below -->
         <div class="step">
           <div class="step-info">
             <div class="step-label">Rabies Vaccination Paperwork</div>
             <div class="step-description">Upload a copy of your pet's current vaccination records.</div>
+            <!-- Upload count and error messages injected by script -->
+            <div class="step-upload-status" id="vaccine-status" style="display:none;"></div>
+            <div class="step-upload-error" id="vaccine-error" style="display:none;"></div>
           </div>
-          <? if (payload.uploaded) { ?>
-          <label class="btn btn-uploaded" id="vaccine-label">Uploaded</label>
-          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" disabled />
-          <? } else { ?>
           <label class="btn" id="vaccine-label" for="vaccine-upload">Upload</label>
-          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" />
-          <? } ?>
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" />
         </div>
       </div>
 
@@ -90,15 +89,51 @@
       (function () {
         var input = document.getElementById('vaccine-upload');
         var label = document.getElementById('vaccine-label');
+        var statusEl = document.getElementById('vaccine-status');
+        var errorEl = document.getElementById('vaccine-error');
         var token = '<?= token ?>';
+        var uploadCount = parseInt(input.dataset.uploadCount, 10) || 0;
+        var businessPhone = input.dataset.businessPhone;
+        var UPLOAD_CAP = 5;
+
+        function showStatus(text) {
+          statusEl.textContent = text;
+          statusEl.style.display = 'block';
+        }
+
+        function lockAtCap() {
+          label.textContent = 'Upload';
+          label.className = 'btn btn-limit-reached';
+          label.removeAttribute('for');
+          input.disabled = true;
+          showStatus('Maximum uploads reached');
+        }
+
+        function resetToUpload() {
+          label.textContent = 'Upload';
+          label.className = 'btn';
+          label.setAttribute('for', 'vaccine-upload');
+          input.disabled = false;
+          input.value = '';
+        }
+
+        // Apply initial state on page load
+        if (uploadCount >= UPLOAD_CAP) {
+          lockAtCap();
+        } else if (uploadCount > 0) {
+          showStatus(uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded');
+        }
 
         input.addEventListener('change', function (e) {
           var file = e.target.files[0];
           if (!file) return;
 
-          // Transition to uploading state — prevent re-trigger
+          // Clear any previous error and transition to uploading state
+          errorEl.style.display = 'none';
+          errorEl.textContent = '';
           label.textContent = 'Uploading...';
-          label.classList.add('btn-uploading');
+          label.className = 'btn btn-uploading';
+          label.removeAttribute('for');
           input.disabled = true;
 
           var reader = new FileReader();
@@ -109,18 +144,30 @@
 
             google.script.run
               .withSuccessHandler(function () {
+                uploadCount++;
+
+                // Show green success state briefly, then reset or lock
                 label.textContent = 'Uploaded';
-                label.classList.remove('btn-uploading');
-                label.classList.add('btn-uploaded');
-                // Detach label from input to prevent re-trigger
-                label.removeAttribute('for');
+                label.className = 'btn btn-uploaded';
+                showStatus(uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded');
+
+                setTimeout(function () {
+                  if (uploadCount >= UPLOAD_CAP) {
+                    lockAtCap();
+                  } else {
+                    resetToUpload();
+                  }
+                }, 2000);
               })
               .withFailureHandler(function () {
-                label.textContent = 'Upload failed';
-                label.classList.remove('btn-uploading');
-                label.classList.add('btn-upload-error');
-                // Re-enable so the user can try again
+                // Reset button to allow retry and show error with phone fallback
+                label.textContent = 'Try again';
+                label.className = 'btn btn-upload-error';
+                label.setAttribute('for', 'vaccine-upload');
                 input.disabled = false;
+                input.value = '';
+                errorEl.textContent = 'Upload failed — please try again or call us at ' + businessPhone;
+                errorEl.style.display = 'block';
               })
               .uploadVaccinationRecord(file.name, file.type, base64, token);
           };
