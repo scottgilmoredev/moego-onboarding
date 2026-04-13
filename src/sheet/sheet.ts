@@ -34,20 +34,25 @@ export function appendSheetRow(values: SheetCellValue[]): void {
  * Format a timestamp as a human-readable string for sheet display.
  *
  * @function formatTimestamp
- * @description Returns a UTC timestamp string in `YYYY-MM-DD HH:MM` format.
+ * @description Returns an Eastern time timestamp string in `YYYY-MM-DD HH:MM` format.
  *
  * @param {number} ms - Unix timestamp in milliseconds.
  * @returns {string} Formatted timestamp string.
  */
 export function formatTimestamp(ms: number): string {
-  const d = new Date(ms);
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const hh = String(d.getUTCHours()).padStart(2, '0');
-  const min = String(d.getUTCMinutes()).padStart(2, '0');
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(ms));
 
-  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
 }
 
 /**
