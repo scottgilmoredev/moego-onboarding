@@ -59,9 +59,13 @@ Save the file with **Cmd+S** (Mac) or **Ctrl+S** (Windows), or click the save ic
 
 ## Step 5 — Select the function and run it
 
-At the top of the editor, click the function dropdown (it may currently show a different function name) and select **retriggerForClient**. Then click the **Run** button to the left of the dropdown.
+At the top of the editor, click the function dropdown (it may currently show a different function name) and select **retriggerForClient**.
 
-![GAS editor toolbar showing the function dropdown open with retriggerForClient circled, and a red arrow pointing to the dropdown](assets/gas-select-function.png)
+![GAS editor toolbar showing the function dropdown open with retriggerForClient circled](assets/gas-select-function.png)
+
+Then click the **Run** button to the left of the dropdown.
+
+![GAS editor toolbar with a red arrow pointing to the Run button and retriggerForClient shown as the selected function](assets/gas-run-function.png)
 
 If this is your first time running a function after a code update, Google may ask you to review and approve permissions. Follow the prompts to authorize the script under your account, then run again.
 
