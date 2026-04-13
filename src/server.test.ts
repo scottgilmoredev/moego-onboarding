@@ -549,6 +549,33 @@ describe('uploadVaccinationRecord', () => {
     cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
   };
 
+  const mockSetValue = vi.fn();
+  const mockSheetForUpload = {
+    getDataRange: vi.fn().mockReturnValue({
+      getValues: vi.fn().mockReturnValue([
+        [
+          'Last Name',
+          'First Name',
+          'Phone',
+          'Customer ID',
+          'Onboarding Link',
+          'Sent At',
+          'Vaccination Records',
+        ],
+        [
+          'Smith',
+          'Jane',
+          '+14045551234',
+          'cus_001',
+          'https://abc.short.gy/xyz123',
+          '2026-04-13 10:00',
+          '',
+        ],
+      ]),
+    }),
+    getRange: vi.fn().mockReturnValue({ setValue: mockSetValue }),
+  };
+
   beforeEach(() => {
     vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('DriveApp', {
@@ -563,6 +590,11 @@ describe('uploadVaccinationRecord', () => {
         getProperty: vi.fn().mockReturnValue(JSON.stringify(mockPayload)),
         deleteProperty: mockDeleteProperty,
       }),
+    });
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi
+        .fn()
+        .mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheetForUpload) }),
     });
   });
 
@@ -603,6 +635,9 @@ describe('uploadVaccinationRecord', () => {
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
       'Vaccination Record Uploaded — Jane S.',
+      expect.stringContaining('https://drive.google.com/file/d/abc123')
+    );
+    expect(mockSetValue).toHaveBeenCalledWith(
       expect.stringContaining('https://drive.google.com/file/d/abc123')
     );
   });

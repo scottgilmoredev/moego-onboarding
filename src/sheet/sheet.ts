@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+
 /**
  * Google Sheets Client
  *
@@ -61,6 +63,46 @@ export function formatTimestamp(ms: number): string {
  * @param {string} params.shortUrl - The shortened token URL to forward to the client.
  * @throws {Error} If the sheet write fails.
  */
+/**
+ * Write a vaccination record entry to the client's sheet row.
+ *
+ * @function writeVaccinationRecord
+ * @description Finds the client's row by customerId (column D), then appends
+ * a timestamped Drive file URL to the Vaccination Records column (column G).
+ * If the cell already has content, the new entry is appended with a newline
+ * separator. No-ops if the customerId is not found.
+ *
+ * @param {object} params - The parameters.
+ * @param {string} params.customerId - The client's MoeGo customer ID.
+ * @param {string} params.fileUrl - The Google Drive URL of the uploaded file.
+ */
+export function writeVaccinationRecord({
+  customerId,
+  fileUrl,
+}: {
+  customerId: string;
+  fileUrl: string;
+}): void {
+  const { spreadsheetId } = getConfig();
+  const sheet = SpreadsheetApp.openById(spreadsheetId).getActiveSheet();
+  const allRows = sheet.getDataRange().getValues() as string[][];
+
+  // Find the row index (1-based) where column D matches customerId, skipping header
+  const rowIndex = allRows.findIndex((r, i) => i > 0 && r[3] === customerId);
+
+  if (rowIndex === -1) {
+    console.log(`writeVaccinationRecord: customerId ${customerId} not found in sheet — skipping`);
+    return;
+  }
+
+  const entry = `${formatTimestamp(Date.now())} — ${fileUrl}`;
+  const existing = allRows[rowIndex][6];
+  const updated = existing ? `${existing}\n${entry}` : entry;
+
+  // Column G is column 7 (1-based), rowIndex is 0-based so add 1
+  sheet.getRange(rowIndex + 1, 7).setValue(updated);
+}
+
 export function writeClientRow({
   customer,
   shortUrl,

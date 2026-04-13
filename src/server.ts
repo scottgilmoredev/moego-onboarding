@@ -24,7 +24,7 @@ import {
 } from '#/moego/moego.js';
 import { generateToken, getToken, storeToken } from '#/token/token.js';
 import { shortenUrlStrict } from '#/shortener/shortener.js';
-import { writeClientRow } from '#/sheet/sheet.js';
+import { writeClientRow, writeVaccinationRecord } from '#/sheet/sheet.js';
 import {
   sendSuccessEmail,
   sendFullFailureEmail,
@@ -198,6 +198,11 @@ export function uploadVaccinationRecord(
     sendUploadNotificationEmail({
       firstName: payload.firstName,
       lastName: payload.lastName,
+      fileUrl: file.getUrl(),
+    });
+
+    writeVaccinationRecord({
+      customerId: payload.customerId,
       fileUrl: file.getUrl(),
     });
   }

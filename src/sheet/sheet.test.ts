@@ -7,7 +7,7 @@
  * sheet-not-found errors.
  */
 
-import { appendSheetRow, writeClientRow } from './sheet.js';
+import { appendSheetRow, writeClientRow, writeVaccinationRecord } from './sheet.js';
 
 const mockConfig = {
   spreadsheetId: 'test-spreadsheet-id',
@@ -238,6 +238,157 @@ describe('writeClientRow', () => {
 
     expect(() =>
       writeClientRow({ customer: mockCustomer, shortUrl: 'https://abc.short.gy/xyz123' })
+    ).toThrow('Spreadsheet not found');
+  });
+});
+
+/**
+ * writeVaccinationRecord
+ *
+ * @description Tests for the writeVaccinationRecord function. Covers writing
+ * a new entry, appending to existing content, no-op on missing customerId,
+ * and SpreadsheetApp error propagation.
+ */
+describe('writeVaccinationRecord', () => {
+  const mockSetValue = vi.fn();
+
+  const existingRows = [
+    [
+      'Last Name',
+      'First Name',
+      'Phone',
+      'Customer ID',
+      'Onboarding Link',
+      'Sent At',
+      'Vaccination Records',
+    ],
+    [
+      'Smith',
+      'Jane',
+      '+14045551234',
+      'cus_001',
+      'https://abc.short.gy/xyz123',
+      '2026-04-13 10:00',
+      '',
+    ],
+    [
+      'Taylor',
+      'Bob',
+      '+14045550002',
+      'cus_003',
+      'https://abc.short.gy/bbb',
+      '2026-04-13 11:00',
+      '',
+    ],
+  ];
+
+  function makeMockSheet(rows: unknown[][]) {
+    return {
+      getDataRange: vi.fn().mockReturnValue({ getValues: vi.fn().mockReturnValue(rows) }),
+      getRange: vi.fn().mockReturnValue({ setValue: mockSetValue }),
+    };
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms the Drive URL and timestamp are written to the correct
+   * row when the customerId is found and the cell is empty.
+   */
+  it('writes the entry to the correct row when customerId is found and cell is empty', () => {
+    const mockSheet = makeMockSheet(existingRows);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+
+    writeVaccinationRecord({
+      customerId: 'cus_001',
+      fileUrl: 'https://drive.google.com/file/d/abc123',
+    });
+
+    // cus_001 is in row 2 (1-based), column G is column 7
+    expect(mockSheet.getRange).toHaveBeenCalledWith(2, 7);
+    expect(mockSetValue).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2} — https:\/\/drive\.google\.com\/file\/d\/abc123$/
+      )
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms the entry is appended with a newline when the cell
+   * already has content.
+   */
+  it('appends to existing content with a newline separator', () => {
+    const rowsWithExisting = [
+      existingRows[0],
+      [
+        'Smith',
+        'Jane',
+        '+14045551234',
+        'cus_001',
+        'https://abc.short.gy/xyz123',
+        '2026-04-13 10:00',
+        '2026-04-13 10:05 — https://drive.google.com/file/d/first',
+      ],
+      existingRows[2],
+    ];
+    const mockSheet = makeMockSheet(rowsWithExisting);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+
+    writeVaccinationRecord({
+      customerId: 'cus_001',
+      fileUrl: 'https://drive.google.com/file/d/abc123',
+    });
+
+    expect(mockSetValue).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^2026-04-13 10:05 — https:\/\/drive\.google\.com\/file\/d\/first\n\d{4}-\d{2}-\d{2} \d{2}:\d{2} — https:\/\/drive\.google\.com\/file\/d\/abc123$/
+      )
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms no write occurs when the customerId is not found.
+   */
+  it('no-ops when customerId is not found', () => {
+    const mockSheet = makeMockSheet(existingRows);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+
+    writeVaccinationRecord({
+      customerId: 'cus_999',
+      fileUrl: 'https://drive.google.com/file/d/abc123',
+    });
+
+    expect(mockSetValue).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms SpreadsheetApp errors propagate to the caller.
+   */
+  it('propagates SpreadsheetApp errors', () => {
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockImplementation(() => {
+        throw new Error('Spreadsheet not found');
+      }),
+    });
+
+    expect(() =>
+      writeVaccinationRecord({
+        customerId: 'cus_001',
+        fileUrl: 'https://drive.google.com/file/d/abc123',
+      })
     ).toThrow('Spreadsheet not found');
   });
 });
