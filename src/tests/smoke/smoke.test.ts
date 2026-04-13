@@ -22,7 +22,26 @@ vi.mock('#/utils/config.js', () => ({
  * an email to the business owner.
  */
 describe('smoke', () => {
-  const mockSheet = { appendRow: vi.fn() };
+  const mockSheet = {
+    appendRow: vi.fn(),
+    getDataRange: vi.fn().mockReturnValue({
+      getValues: vi
+        .fn()
+        .mockReturnValue([
+          [
+            'Last Name',
+            'First Name',
+            'Phone',
+            'Customer ID',
+            'Onboarding Link',
+            'Sent At',
+            'Vaccination Records',
+          ],
+        ]),
+    }),
+    insertRowBefore: vi.fn(),
+    getRange: vi.fn().mockReturnValue({ setValues: vi.fn() }),
+  };
   const mockSpreadsheet = { getActiveSheet: vi.fn().mockReturnValue(mockSheet) };
 
   beforeEach(() => {

@@ -81,11 +81,13 @@ describe('appendSheetRow', () => {
  * writeClientRow
  *
  * @description Tests for the writeClientRow orchestration function. Covers
- * correct row assembly from customer metadata, shortened URL, and Drive link.
+ * correct column order, alphabetical insertion by last name, sentAt timestamp
+ * format, and SpreadsheetApp error propagation.
  */
 describe('writeClientRow', () => {
-  const mockSheet = { appendRow: vi.fn() };
-  const mockSpreadsheet = { getActiveSheet: vi.fn().mockReturnValue(mockSheet) };
+  const mockInsertRowBefore = vi.fn();
+  const mockGetRange = vi.fn().mockReturnValue({ setValues: vi.fn() });
+  const mockAppendRow = vi.fn();
 
   const mockCustomer = {
     id: 'cus_001',
@@ -95,55 +97,132 @@ describe('writeClientRow', () => {
     companyId: 'cmp_001',
   };
 
-  beforeEach(() => {
-    vi.stubGlobal('SpreadsheetApp', {
-      openById: vi.fn().mockReturnValue(mockSpreadsheet),
-    });
-    vi.clearAllMocks();
-  });
+  // Existing rows: header + two data rows sorted A-Z by last name
+  const existingRows = [
+    [
+      'Last Name',
+      'First Name',
+      'Phone',
+      'Customer ID',
+      'Onboarding Link',
+      'Sent At',
+      'Vaccination Records',
+    ],
+    [
+      'Anderson',
+      'Alice',
+      '+14045550001',
+      'cus_002',
+      'https://abc.short.gy/aaa',
+      '2026-04-01 10:00',
+      '',
+    ],
+    [
+      'Taylor',
+      'Bob',
+      '+14045550002',
+      'cus_003',
+      'https://abc.short.gy/bbb',
+      '2026-04-01 11:00',
+      '',
+    ],
+  ];
+
+  function makeMockSheet(rows: unknown[][]) {
+    return {
+      getDataRange: vi.fn().mockReturnValue({ getValues: vi.fn().mockReturnValue(rows) }),
+      getLastRow: vi.fn().mockReturnValue(rows.length),
+      insertRowBefore: mockInsertRowBefore,
+      getRange: mockGetRange,
+      appendRow: mockAppendRow,
+    };
+  }
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   /**
    * @test
-   * @description Confirms the row includes the customer name, phone, shortened
-   * URL, and Drive link in the correct column order.
+   * @description Confirms the row is inserted at the correct alphabetical
+   * position when the last name sorts between existing rows.
    */
-  it('appends a row with customer metadata, shortened URL, and Drive link', () => {
-    writeClientRow({
-      customer: mockCustomer,
-      shortUrl: 'https://abc.short.gy/xyz123',
-      driveFileUrl: 'https://drive.google.com/file/d/abc/view',
+  it('inserts the row in alphabetical position by last name', () => {
+    const mockSheet = makeMockSheet(existingRows);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
     });
 
-    expect(mockSheet.appendRow).toHaveBeenCalledWith([
-      'Jane',
-      'Smith',
-      '+14045551234',
-      'https://abc.short.gy/xyz123',
-      'https://drive.google.com/file/d/abc/view',
-    ]);
+    writeClientRow({ customer: mockCustomer, shortUrl: 'https://abc.short.gy/xyz123' });
+
+    // Smith sorts between Anderson (row 2) and Taylor (row 3) — insert before row 3
+    expect(mockInsertRowBefore).toHaveBeenCalledWith(3);
   });
 
   /**
    * @test
-   * @description Confirms the Drive link column is empty string when not provided.
+   * @description Confirms the row is inserted before all data rows when the
+   * last name sorts before all existing entries.
    */
-  it('uses empty string for Drive link when not provided', () => {
-    writeClientRow({
-      customer: mockCustomer,
-      shortUrl: 'https://abc.short.gy/xyz123',
+  it('inserts before all data rows when last name sorts first', () => {
+    const customer = { ...mockCustomer, lastName: 'Adams' };
+    const mockSheet = makeMockSheet(existingRows);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
     });
 
-    expect(mockSheet.appendRow).toHaveBeenCalledWith([
-      'Jane',
-      'Smith',
-      '+14045551234',
-      'https://abc.short.gy/xyz123',
-      '',
-    ]);
+    writeClientRow({ customer, shortUrl: 'https://abc.short.gy/xyz123' });
+
+    // Adams sorts before Anderson — insert before row 2 (first data row)
+    expect(mockInsertRowBefore).toHaveBeenCalledWith(2);
+  });
+
+  /**
+   * @test
+   * @description Confirms the row is appended when the last name sorts after
+   * all existing entries.
+   */
+  it('appends when last name sorts after all existing rows', () => {
+    const customer = { ...mockCustomer, lastName: 'Zimmerman' };
+    const mockSheet = makeMockSheet(existingRows);
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+
+    writeClientRow({ customer, shortUrl: 'https://abc.short.gy/xyz123' });
+
+    expect(mockAppendRow).toHaveBeenCalled();
+    expect(mockInsertRowBefore).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms the row is written with the correct column order and
+   * sentAt timestamp format.
+   */
+  it('writes the row with correct column order and sentAt timestamp', () => {
+    const mockSheet = makeMockSheet(existingRows);
+    const mockSetValues = vi.fn();
+    mockSheet.getRange = vi.fn().mockReturnValue({ setValues: mockSetValues });
+
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
+    });
+
+    writeClientRow({ customer: mockCustomer, shortUrl: 'https://abc.short.gy/xyz123' });
+
+    const call = mockSetValues.mock.calls[0][0][0];
+
+    expect(call[0]).toBe('Smith');
+    expect(call[1]).toBe('Jane');
+    expect(call[2]).toBe('+14045551234');
+    expect(call[3]).toBe('cus_001');
+    expect(call[4]).toBe('https://abc.short.gy/xyz123');
+    // sentAt should be a formatted timestamp string
+    expect(typeof call[5]).toBe('string');
+    expect(call[5].length).toBeGreaterThan(0);
+    expect(call[6]).toBe('');
   });
 
   /**
@@ -151,8 +230,10 @@ describe('writeClientRow', () => {
    * @description Confirms SpreadsheetApp errors propagate to the caller.
    */
   it('propagates SpreadsheetApp errors', () => {
-    SpreadsheetApp.openById = vi.fn().mockImplementation(() => {
-      throw new Error('Spreadsheet not found');
+    vi.stubGlobal('SpreadsheetApp', {
+      openById: vi.fn().mockImplementation(() => {
+        throw new Error('Spreadsheet not found');
+      }),
     });
 
     expect(() =>

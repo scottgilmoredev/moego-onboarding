@@ -96,7 +96,26 @@ const mockNotFoundResponse = createMockFetchResponse(404, { message: 'Not found'
  * failure, sheet write failure, and customer lookup failure cases.
  */
 describe('doPost', () => {
-  const mockSheet = { appendRow: vi.fn() };
+  const mockSheet = {
+    appendRow: vi.fn(),
+    getDataRange: vi.fn().mockReturnValue({
+      getValues: vi
+        .fn()
+        .mockReturnValue([
+          [
+            'Last Name',
+            'First Name',
+            'Phone',
+            'Customer ID',
+            'Onboarding Link',
+            'Sent At',
+            'Vaccination Records',
+          ],
+        ]),
+    }),
+    insertRowBefore: vi.fn(),
+    getRange: vi.fn().mockReturnValue({ setValues: vi.fn() }),
+  };
   const mockSpreadsheet = { getActiveSheet: vi.fn().mockReturnValue(mockSheet) };
 
   beforeEach(() => {
