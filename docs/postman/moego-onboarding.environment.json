@@ -1,0 +1,79 @@
+{
+  "id": "moego-onboarding-env",
+  "name": "moego-onboarding",
+  "values": [
+    {
+      "key": "moegoBaseUrl",
+      "value": "https://openapi.moego.pet",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "moegoApiKey",
+      "value": "<your-moego-api-key>",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "moegoCompanyId",
+      "value": "<your-company-id>",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "moegoBusinessId",
+      "value": "<your-business-id>",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "moegoServiceAgreementId",
+      "value": "<your-service-agreement-id>",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "moegoSmsAgreementId",
+      "value": "<your-sms-agreement-id>",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "shortIoApiKey",
+      "value": "<your-short-io-api-key>",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "shortIoDomain",
+      "value": "<your-short-io-domain>",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "landingPageUrl",
+      "value": "<your-landing-page-url>",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "customerPhone",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "fullUrl",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

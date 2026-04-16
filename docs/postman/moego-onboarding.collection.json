@@ -1,0 +1,221 @@
+{
+  "info": {
+    "name": "moego-onboarding",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "API calls made by the moego-onboarding Google Apps Script project. Use this collection to look up customers, generate onboarding links manually, and shorten URLs without logging into external dashboards.\n\nRequires the moego-onboarding environment to be active. Set `customerId` in the environment before running any MoeGo request. Set `fullUrl` before running the Short.io shorten request."
+  },
+  "item": [
+    {
+      "name": "MoeGo",
+      "item": [
+        {
+          "name": "List Customers by Phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Basic {{moegoApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pagination\": { \"pageSize\": 499, \"pageToken\": \"1\" },\n  \"companyId\": \"{{moegoCompanyId}}\",\n  \"filter\": {\n    \"mainPhoneNumber\": \"{{customerPhone}}\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{moegoBaseUrl}}/v1/customers:list",
+              "host": ["{{moegoBaseUrl}}"],
+              "path": ["v1", "customers:list"]
+            },
+            "description": "Look up a customer by phone number to retrieve their Customer ID.\n\nSet `customerPhone` in the environment to the client's 10-digit phone number (no country code, e.g. `4049850300`). The `id` field in the response is the Customer ID — copy it into the `customerId` environment variable before running any other requests.\n\nUse this when the sheet row is missing or the Customer ID is otherwise unknown."
+          }
+        },
+        {
+          "name": "Get Customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Basic {{moegoApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{moegoBaseUrl}}/v1/customers/{{customerId}}",
+              "host": ["{{moegoBaseUrl}}"],
+              "path": ["v1", "customers", "{{customerId}}"]
+            },
+            "description": "Fetch full customer details by Customer ID.\n\nSource: `src/moego/moego.ts` — `getCustomer()`\n\nSet `customerId` in the environment before running. Returns name, phone, email, and other customer fields.\n\nUse this to confirm a Customer ID is valid and to retrieve customer details when diagnosing issues."
+          }
+        },
+        {
+          "name": "Get Service Agreement Sign Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Basic {{moegoApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{moegoBaseUrl}}/v1/agreements/{{moegoServiceAgreementId}}/sign_link?customer_id={{customerId}}&business_id={{moegoBusinessId}}",
+              "host": ["{{moegoBaseUrl}}"],
+              "path": ["v1", "agreements", "{{moegoServiceAgreementId}}", "sign_link"],
+              "query": [
+                {
+                  "key": "customer_id",
+                  "value": "{{customerId}}"
+                },
+                {
+                  "key": "business_id",
+                  "value": "{{moegoBusinessId}}"
+                }
+              ]
+            },
+            "description": "Generate a per-customer Service Agreement signing URL.\n\nSource: `src/moego/moego.ts` — `getAgreementSignLink()` called with `moegoServiceAgreementId`\n\nSet `customerId` in the environment before running. Returns a `signUrl` that can be sent directly to the client."
+          }
+        },
+        {
+          "name": "Get SMS Agreement Sign Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Basic {{moegoApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{moegoBaseUrl}}/v1/agreements/{{moegoSmsAgreementId}}/sign_link?customer_id={{customerId}}&business_id={{moegoBusinessId}}",
+              "host": ["{{moegoBaseUrl}}"],
+              "path": ["v1", "agreements", "{{moegoSmsAgreementId}}", "sign_link"],
+              "query": [
+                {
+                  "key": "customer_id",
+                  "value": "{{customerId}}"
+                },
+                {
+                  "key": "business_id",
+                  "value": "{{moegoBusinessId}}"
+                }
+              ]
+            },
+            "description": "Generate a per-customer SMS Agreement signing URL.\n\nSource: `src/moego/moego.ts` — `getAgreementSignLink()` called with `moegoSmsAgreementId`\n\nSet `customerId` in the environment before running. Returns a `signUrl` that can be sent directly to the client."
+          }
+        },
+        {
+          "name": "Get Card-on-File Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Basic {{moegoApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{moegoBaseUrl}}/v1/customers/{{customerId}}/cof/link",
+              "host": ["{{moegoBaseUrl}}"],
+              "path": ["v1", "customers", "{{customerId}}", "cof", "link"]
+            },
+            "description": "Generate a per-customer card-on-file payment link.\n\nSource: `src/moego/moego.ts` — `getCofLink()`\n\nSet `customerId` in the environment before running. Returns a `link` that can be sent directly to the client."
+          }
+        },
+        {
+          "name": "Check Finished Appointments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Basic {{moegoApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pagination\": { \"pageSize\": 1, \"pageToken\": \"1\" },\n  \"companyId\": \"{{moegoCompanyId}}\",\n  \"businessIds\": [\"{{moegoBusinessId}}\"],\n  \"filter\": {\n    \"customerIds\": [\"{{customerId}}\"],\n    \"statuses\": [\"FINISHED\"]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{moegoBaseUrl}}/v1/appointments:list",
+              "host": ["{{moegoBaseUrl}}"],
+              "path": ["v1", "appointments:list"]
+            },
+            "description": "Check whether a customer has any completed appointments at this business.\n\nSource: `src/moego/moego.ts` — `hasFinishedAppointments()`\n\nSet `customerId` in the environment before running. If `appointments` is non-empty in the response, the system treats this customer as a returning client and skips onboarding — use this to diagnose why a client was skipped."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Short.io",
+      "item": [
+        {
+          "name": "Shorten URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "authorization",
+                "value": "{{shortIoApiKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"domain\": \"{{shortIoDomain}}\",\n  \"originalURL\": \"{{fullUrl}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.short.io/links",
+              "protocol": "https",
+              "host": ["api", "short", "io"],
+              "path": ["links"]
+            },
+            "description": "Shorten a landing page URL via Short.io.\n\nSource: `src/shortener/shortener.ts` — `shortenUrlStrict()`\n\nSet `fullUrl` in the environment to the full landing page URL before running (e.g. `https://script.google.com/macros/s/.../exec?token=...`). Returns a `shortURL` that can be sent to the client.\n\nUse this when the Short.io step failed during onboarding or retrigger and you need to shorten a URL manually without logging into the Short.io dashboard."
+          }
+        }
+      ]
+    }
+  ]
+}

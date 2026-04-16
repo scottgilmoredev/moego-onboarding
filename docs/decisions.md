@@ -2,6 +2,28 @@
 
 ---
 
+## Owner self-service tooling — Postman collection and customer ID lookup — 2026-04-16
+
+**Decision:** Provide the business owner with a Postman collection pre-configured for all external API calls made by the script, along with documentation covering customer ID lookup by phone number, manual link generation, and URL shortening.
+
+**Context:** A production incident on 2026-04-15 exposed a single point of failure: the owner had no way to recover a missing customer link without developer assistance. The developer's internet outage coincided with the incident, leaving no recovery path. Two gaps drove the tooling decision: (1) no documented way for the owner to look up a customer ID when the sheet row is absent, and (2) no way to manually generate or shorten onboarding links without access to the GAS editor or external dashboards.
+
+**Alternatives considered:**
+
+- Document manual API calls via curl — works but is inaccessible for a non-technical owner
+- Owner logs into MoeGo and Short.io dashboards directly — requires separate logins and is not actionable for generating per-customer tokens
+- Add a UI in the landing page or GAS sidebar for owner-facing operations — significantly higher effort; out of scope
+
+**Rationale:** A pre-configured Postman collection with an environment file gives the owner a self-contained tool that requires no code knowledge. Each request is documented with its use case. Customer lookup by phone (`POST /v1/customers:list` with `filter.mainPhoneNumber`) is the key capability — it recovers the Customer ID from data the owner already has (client name and phone) without needing the sheet or developer access.
+
+**Implementation note:** `filter.mainPhoneNumber` requires the phone number without country code (e.g. `4049850300`, not `+14049850300`). E.164 format is rejected by this endpoint.
+
+**Consequences:** `docs/postman/` contains the collection JSON, environment JSON (placeholders committed; owner receives a populated copy out-of-band), and a usage guide. The collection must be updated when API calls in `src/moego/moego.ts` or `src/shortener/shortener.ts` change — see the sync checklist in `docs/postman/postman-guide.md`. The `retrigger-guide.md` is updated to reference the Postman guide for customer ID lookup when the sheet row is missing.
+
+**Status:** Decided
+
+---
+
 ## First-time client check migrated to `ListAppointments` — 2026-04-02
 
 **Decision:** Replace `lastAppointmentDate` on the customer record with a `POST /v1/appointments:list` call filtered to `FINISHED` status as the mechanism for detecting returning clients.
