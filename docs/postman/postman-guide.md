@@ -11,10 +11,12 @@ diagnose issues, and shorten URLs without logging into any external dashboard.
 ### Step 1 — Import the collection and environment
 
 1. Open Postman
-2. Click **Import** in the top left
-3. Import both files:
+2. Click **Import** in the sidebar
+3. Select or drag both files at once:
    - `moego-onboarding.collection.json`
    - `moego-onboarding.environment.json`
+4. Click **Import** to confirm
+5. An **Import Complete** message appears in the footer — click **Go to Collection** to view
 
 ### Step 2 — Activate the environment
 
