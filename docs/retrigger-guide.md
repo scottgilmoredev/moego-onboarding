@@ -7,7 +7,9 @@ Use this when a client needs a new onboarding link because:
 - Their original link expired (links are valid for 7 days from the time the appointment was created)
 - They were booked for a second appointment before completing onboarding on their first, and the system skipped them as a returning client
 
-You will need the client's **Customer ID** from the Google Sheet. Open the sheet and find the client's row by name — their Customer ID is in the **Customer ID** column (column D).
+You will need the client's **Customer ID**. Open the Google Sheet and find the client's row by name — their Customer ID is in the **Customer ID** column (column D).
+
+If the sheet row is missing, you can look up the Customer ID by phone number using the Postman collection — see [docs/postman/postman-guide.md](postman/postman-guide.md), section **Finding a Customer ID**.
 
 ---
 

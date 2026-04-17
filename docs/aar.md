@@ -2,6 +2,82 @@
 
 ---
 
+**Date:** 2026-04-15
+**Scope:** Production incident — premature token deletion, missing sheet row, developer unavailability
+**Participants:** Solo
+
+---
+
+## What Happened
+
+A client's onboarding landing page link stopped working before the 7-day expiry window. The script property storing the client's token was absent — either deleted prematurely or never written. Separately, the sheet row for this client was also missing, meaning neither the link nor the Customer ID were recoverable from the normal sources. The developer's internet connection went down around the same time, preventing any GAS editor access to retrigger. Links were delivered to the client manually as an emergency measure.
+
+---
+
+## Root Cause Assessment
+
+The cause of the missing script property is unconfirmed. No code bug was identified in the token lifecycle:
+
+- `purgeExpiredTokens()` only deletes entries where `expiresAt < Date.now()` — it cannot delete a non-expired token
+- `getToken()` only deletes on access if the token is expired
+- Config properties (e.g. `MOEGO_API_KEY`) cannot be misidentified as tokens — they fail `JSON.parse` and are skipped by the purge
+
+Likely causes that cannot be ruled out:
+
+- **GAS Script Properties storage cap** — GAS enforces a 500KB total limit across all script properties. If the limit was approached, a write may have silently failed, meaning the token was never stored despite `storeToken()` appearing to succeed
+- **Manual deletion** — a GAS editor user with project access could have deleted script properties directly; no audit trail exists for this
+- **GAS platform transient error** — `PropertiesService` writes can silently fail under GAS quota or rate limit conditions with no thrown exception
+
+The missing sheet row is a separate issue and not covered here.
+
+---
+
+## What Failed
+
+**Single owner dependency.** The developer was the only person who could retrigger the flow or recover a Customer ID. When the developer was unreachable, there was no recovery path available to the owner independently.
+
+**No Customer ID recovery path.** The Customer ID (MoeGo API identifier) was stored only in the sheet. With the sheet row missing, there was no documented way for the owner to look it up without developer assistance. The MoeGo UI displays a numeric internal ID in the URL — this is not accepted by the API.
+
+**No owner-accessible tooling.** The owner had no way to call the MoeGo API or Short.io directly without logging into separate dashboards and navigating unfamiliar interfaces.
+
+---
+
+## What Changed
+
+**Postman collection added** — `docs/postman/` now contains a pre-configured collection and environment covering all external API calls: customer lookup by phone, Get Customer, agreement sign links, card-on-file link, finished appointments check, and URL shortening. The owner receives a populated copy (real values filled in) and can run any call independently.
+
+**Customer ID lookup via phone** — `POST /v1/customers:list` with `filter.mainPhoneNumber` allows the owner to recover a Customer ID from the client's phone number alone. Phone must be provided without country code (e.g. `4049850300`) — E.164 format is rejected by this endpoint.
+
+**`retrigger-guide.md` updated** — the customer ID lookup section now references the Postman guide as the recovery path when the sheet row is missing, replacing the prior instruction to contact the developer.
+
+---
+
+## Sustains
+
+- **Graceful failure handling contained the blast radius.** The failure did not propagate silently — the missing token caused a clear error state rather than corrupt data.
+- **`retriggerOnboarding` worked correctly once the Customer ID was recovered.** The retrigger mechanism introduced in Milestone 11 performed as designed once a valid Customer ID was obtained.
+
+---
+
+## Improvements
+
+- **Investigate Script Properties write reliability.** Consider adding a read-back verification after `storeToken()` — write then immediately read the key and throw if the value is absent. This would surface silent write failures at the point of occurrence rather than at link access time.
+- **Reduce developer as single point of failure.** The Postman collection is a mitigation. The deeper gap is that the owner has no way to independently trigger the GAS retrigger flow — this still requires GAS editor access. A future enhancement could expose `retriggerOnboarding` via a simple owner-facing UI or a protected HTTP endpoint.
+
+---
+
+## Actions
+
+| Action                                                              | Owner           | By When           |
+| ------------------------------------------------------------------- | --------------- | ----------------- |
+| Add Postman collection, environment, and guide to `docs/postman/`   | scottgilmoredev | Done — 2026-04-16 |
+| Update `retrigger-guide.md` with Postman-based Customer ID lookup   | scottgilmoredev | Done — 2026-04-16 |
+| Add `retriggerOnboarding` owner-facing UI to `docs/enhancements.md` | scottgilmoredev | Next doc pass     |
+
+---
+
+---
+
 **Date:** 2026-04-13
 **Scope:** Milestone 11 — Owner Tooling & Sheet Management
 **Participants:** Solo
