@@ -36,24 +36,6 @@
 
 **Consequences:** `docs/postman/` contains the collection JSON, environment JSON (placeholders committed; owner receives a populated copy out-of-band), and a usage guide. The collection must be updated when API calls in `src/moego/moego.ts` or `src/shortener/shortener.ts` change — see the sync checklist in `docs/postman/postman-guide.md`. The `retrigger-guide.md` is updated to reference the Postman guide for customer ID lookup when the sheet row is missing.
 
----
-
-## First-time client check migrated to `ListAppointments` — 2026-04-02
-
-**Decision:** Replace `lastAppointmentDate` on the customer record with a `POST /v1/appointments:list` call filtered to `FINISHED` status as the mechanism for detecting returning clients.
-
-**Context:** `lastAppointmentDate` on the `MoeGoCustomer` object proved unreliable — observed values include future dates, suggesting the field reflects next appointment date in some or all cases. The MoeGo Aggregation API (`LookupClientPetProfile`) was considered as an alternative but is pure gRPC and inaccessible from `UrlFetchApp`. `ListAppointments` is a REST endpoint that accepts a `filter.statuses` array — filtering to `FINISHED` and checking for a non-empty result is a reliable signal that the client has at least one completed appointment on record.
-
-**Alternatives considered:**
-
-- Retain `lastAppointmentDate` — confirmed unreliable; produces false positives for new clients with upcoming appointments
-- `LookupClientPetProfile` (Aggregation API) — purpose-built but gRPC-only; not accessible from GAS `UrlFetchApp`
-- Check `AgreementRecord.signedStatus` — not accessible via the API
-
-**Rationale:** `ListAppointments` with `FINISHED` status filter is the most reliable available REST signal for confirmed completed appointments. An empty `appointments` array confirms the client is new.
-
-**Consequences:** `doPost` requires an additional API call after `getCustomer` — `hasFinishedAppointments` with the customer ID, company ID, and business ID. The `lastAppointmentDate` field and related logic are removed. `MoeGoCustomer` type updated accordingly. Pagination must include `pageToken: "1"` or the API returns 500. **Known edge case:** a client who completes an appointment without finishing onboarding will be permanently skipped on all future webhooks. The owner must manually re-trigger onboarding for these clients — no automated mechanism exists yet.
-
 **Status:** Decided
 
 ---
