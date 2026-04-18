@@ -150,10 +150,10 @@ describe('writeClientRow', () => {
 
   /**
    * @test
-   * @description Confirms the row is inserted at the correct alphabetical
-   * position when the last name sorts between existing rows.
+   * @description Confirms the row is always inserted at row 2 when data rows
+   * exist, regardless of last name.
    */
-  it('inserts the row in alphabetical position by last name', () => {
+  it('inserts at row 2 when data rows exist', () => {
     const mockSheet = makeMockSheet(existingRows);
     vi.stubGlobal('SpreadsheetApp', {
       openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
@@ -161,41 +161,23 @@ describe('writeClientRow', () => {
 
     writeClientRow({ customer: mockCustomer, shortUrl: 'https://abc.short.gy/xyz123' });
 
-    // Smith sorts between Anderson (row 2) and Taylor (row 3) — insert before row 3
-    expect(mockInsertRowBefore).toHaveBeenCalledWith(3);
-  });
-
-  /**
-   * @test
-   * @description Confirms the row is inserted before all data rows when the
-   * last name sorts before all existing entries.
-   */
-  it('inserts before all data rows when last name sorts first', () => {
-    const customer = { ...mockCustomer, lastName: 'Adams' };
-    const mockSheet = makeMockSheet(existingRows);
-    vi.stubGlobal('SpreadsheetApp', {
-      openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
-    });
-
-    writeClientRow({ customer, shortUrl: 'https://abc.short.gy/xyz123' });
-
-    // Adams sorts before Anderson — insert before row 2 (first data row)
     expect(mockInsertRowBefore).toHaveBeenCalledWith(2);
+    expect(mockAppendRow).not.toHaveBeenCalled();
   });
 
   /**
    * @test
-   * @description Confirms the row is appended when the last name sorts after
-   * all existing entries.
+   * @description Confirms the row is appended when only the header row exists,
+   * as there is no row 2 to insert before.
    */
-  it('appends when last name sorts after all existing rows', () => {
-    const customer = { ...mockCustomer, lastName: 'Zimmerman' };
-    const mockSheet = makeMockSheet(existingRows);
+  it('appends when only the header row exists', () => {
+    const headerOnly = [existingRows[0]];
+    const mockSheet = makeMockSheet(headerOnly);
     vi.stubGlobal('SpreadsheetApp', {
       openById: vi.fn().mockReturnValue({ getActiveSheet: vi.fn().mockReturnValue(mockSheet) }),
     });
 
-    writeClientRow({ customer, shortUrl: 'https://abc.short.gy/xyz123' });
+    writeClientRow({ customer: mockCustomer, shortUrl: 'https://abc.short.gy/xyz123' });
 
     expect(mockAppendRow).toHaveBeenCalled();
     expect(mockInsertRowBefore).not.toHaveBeenCalled();

@@ -114,6 +114,7 @@ describe('doPost', () => {
           ],
         ]),
     }),
+    getLastRow: vi.fn().mockReturnValue(1),
     insertRowBefore: vi.fn(),
     getRange: vi.fn().mockReturnValue({ setValues: vi.fn() }),
   };
@@ -768,6 +769,7 @@ describe('retriggerOnboarding', () => {
     return {
       appendRow: vi.fn(),
       getDataRange: vi.fn().mockReturnValue({ getValues: vi.fn().mockReturnValue(rows) }),
+      getLastRow: vi.fn().mockReturnValue(rows.length),
       insertRowBefore: vi.fn(),
       getRange: vi.fn().mockReturnValue({ setValues: vi.fn() }),
     };
