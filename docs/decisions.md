@@ -1,5 +1,21 @@
 # Decision Log — moego-onboarding
 
+## Sheet insert order changed to most-recent-first — 2026-04-17
+
+**Decision:** New client rows are inserted as the first data row (row 2), pushing existing rows down so the most recent entries are always at the top. Alphabetical insert by last name is abandoned.
+
+**Context:** Alphabetical insert by last name was chosen at the time of the Milestone 11 sheet restructure for easy scanning. In practice the owner's primary use for the sheet is checking the most recently sent link, not looking up a specific client by name. Scrolling to find a new entry adds friction in the common case.
+
+**Alternatives considered:**
+
+- Retain alphabetical insert — benefits easy scanning for roster-style lookup; does not match the owner's actual access pattern
+
+**Rationale:** Most-recent-first places the new entry at row 2 immediately after the header, directly where the owner looks. The alphabetical ordering benefit is outweighed by the recency access pattern.
+
+**Consequences:** `writeClientRow` uses `insertRowBefore(2)` instead of scanning for an alphabetical insert position; falls back to `appendRow` when only the header row exists. Column structure and all other sheet behavior are unchanged from _Sheet column structure — 7-column layout with alphabetical insert by last name — 2026-04-13_.
+
+**Status:** Decided
+
 ---
 
 ## Owner self-service tooling — Postman collection and customer ID lookup — 2026-04-16
@@ -19,26 +35,6 @@
 **Implementation note:** `filter.mainPhoneNumber` requires the phone number without country code (e.g. `4049850300`, not `+14049850300`). E.164 format is rejected by this endpoint.
 
 **Consequences:** `docs/postman/` contains the collection JSON, environment JSON (placeholders committed; owner receives a populated copy out-of-band), and a usage guide. The collection must be updated when API calls in `src/moego/moego.ts` or `src/shortener/shortener.ts` change — see the sync checklist in `docs/postman/postman-guide.md`. The `retrigger-guide.md` is updated to reference the Postman guide for customer ID lookup when the sheet row is missing.
-
-**Status:** Decided
-
----
-
-## First-time client check migrated to `ListAppointments` — 2026-04-02
-
-**Decision:** Replace `lastAppointmentDate` on the customer record with a `POST /v1/appointments:list` call filtered to `FINISHED` status as the mechanism for detecting returning clients.
-
-**Context:** `lastAppointmentDate` on the `MoeGoCustomer` object proved unreliable — observed values include future dates, suggesting the field reflects next appointment date in some or all cases. The MoeGo Aggregation API (`LookupClientPetProfile`) was considered as an alternative but is pure gRPC and inaccessible from `UrlFetchApp`. `ListAppointments` is a REST endpoint that accepts a `filter.statuses` array — filtering to `FINISHED` and checking for a non-empty result is a reliable signal that the client has at least one completed appointment on record.
-
-**Alternatives considered:**
-
-- Retain `lastAppointmentDate` — confirmed unreliable; produces false positives for new clients with upcoming appointments
-- `LookupClientPetProfile` (Aggregation API) — purpose-built but gRPC-only; not accessible from GAS `UrlFetchApp`
-- Check `AgreementRecord.signedStatus` — not accessible via the API
-
-**Rationale:** `ListAppointments` with `FINISHED` status filter is the most reliable available REST signal for confirmed completed appointments. An empty `appointments` array confirms the client is new.
-
-**Consequences:** `doPost` requires an additional API call after `getCustomer` — `hasFinishedAppointments` with the customer ID, company ID, and business ID. The `lastAppointmentDate` field and related logic are removed. `MoeGoCustomer` type updated accordingly. Pagination must include `pageToken: "1"` or the API returns 500. **Known edge case:** a client who completes an appointment without finishing onboarding will be permanently skipped on all future webhooks. The owner must manually re-trigger onboarding for these clients — no automated mechanism exists yet.
 
 **Status:** Decided
 
@@ -108,8 +104,6 @@
 
 **Decision:** After a successful vaccination record upload, the token payload is updated with `uploaded: true` rather than deleted from ScriptProperties.
 
-**Decision:** After a successful vaccination record upload, the token payload is updated with `uploaded: true` rather than deleted from ScriptProperties.
-
 **Context:** The initial implementation deleted the token on upload to prevent re-submission. This was identified as incorrect — the token also stores the client's onboarding links (service agreement, SMS agreement, card on file). Deleting the token on upload would revoke access to those links before the client has necessarily completed those steps.
 
 **Alternatives considered:**
@@ -120,6 +114,26 @@
 **Rationale:** Tracking `uploaded: true` in the payload preserves link access while preventing re-upload. On page load, `doGet` passes the full payload to the template — the upload step renders as already-completed if `payload.uploaded` is true.
 
 **Consequences:** `TokenPayload` has an optional `uploaded` field. `uploadVaccinationRecord` calls `setProperty` with the updated payload after a successful upload. Multiple uploads within a single session are still technically possible if the client does not refresh the page — the client-side button disable covers this case. The owner has noted this edge case is acceptable for now and wants to observe real usage before adding additional constraints.
+
+**Status:** Decided
+
+---
+
+## First-time client check migrated to `ListAppointments` — 2026-04-02
+
+**Decision:** Replace `lastAppointmentDate` on the customer record with a `POST /v1/appointments:list` call filtered to `FINISHED` status as the mechanism for detecting returning clients.
+
+**Context:** `lastAppointmentDate` on the `MoeGoCustomer` object proved unreliable — observed values include future dates, suggesting the field reflects next appointment date in some or all cases. The MoeGo Aggregation API (`LookupClientPetProfile`) was considered as an alternative but is pure gRPC and inaccessible from `UrlFetchApp`. `ListAppointments` is a REST endpoint that accepts a `filter.statuses` array — filtering to `FINISHED` and checking for a non-empty result is a reliable signal that the client has at least one completed appointment on record.
+
+**Alternatives considered:**
+
+- Retain `lastAppointmentDate` — confirmed unreliable; produces false positives for new clients with upcoming appointments
+- `LookupClientPetProfile` (Aggregation API) — purpose-built but gRPC-only; not accessible from GAS `UrlFetchApp`
+- Check `AgreementRecord.signedStatus` — not accessible via the API
+
+**Rationale:** `ListAppointments` with `FINISHED` status filter is the most reliable available REST signal for confirmed completed appointments. An empty `appointments` array confirms the client is new.
+
+**Consequences:** `doPost` requires an additional API call after `getCustomer` — `hasFinishedAppointments` with the customer ID, company ID, and business ID. The `lastAppointmentDate` field and related logic are removed. `MoeGoCustomer` type updated accordingly. Pagination must include `pageToken: "1"` or the API returns 500. **Known edge case:** a client who completes an appointment without finishing onboarding will be permanently skipped on all future webhooks. The owner must manually re-trigger onboarding for these clients — no automated mechanism exists yet.
 
 **Status:** Decided
 

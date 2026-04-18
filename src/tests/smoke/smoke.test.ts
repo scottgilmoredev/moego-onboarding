@@ -39,6 +39,7 @@ describe('smoke', () => {
           ],
         ]),
     }),
+    getLastRow: vi.fn().mockReturnValue(1),
     insertRowBefore: vi.fn(),
     getRange: vi.fn().mockReturnValue({ setValues: vi.fn() }),
   };

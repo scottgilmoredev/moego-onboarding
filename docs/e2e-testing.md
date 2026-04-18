@@ -102,7 +102,7 @@ To verify the skipped-client path (no existing row):
 
 1. Use a test customer whose webhook was previously skipped (returning client) and who has no sheet row
 2. Invoke `retriggerOnboarding` with their Customer ID
-3. Confirm a new row is inserted in alphabetical order and the owner receives a success email
+3. Confirm a new row is inserted at the top of the sheet (row 2) and the owner receives a success email
 
 ---
 
