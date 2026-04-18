@@ -1,5 +1,21 @@
 # Decision Log — moego-onboarding
 
+## Sheet insert order changed to most-recent-first — 2026-04-17
+
+**Decision:** New client rows are inserted as the first data row (row 2), pushing existing rows down so the most recent entries are always at the top. Alphabetical insert by last name is abandoned.
+
+**Context:** Alphabetical insert by last name was chosen at the time of the Milestone 11 sheet restructure for easy scanning. In practice the owner's primary use for the sheet is checking the most recently sent link, not looking up a specific client by name. Scrolling to find a new entry adds friction in the common case.
+
+**Alternatives considered:**
+
+- Retain alphabetical insert — benefits easy scanning for roster-style lookup; does not match the owner's actual access pattern
+
+**Rationale:** Most-recent-first places the new entry at row 2 immediately after the header, directly where the owner looks. The alphabetical ordering benefit is outweighed by the recency access pattern.
+
+**Consequences:** `writeClientRow` uses `insertRowBefore(2)` instead of scanning for an alphabetical insert position; falls back to `appendRow` when only the header row exists. Column structure and all other sheet behavior are unchanged from _Sheet column structure — 7-column layout with alphabetical insert by last name — 2026-04-13_.
+
+**Status:** Decided
+
 ---
 
 ## Owner self-service tooling — Postman collection and customer ID lookup — 2026-04-16
@@ -19,8 +35,6 @@
 **Implementation note:** `filter.mainPhoneNumber` requires the phone number without country code (e.g. `4049850300`, not `+14049850300`). E.164 format is rejected by this endpoint.
 
 **Consequences:** `docs/postman/` contains the collection JSON, environment JSON (placeholders committed; owner receives a populated copy out-of-band), and a usage guide. The collection must be updated when API calls in `src/moego/moego.ts` or `src/shortener/shortener.ts` change — see the sync checklist in `docs/postman/postman-guide.md`. The `retrigger-guide.md` is updated to reference the Postman guide for customer ID lookup when the sheet row is missing.
-
-**Status:** Decided
 
 ---
 

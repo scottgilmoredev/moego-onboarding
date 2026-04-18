@@ -56,19 +56,6 @@ export function formatTimestamp(ms: number): string {
 }
 
 /**
- * Write a client onboarding row to the configured Google Sheet.
- *
- * @function writeClientRow
- * @description Assembles a row from client metadata, the shortened token URL,
- * and a sentAt timestamp, then inserts it in alphabetical order by last name.
- * If the last name sorts after all existing rows, the row is appended.
- *
- * @param {object} params - The row parameters.
- * @param {MoeGoCustomer} params.customer - The client's MoeGo customer record.
- * @param {string} params.shortUrl - The shortened token URL to forward to the client.
- * @throws {Error} If the sheet write fails.
- */
-/**
  * Write a vaccination record entry to the client's sheet row.
  *
  * @function writeVaccinationRecord
@@ -148,6 +135,19 @@ export function updateClientOnboardingLink({
   return true;
 }
 
+/**
+ * Write a client onboarding row to the configured Google Sheet.
+ *
+ * @function writeClientRow
+ * @description Assembles a row from client metadata, the shortened token URL,
+ * and a sentAt timestamp, then inserts it as the first data row (row 2),
+ * pushing existing rows down so the most recent entries appear at the top.
+ *
+ * @param {object} params - The row parameters.
+ * @param {MoeGoCustomer} params.customer - The client's MoeGo customer record.
+ * @param {string} params.shortUrl - The shortened token URL to forward to the client.
+ * @throws {Error} If the sheet write fails.
+ */
 export function writeClientRow({
   customer,
   shortUrl,
@@ -169,18 +169,12 @@ export function writeClientRow({
     '',
   ];
 
-  // Find alphabetical insert position by last name, skipping the header row
-  const allRows = sheet.getDataRange().getValues() as string[][];
-  const dataRows = allRows.slice(1);
-  const insertIndex = dataRows.findIndex(r => r[0].toLowerCase() > customer.lastName.toLowerCase());
-
-  if (insertIndex === -1) {
-    // Last name sorts after all existing rows — append
+  // Insert as the first data row; if only the header exists, append instead
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
     sheet.appendRow(row);
   } else {
-    // Insert before the first row with a greater last name (+ 2: 1 for header, 1 for 1-based index)
-    const targetRow = insertIndex + 2;
-    sheet.insertRowBefore(targetRow);
-    sheet.getRange(targetRow, 1, 1, row.length).setValues([row]);
+    sheet.insertRowBefore(2);
+    sheet.getRange(2, 1, 1, row.length).setValues([row]);
   }
 }
