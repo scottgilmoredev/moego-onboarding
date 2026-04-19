@@ -1,6 +1,6 @@
 # moego-onboarding
 
-<!-- [![CI](https://github.com/scottgilmoredev/moego-onboarding/actions/workflows/ci.yml/badge.svg)](https://github.com/scottgilmoredev/moego-onboarding/actions/workflows/ci.yml)  -->
+[![CI](https://github.com/scottgilmoredev/moego-onboarding/actions/workflows/ci.yml/badge.svg)](https://github.com/scottgilmoredev/moego-onboarding/actions/workflows/ci.yml)
 
 ## Overview
 
@@ -43,7 +43,7 @@ Automates the client onboarding process for MoeGo-based pet service businesses. 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/<your-username>/moego-onboarding.git
+   git clone https://github.com/scottgilmoredev/moego-onboarding.git
    cd moego-onboarding
    ```
 
