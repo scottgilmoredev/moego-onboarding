@@ -57,11 +57,13 @@ describe('buildAuthHeader', () => {
  * fetchFromMoeGo
  *
  * @description Tests for the shared MoeGo API request utility. Covers
- * successful response parsing, non-200 error handling, and network errors.
+ * successful response parsing, non-200 error handling, network errors, and
+ * bandwidth quota retry behavior.
  */
 describe('fetchFromMoeGo', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('Utilities', { sleep: vi.fn() });
   });
 
   /**
@@ -112,6 +114,59 @@ describe('fetchFromMoeGo', () => {
         apiKey: 'test-api-key',
       })
     ).toThrow();
+  });
+
+  /**
+   * @test
+   * @description Confirms the request is retried after a 2-second sleep when a
+   * bandwidth quota error occurs on the first attempt, and returns the response
+   * from the successful retry.
+   */
+  it('retries once after 2s sleep on bandwidth quota error and returns on success', () => {
+    const successResponse = createMockFetchResponse(200, {
+      signUrl: 'https://client.moego.pet/agreement/sign/abc123',
+    });
+
+    vi.stubGlobal('UrlFetchApp', {
+      fetch: vi
+        .fn()
+        .mockImplementationOnce(() => {
+          throw new Error('Bandwidth quota exceeded: https://openapi.moego.pet/v1/test');
+        })
+        .mockReturnValueOnce(successResponse),
+    });
+
+    const result = fetchFromMoeGo<{ signUrl: string }>({
+      path: '/v1/agreements/agr_001/sign_link',
+      params: { customer_id: 'cus_001', business_id: 'biz_001' },
+      apiKey: 'test-api-key',
+    });
+
+    expect(Utilities.sleep).toHaveBeenCalledWith(2000);
+    expect(result.signUrl).toBe('https://client.moego.pet/agreement/sign/abc123');
+  });
+
+  /**
+   * @test
+   * @description Confirms an error is thrown when both the initial attempt and
+   * the retry fail with a bandwidth quota error.
+   */
+  it('throws after retry if bandwidth quota error persists', () => {
+    vi.stubGlobal('UrlFetchApp', {
+      fetch: vi.fn().mockImplementation(() => {
+        throw new Error('Bandwidth quota exceeded: https://openapi.moego.pet/v1/test');
+      }),
+    });
+
+    expect(() =>
+      fetchFromMoeGo({
+        path: '/v1/agreements/agr_001/sign_link',
+        params: { customer_id: 'cus_001', business_id: 'biz_001' },
+        apiKey: 'test-api-key',
+      })
+    ).toThrow('Bandwidth quota exceeded');
+
+    expect(Utilities.sleep).toHaveBeenCalledWith(2000);
   });
 });
 

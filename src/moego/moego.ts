@@ -121,6 +121,28 @@ export function buildAuthHeader(apiKey: string): string {
 }
 
 /**
+ * Retry a UrlFetchApp call once after 2 seconds on transient bandwidth quota errors.
+ *
+ * @function fetchWithBandwidthRetry
+ * @param {() => GoogleAppsScript.URL_Fetch.HTTPResponse} fn - The fetch call to execute.
+ * @returns {GoogleAppsScript.URL_Fetch.HTTPResponse} The HTTP response.
+ * @throws {Error} If both attempts fail or the error is not a bandwidth quota error.
+ */
+function fetchWithBandwidthRetry(
+  fn: () => GoogleAppsScript.URL_Fetch.HTTPResponse
+): GoogleAppsScript.URL_Fetch.HTTPResponse {
+  try {
+    return fn();
+  } catch (err) {
+    if (!String(err).includes('Bandwidth quota exceeded')) throw err;
+
+    Utilities.sleep(2000);
+
+    return fn();
+  }
+}
+
+/**
  * Make an authenticated GET request to the MoeGo API.
  *
  * @function fetchFromMoeGo
@@ -152,15 +174,16 @@ export function fetchFromMoeGo<T>({ path, params, apiKey }: FetchFromMoeGoParams
   // Construct the full URL
   const url = `${MOEGO_BASE_URL}${path}${queryString}`;
 
-  // Execute the authenticated request via UrlFetchApp
-  const response = UrlFetchApp.fetch(url, {
-    method: 'get',
-    headers: {
-      Authorization: buildAuthHeader(apiKey),
-      'Content-Type': 'application/json',
-    },
-    muteHttpExceptions: true,
-  });
+  const response = fetchWithBandwidthRetry(() =>
+    UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: {
+        Authorization: buildAuthHeader(apiKey),
+        'Content-Type': 'application/json',
+      },
+      muteHttpExceptions: true,
+    })
+  );
 
   // Throw a clear error if the response is not successful
   const responseCode = response.getResponseCode();
@@ -191,15 +214,17 @@ export function fetchFromMoeGo<T>({ path, params, apiKey }: FetchFromMoeGoParams
  * @throws {Error} If the API call fails due to a network error.
  */
 function postToMoeGo<T>(path: string, body: unknown, apiKey: string): T {
-  const response = UrlFetchApp.fetch(`${MOEGO_BASE_URL}${path}`, {
-    method: 'post',
-    headers: {
-      Authorization: buildAuthHeader(apiKey),
-      'Content-Type': 'application/json',
-    },
-    payload: JSON.stringify(body),
-    muteHttpExceptions: true,
-  });
+  const response = fetchWithBandwidthRetry(() =>
+    UrlFetchApp.fetch(`${MOEGO_BASE_URL}${path}`, {
+      method: 'post',
+      headers: {
+        Authorization: buildAuthHeader(apiKey),
+        'Content-Type': 'application/json',
+      },
+      payload: JSON.stringify(body),
+      muteHttpExceptions: true,
+    })
+  );
 
   const responseCode = response.getResponseCode();
   if (responseCode !== 200) {
