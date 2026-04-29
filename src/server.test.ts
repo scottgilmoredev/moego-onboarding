@@ -479,7 +479,10 @@ describe('doGet', () => {
     });
     vi.stubGlobal('HtmlService', {
       createTemplateFromFile: vi.fn().mockReturnValue({
-        evaluate: vi.fn().mockReturnValue({ setTitle: vi.fn().mockReturnThis() }),
+        evaluate: vi.fn().mockReturnValue({
+          setTitle: vi.fn().mockReturnThis(),
+          addMetaTag: vi.fn().mockReturnThis(),
+        }),
       }),
     });
   });
@@ -522,6 +525,42 @@ describe('doGet', () => {
     doGet(mockDoGetEvent());
 
     expect(HtmlService.createTemplateFromFile).toHaveBeenCalledWith('error');
+  });
+
+  /**
+   * @test
+   * @description Confirms doGet adds the viewport meta tag to the landing page
+   * output so GAS injects it into the outer wrapper for mobile responsiveness.
+   */
+  it('adds viewport meta tag to landing page output', () => {
+    PropertiesService.getScriptProperties().getProperty = vi
+      .fn()
+      .mockReturnValue(JSON.stringify(mockTokenPayload));
+
+    doGet(mockDoGetEvent('valid-token'));
+
+    const output = HtmlService.createTemplateFromFile('landing').evaluate();
+    expect(output.addMetaTag).toHaveBeenCalledWith(
+      'viewport',
+      'width=device-width, initial-scale=1.0'
+    );
+  });
+
+  /**
+   * @test
+   * @description Confirms doGet adds the viewport meta tag to the error page
+   * output so GAS injects it into the outer wrapper for mobile responsiveness.
+   */
+  it('adds viewport meta tag to error page output', () => {
+    PropertiesService.getScriptProperties().getProperty = vi.fn().mockReturnValue(null);
+
+    doGet(mockDoGetEvent('invalid-token'));
+
+    const output = HtmlService.createTemplateFromFile('error').evaluate();
+    expect(output.addMetaTag).toHaveBeenCalledWith(
+      'viewport',
+      'width=device-width, initial-scale=1.0'
+    );
   });
 });
 

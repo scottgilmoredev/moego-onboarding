@@ -511,7 +511,7 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
     errorVars.businessLogoUrl = businessLogoUrl;
     errorVars.businessPhone = businessPhone;
 
-    return errorTemplate.evaluate();
+    return errorTemplate.evaluate().addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
   }
 
   // Valid token — pass payload and business config to template and render landing page
@@ -524,7 +524,7 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
   landingVars.businessLogoUrl = businessLogoUrl;
   landingVars.businessPhone = businessPhone;
 
-  return landingTemplate.evaluate();
+  return landingTemplate.evaluate().addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
 }
 
 // Expose entrypoints as globals for the GAS runtime
