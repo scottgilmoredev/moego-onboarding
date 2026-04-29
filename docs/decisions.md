@@ -1,5 +1,45 @@
 # Decision Log — moego-onboarding
 
+## Single retry on GAS bandwidth quota errors — 2026-04-29
+
+**Decision:** `UrlFetchApp` calls in `fetchFromMoeGo` and `postToMoeGo` are retried once after a 2-second sleep when the error message includes "Bandwidth quota exceeded". All other errors propagate immediately without retry.
+
+**Context:** Two production onboarding flows failed due to transient GAS `UrlFetchApp` bandwidth quota errors. The errors were burst-rate rolling-window limits, not daily quota exhaustion — retries immediately after both failures succeeded. The original no-retry policy treated all API errors identically, triggering full failure emails and requiring manual retrigger for two clients.
+
+**Alternatives considered:**
+
+- No retry — already in place; triggered failure emails for transient errors that resolved on their own within seconds
+- Exponential backoff — adds complexity and execution time risk not warranted for a single known transient error class
+
+**Rationale:** A single retry with a fixed 2-second sleep is the minimum change that handles the transient burst-rate case. The sleep gives the rolling window time to reset. Failure handling is unchanged — if the retry also fails, the exception propagates and the existing failure email fires.
+
+**Consequences:** `fetchWithBandwidthRetry` wraps all `UrlFetchApp.fetch()` calls in both `fetchFromMoeGo` and `postToMoeGo`. Worst-case execution time increases by 2 seconds per retried call. `Utilities.sleep` must be mocked in tests. Partially supersedes _No retry on API failure_.
+
+**Status:** Decided
+
+---
+
+## GAS outer wrapper unmodifiable — no viable fix within current architecture — 2026-04-29
+
+**Decision:** No GAS API method can modify the outer wrapper HTML served by GAS infrastructure. The mobile viewport and warning banner issues are accepted limitations of the current GAS deployment.
+
+**Context:** The landing page renders at desktop width on mobile devices. `HtmlOutput.addMetaTag()` was ruled out — it targets only the inner sandboxed iframe content, not the outer wrapper. The outer wrapper HTML was inspected directly and confirmed to contain neither a viewport meta tag nor any modifiable GAS API surface.
+
+**Alternatives considered:**
+
+- `addMetaTag()` — confirmed ineffective; targets inner iframe only
+- Google Sites iframe embedding — ruled out; the per-client token is a query parameter that cannot be forwarded from a Sites URL to an embedded GAS iframe due to cross-origin restrictions and Sites' lack of custom JavaScript support
+- Custom domain — not being pursued at this time
+- GitHub Pages, Netlify, or Vercel — serve the landing page HTML from a static host, read the token client-side, call back to GAS for token validation; viable but requires architectural change
+
+**Rationale:** Any real fix requires serving the landing page from a host that gives full control over the outer HTML. That architectural change is out of scope for now.
+
+**Consequences:** Mobile responsiveness and warning banner are accepted limitations. PR #146 closed without merging. Any future fix requires revisiting the hosting architecture.
+
+**Status:** Decided
+
+---
+
 ## Sheet insert order changed to most-recent-first — 2026-04-17
 
 **Decision:** New client rows are inserted as the first data row (row 2), pushing existing rows down so the most recent entries are always at the top. Alphabetical insert by last name is abandoned.

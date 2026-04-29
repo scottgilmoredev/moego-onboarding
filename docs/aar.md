@@ -2,19 +2,175 @@
 
 ---
 
+**Date:** 2026-04-29
+**Scope:** Production incident — transient bandwidth quota errors, two clients failed onboarding
+**Participants:** Solo
+
+---
+
+**What Happened**
+
+Two onboarding flows failed on separate days due to transient GAS `UrlFetchApp` "Bandwidth quota exceeded" exceptions — one during `hasFinishedAppointments`, one during `getAgreementSignLink`. Both triggered full failure emails to the owner; two clients require manual retrigger.
+
+---
+
+**Root Cause Assessment**
+
+GAS `UrlFetchApp` has rolling-window rate limits in addition to daily totals. `doPost` makes 4–5 sequential `UrlFetchApp` calls in rapid succession; bursts can briefly exceed the short-window rate limit even when daily totals are well within quota. The errors were transient — retries immediately after both failures succeeded.
+
+---
+
+**What Changed**
+
+`fetchWithBandwidthRetry` added to `moego.ts` — catches "Bandwidth quota exceeded" exceptions, sleeps 2 seconds, retries once. Applied to both `fetchFromMoeGo` and `postToMoeGo`. Merged in PR for issue #143.
+
+---
+
+**What Failed**
+
+Two clients need manual retrigger. Both bandwidth quota failures sent full failure emails. Owner must run `retriggerOnboarding` for both affected customer IDs.
+
+---
+
+**Sustains**
+
+- **GCP logs identified root cause immediately.** Both bandwidth quota errors were diagnosed from logs without guesswork.
+- **Retry is proportionate.** Single retry with 2s sleep handles the transient burst-rate case without over-engineering. Consistent with the failure handling philosophy throughout the project.
+
+---
+
+**Improvements**
+
+None specific to this incident beyond the fix already applied.
+
+---
+
+**Actions**
+
+| Action                                                                | Owner           | By When           |
+| --------------------------------------------------------------------- | --------------- | ----------------- |
+| Manual retrigger for two clients affected by bandwidth quota failures | scottgilmoredev | Immediate         |
+| PR #143 merged — `fetchWithBandwidthRetry` in production              | scottgilmoredev | Done — 2026-04-29 |
+
+---
+
+---
+
+**Date:** 2026-04-29
+**Scope:** GAS OAuth consent screen — 7-day refresh token expiry requiring reauthorization
+**Participants:** Solo
+
+---
+
+**What Happened**
+
+The script had been requiring OAuth reauthorization approximately every 7 days despite regular daily executions. Each reauth event broke the webhook until the owner manually re-ran the auth function.
+
+---
+
+**Root Cause Assessment**
+
+The OAuth consent screen was in "Testing" status in GCP. Google enforces a hard 7-day refresh token expiry for apps in Testing status regardless of usage frequency. This is documented behavior, not a platform bug.
+
+---
+
+**What Changed**
+
+OAuth consent screen published to Production status in GCP console. Eliminates the 7-day hard refresh token expiry.
+
+---
+
+**What Failed**
+
+Nothing failed permanently — the reauth was a recurring operational burden with a known fix that was not applied at launch.
+
+---
+
+**Sustains**
+
+- **GCP logs identified root cause immediately.** The reauth root cause was diagnosed from logs without guesswork.
+
+---
+
+**Improvements**
+
+- **Publish OAuth consent screen to Production before going live.** The Testing → Production transition should be part of the deployment checklist.
+
+---
+
+**Actions**
+
+| Action                                              | Owner           | By When           |
+| --------------------------------------------------- | --------------- | ----------------- |
+| OAuth consent screen published to Production        | scottgilmoredev | Done — 2026-04-29 |
+| Add Production publish step to deployment checklist | scottgilmoredev | Next doc pass     |
+
+---
+
+---
+
+**Date:** 2026-04-29
+**Scope:** GAS platform investigation — mobile responsiveness and warning banner
+**Participants:** Solo
+
+---
+
+**What Happened**
+
+A mobile responsiveness investigation revealed the landing page renders at desktop width on all mobile devices. An `addMetaTag` fix was implemented, deployed, and confirmed ineffective after inspecting the served outer HTML.
+
+---
+
+**Root Cause Assessment**
+
+GAS wraps all web app content in an outer wrapper HTML page controlled by Google's infrastructure. `HtmlOutput.addMetaTag()` adds meta tags to the inner sandboxed iframe content only — not the outer wrapper. The inner iframe's viewport meta tag is ignored by mobile browsers because the outer wrapper lacks one. The outer wrapper cannot be modified via any GAS API.
+
+---
+
+**What Changed**
+
+`addMetaTag` approach ruled out before merging — the code was written and pushed to PR #146 but never deployed. The outer wrapper HTML was inspected and confirmed to contain no viewport meta tag and no modifiable GAS API surface. No viable fix exists within the current GAS architecture. The outer wrapper is infrastructure-controlled and the short URL must point to the GAS deployment directly.
+
+---
+
+**What Failed**
+
+**`addMetaTag` code was written without first reading the evidence in hand.** The outer wrapper HTML was provided before implementation began and showed no viewport meta tag — sufficient to rule out `addMetaTag` as a solution before writing any code.
+
+**No viable GAS-native fix exists for either issue.** Any real fix requires serving the landing page from a different host or accepting the current limitations.
+
+---
+
+**Sustains**
+
+Nothing to sustain — the investigation produced a confirmed dead end.
+
+---
+
+**Actions**
+
+| Action                                                                          | Owner           | By When      |
+| ------------------------------------------------------------------------------- | --------------- | ------------ |
+| Close PR #146 — `addMetaTag` approach invalid, no viable replacement within GAS | scottgilmoredev | Next session |
+| Confirm owner copy for issue #145 (upload UX)                                   | scottgilmoredev | Next session |
+
+---
+
+---
+
 **Date:** 2026-04-15
 **Scope:** Production incident — premature token deletion, missing sheet row, developer unavailability
 **Participants:** Solo
 
 ---
 
-## What Happened
+**What Happened**
 
 A client's onboarding landing page link stopped working before the 7-day expiry window. The script property storing the client's token was absent — either deleted prematurely or never written. Separately, the sheet row for this client was also missing, meaning neither the link nor the Customer ID were recoverable from the normal sources. The developer's internet connection went down around the same time, preventing any GAS editor access to retrigger. Links were delivered to the client manually as an emergency measure.
 
 ---
 
-## Root Cause Assessment
+**Root Cause Assessment**
 
 The cause of the missing script property is unconfirmed. No code bug was identified in the token lifecycle:
 
@@ -32,7 +188,7 @@ The missing sheet row is a separate issue and not covered here.
 
 ---
 
-## What Failed
+**What Failed**
 
 **Single owner dependency.** The developer was the only person who could retrigger the flow or recover a Customer ID. When the developer was unreachable, there was no recovery path available to the owner independently.
 
@@ -42,7 +198,7 @@ The missing sheet row is a separate issue and not covered here.
 
 ---
 
-## What Changed
+**What Changed**
 
 **Postman collection added** — `docs/postman/` now contains a pre-configured collection and environment covering all external API calls: customer lookup by phone, Get Customer, agreement sign links, card-on-file link, finished appointments check, and URL shortening. The owner receives a populated copy (real values filled in) and can run any call independently.
 
@@ -52,21 +208,21 @@ The missing sheet row is a separate issue and not covered here.
 
 ---
 
-## Sustains
+**Sustains**
 
 - **Graceful failure handling contained the blast radius.** The failure did not propagate silently — the missing token caused a clear error state rather than corrupt data.
 - **`retriggerOnboarding` worked correctly once the Customer ID was recovered.** The retrigger mechanism introduced in Milestone 11 performed as designed once a valid Customer ID was obtained.
 
 ---
 
-## Improvements
+**Improvements**
 
 - **Investigate Script Properties write reliability.** Consider adding a read-back verification after `storeToken()` — write then immediately read the key and throw if the value is absent. This would surface silent write failures at the point of occurrence rather than at link access time.
 - **Reduce developer as single point of failure.** The Postman collection is a mitigation. The deeper gap is that the owner has no way to independently trigger the GAS retrigger flow — this still requires GAS editor access. A future enhancement could expose `retriggerOnboarding` via a simple owner-facing UI or a protected HTTP endpoint.
 
 ---
 
-## Actions
+**Actions**
 
 | Action                                                              | Owner           | By When           |
 | ------------------------------------------------------------------- | --------------- | ----------------- |
@@ -84,13 +240,13 @@ The missing sheet row is a separate issue and not covered here.
 
 ---
 
-## What Was Planned
+**What Was Planned**
 
 Milestone 11 scoped three features: sheet structure improvements (#115 — column reorder, alphabetical insert, Vaccination Records column), writing the Drive file URL back to the sheet on upload (#122), and an owner re-trigger mechanism for expired or skipped clients (#123). File upload was assumed to be single-upload per client based on the existing `uploaded: boolean` flag.
 
 ---
 
-## What Actually Happened
+**What Actually Happened**
 
 All issues shipped. Several unplanned fixes were required along the way:
 
@@ -106,7 +262,7 @@ All issues shipped. Several unplanned fixes were required along the way:
 
 ---
 
-## Why the Difference
+**Why the Difference**
 
 **Multi-upload was a known edge case that was deferred without a plan.** The owner noted multi-pet clients during the upload cap discussion but no issue was created at the time. It surfaced as a real requirement only after the feature was in use.
 
@@ -118,7 +274,7 @@ All issues shipped. Several unplanned fixes were required along the way:
 
 ---
 
-## Sustains
+**Sustains**
 
 - **TDD continued to catch regressions quickly.** The timezone regression and cursor issue were caught during E2E review rather than in production.
 - **Incremental commits by concern worked well.** Breaking changes into focused commits (token model, file naming, sheet write, cursor states) made individual pieces reviewable and revertable.
@@ -126,7 +282,7 @@ All issues shipped. Several unplanned fixes were required along the way:
 
 ---
 
-## Improvements
+**Improvements**
 
 - **Review all touched functions when doing a file-level rewrite.** If a refactor requires restructuring a file significantly, treat it as a full re-review of every function in that file, not just the ones being changed.
 - **Audit existing code paths when replacing a major flow.** When a significant architectural change ships (form → landing page, or similar), review all dependent functions for references to the old flow before closing the phase.
@@ -134,7 +290,7 @@ All issues shipped. Several unplanned fixes were required along the way:
 
 ---
 
-## Actions
+**Actions**
 
 | Action                                                                      | Owner           | By When           |
 | --------------------------------------------------------------------------- | --------------- | ----------------- |
@@ -148,7 +304,7 @@ All issues shipped. Several unplanned fixes were required along the way:
 
 ---
 
-## What Was Planned
+**What Was Planned**
 
 Milestones 7–10 replaced the Google Form-based onboarding flow with a custom per-client landing page. The plan: generate a unique expiring token per client, store it in ScriptProperties with the client's onboarding links, deliver a shortened token URL to the business owner, and serve a personalized HTML landing page via `doGet` that renders the client's agreements, card-on-file link, and vaccination record upload. Milestone 10 added first-time client detection via the MoeGo API, returning client skipping, token storage management, file upload improvements, and documentation cleanup.
 
@@ -156,7 +312,7 @@ The plan assumed the MoeGo Aggregation API (`LookupClientPetProfile`) would be a
 
 ---
 
-## What Actually Happened
+**What Actually Happened**
 
 All milestones shipped. The landing page flow is operational in production. Several significant deviations occurred:
 
@@ -176,7 +332,7 @@ All milestones shipped. The landing page flow is operational in production. Seve
 
 ---
 
-## Why the Difference
+**Why the Difference**
 
 **GAS platform constraints continued to surface despite prior phase learnings.** The `google.script.run` top-level declaration requirement and the Drive error page behavior are both GAS-specific constraints that were not researched before implementation. The prior AAR identified "audit GAS platform constraints before planning" as an improvement — this was not applied thoroughly enough going into this phase.
 
@@ -188,7 +344,7 @@ All milestones shipped. The landing page flow is operational in production. Seve
 
 ---
 
-## Sustains
+**Sustains**
 
 - **TDD discipline held throughout.** All features were test-driven. The mock sequence approach for `doPost` continued to provide reliable coverage of the full orchestration flow.
 - **GCP logs as the primary debugging tool.** After the prior AAR, GCP logging was used immediately on the first E2E failure and identified the root cause within a single session.
@@ -197,7 +353,7 @@ All milestones shipped. The landing page flow is operational in production. Seve
 
 ---
 
-## Improvements
+**Improvements**
 
 - **Verify all third-party API transports before planning.** Confirm whether an endpoint is REST or gRPC before scoping any feature that depends on it from `UrlFetchApp`.
 - **Cross-reference Script Properties against `.env.example` before first E2E test.** Add this as a required step in the E2E checklist.
@@ -207,7 +363,7 @@ All milestones shipped. The landing page flow is operational in production. Seve
 
 ---
 
-## Actions
+**Actions**
 
 | Action                                                                            | Owner           | By When           |
 | --------------------------------------------------------------------------------- | --------------- | ----------------- |
@@ -226,7 +382,7 @@ All milestones shipped. The landing page flow is operational in production. Seve
 
 ---
 
-## What Was Planned
+**What Was Planned**
 
 The project aimed to automate client onboarding for a MoeGo-based pet service business. When a new client is created in MoeGo, the system would receive a `CUSTOMER_CREATED` webhook, retrieve per-client agreement signing links and a card-on-file link from the MoeGo API, construct a pre-filled Google Form URL, shorten it via Short.io, and deliver it to the business owner via email.
 
@@ -236,7 +392,7 @@ The plan assumed a MoeGo sandbox environment would be available for end-to-end t
 
 ---
 
-## What Actually Happened
+**What Actually Happened**
 
 All six milestones shipped. The core flow is operational in production: MoeGo fires a webhook on client creation, the GAS web app receives it, retrieves the onboarding links, constructs and shortens the form URL, and delivers it to the business owner via email.
 
@@ -266,7 +422,7 @@ Several significant deviations from plan occurred across the project:
 
 ---
 
-## Why the Difference
+**Why the Difference**
 
 **GAS platform constraints were not researched thoroughly enough upfront.** The esbuild format requirement, `btoa` unavailability, `GmailApp` OAuth restrictions, and request header inaccessibility in `doPost` are all documented — they were researchable before planning began. The plan treated GAS as a thin runtime wrapper around standard TypeScript without verifying that assumption. A structured review of GAS platform constraints, available globals, module format requirements, and OAuth behavior by access level before Milestone 0 would have caught most of these.
 
@@ -282,7 +438,7 @@ Several significant deviations from plan occurred across the project:
 
 ---
 
-## Sustains
+**Sustains**
 
 - **TDD discipline held throughout.** Every module was test-driven from the start. When GAS-specific failures emerged in production, the test suite provided a reliable baseline for isolating issues.
 - **Modular architecture paid off.** Each concern (webhook, API client, form builder, shortener, email) was independently testable and replaceable. Swapping `GmailApp` for `MailApp`, changing the esbuild format, and removing signature verification all required localized changes only.
@@ -291,7 +447,7 @@ Several significant deviations from plan occurred across the project:
 
 ---
 
-## Improvements
+**Improvements**
 
 - **Audit GAS platform constraints before planning any GAS project.** Confirm available globals, module format requirements, OAuth behavior by access level, request object capabilities, and editor limitations. Do not assume web standard APIs are available.
 - **Research GAS deployment lifecycle and GCP logging before starting.** Understand the difference between new deployments and new versions, the test deployment option, `Execute as` constraints, and how to access execution logs via GCP Stackdriver. Document findings for future reference.
@@ -304,7 +460,7 @@ Several significant deviations from plan occurred across the project:
 
 ---
 
-## Actions
+**Actions**
 
 | Action                                                                                                  | Owner           | By When            |
 | ------------------------------------------------------------------------------------------------------- | --------------- | ------------------ |
