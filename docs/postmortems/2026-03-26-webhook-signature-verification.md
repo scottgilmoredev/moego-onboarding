@@ -44,7 +44,7 @@ GAS web apps do not expose incoming HTTP request headers to `doPost`. This is a 
 
 ## Impact
 
-The planned security control was never operational. All webhook deliveries from Milestone 6 onward rely solely on company ID filtering. Any actor with knowledge of the endpoint URL and a valid `copbiww` company ID in their payload could trigger the flow. For the current single-location deployment this is an acceptable risk, but it is a genuine security gap.
+The planned security control was never operational. All webhook deliveries from Milestone 6 onward rely solely on company ID filtering. Any actor with knowledge of the endpoint URL and a valid `<companyId>` company ID in their payload could trigger the flow. For the current single-location deployment this is an acceptable risk, but it is a genuine security gap.
 
 ---
 

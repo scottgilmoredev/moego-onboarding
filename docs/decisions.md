@@ -2,7 +2,7 @@
 
 ## Single retry on GAS bandwidth quota errors — 2026-04-29
 
-**Decision:** `UrlFetchApp` calls in `fetchFromMoeGo` and `postToMoeGo` are retried once after a 2-second sleep when `UrlFetchApp.fetch()` throws a "Bandwidth quota exceeded" exception. All other errors propagate immediately without retry.
+**Decision:** `UrlFetchApp` calls in `fetchFromMoeGo` and `postToMoeGo` are retried once after a 2-second sleep when the error message includes "Bandwidth quota exceeded". All other errors propagate immediately without retry.
 
 **Context:** Two production onboarding flows failed due to transient GAS `UrlFetchApp` bandwidth quota errors. The errors were burst-rate rolling-window limits, not daily quota exhaustion — retries immediately after both failures succeeded. The original no-retry policy treated all API errors identically, triggering full failure emails and requiring manual retrigger for two clients.
 
