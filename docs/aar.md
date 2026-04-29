@@ -2,6 +2,162 @@
 
 ---
 
+**Date:** 2026-04-29
+**Scope:** Production incident — transient bandwidth quota errors, two clients failed onboarding
+**Participants:** Solo
+
+---
+
+## What Happened
+
+Two onboarding flows failed on separate days due to transient GAS `UrlFetchApp` "Bandwidth quota exceeded" exceptions — one during `hasFinishedAppointments`, one during `getAgreementSignLink`. Both triggered full failure emails to the owner; two clients require manual retrigger.
+
+---
+
+## Root Cause Assessment
+
+GAS `UrlFetchApp` has rolling-window rate limits in addition to daily totals. `doPost` makes 4–5 sequential `UrlFetchApp` calls in rapid succession; bursts can briefly exceed the short-window rate limit even when daily totals are well within quota. The errors were transient — retries immediately after both failures succeeded.
+
+---
+
+## What Changed
+
+`fetchWithBandwidthRetry` added to `moego.ts` — catches "Bandwidth quota exceeded" exceptions, sleeps 2 seconds, retries once. Applied to both `fetchFromMoeGo` and `postToMoeGo`. Merged in PR for issue #143.
+
+---
+
+## What Failed
+
+Two clients need manual retrigger. Both bandwidth quota failures sent full failure emails. Owner must run `retriggerOnboarding` for both affected customer IDs.
+
+---
+
+## Sustains
+
+- **GCP logs identified root cause immediately.** Both bandwidth quota errors were diagnosed from logs without guesswork.
+- **Retry is proportionate.** Single retry with 2s sleep handles the transient burst-rate case without over-engineering. Consistent with the failure handling philosophy throughout the project.
+
+---
+
+## Improvements
+
+None specific to this incident beyond the fix already applied.
+
+---
+
+## Actions
+
+| Action                                                                | Owner           | By When           |
+| --------------------------------------------------------------------- | --------------- | ----------------- |
+| Manual retrigger for two clients affected by bandwidth quota failures | scottgilmoredev | Immediate         |
+| PR #143 merged — `fetchWithBandwidthRetry` in production              | scottgilmoredev | Done — 2026-04-29 |
+
+---
+
+---
+
+**Date:** 2026-04-29
+**Scope:** GAS OAuth consent screen — 7-day refresh token expiry requiring reauthorization
+**Participants:** Solo
+
+---
+
+## What Happened
+
+The script had been requiring OAuth reauthorization approximately every 7 days despite regular daily executions. Each reauth event broke the webhook until the owner manually re-ran the auth function.
+
+---
+
+## Root Cause Assessment
+
+The OAuth consent screen was in "Testing" status in GCP. Google enforces a hard 7-day refresh token expiry for apps in Testing status regardless of usage frequency. This is documented behavior, not a platform bug.
+
+---
+
+## What Changed
+
+OAuth consent screen published to Production status in GCP console. Eliminates the 7-day hard refresh token expiry.
+
+---
+
+## What Failed
+
+Nothing failed permanently — the reauth was a recurring operational burden with a known fix that was not applied at launch.
+
+---
+
+## Sustains
+
+- **GCP logs identified root cause immediately.** The reauth root cause was diagnosed from logs without guesswork.
+
+---
+
+## Improvements
+
+- **Publish OAuth consent screen to Production before going live.** The Testing → Production transition should be part of the deployment checklist.
+
+---
+
+## Actions
+
+| Action                                              | Owner           | By When           |
+| --------------------------------------------------- | --------------- | ----------------- |
+| OAuth consent screen published to Production        | scottgilmoredev | Done — 2026-04-29 |
+| Add Production publish step to deployment checklist | scottgilmoredev | Next doc pass     |
+
+---
+
+---
+
+**Date:** 2026-04-29
+**Scope:** GAS platform investigation — mobile responsiveness and warning banner
+**Participants:** Solo
+
+---
+
+## What Happened
+
+A mobile responsiveness investigation revealed the landing page renders at desktop width on all mobile devices. An `addMetaTag` fix was implemented, deployed, and confirmed ineffective after inspecting the served outer HTML.
+
+---
+
+## Root Cause Assessment
+
+GAS wraps all web app content in an outer wrapper HTML page controlled by Google's infrastructure. `HtmlOutput.addMetaTag()` adds meta tags to the inner sandboxed iframe content only — not the outer wrapper. The inner iframe's viewport meta tag is ignored by mobile browsers because the outer wrapper lacks one. The outer wrapper cannot be modified via any GAS API.
+
+---
+
+## What Changed
+
+`addMetaTag` approach ruled out before merging — the code was written and pushed to PR #146 but never deployed. The outer wrapper HTML was inspected and confirmed to contain no viewport meta tag and no modifiable GAS API surface. No viable fix exists within the current GAS architecture. The outer wrapper is infrastructure-controlled and the short URL must point to the GAS deployment directly.
+
+---
+
+## What Failed
+
+**`addMetaTag` code was written without first reading the evidence in hand.** The outer wrapper HTML was provided before implementation began and showed no viewport meta tag — sufficient to rule out `addMetaTag` as a solution before writing any code.
+
+**No viable GAS-native fix exists for either issue.** Any real fix requires serving the landing page from a different host or accepting the current limitations.
+
+---
+
+## Sustains
+
+Nothing to sustain — the investigation produced a confirmed dead end.
+
+---
+
+## Actions
+
+| Action                                                                          | Owner           | By When      |
+| ------------------------------------------------------------------------------- | --------------- | ------------ |
+| Close PR #146 — `addMetaTag` approach invalid, no viable replacement within GAS | scottgilmoredev | Next session |
+| Confirm owner copy for issue #145 (upload UX)                                   | scottgilmoredev | Next session |
+
+---
+
+---
+
 **Date:** 2026-04-15
 **Scope:** Production incident — premature token deletion, missing sheet row, developer unavailability
 **Participants:** Solo
