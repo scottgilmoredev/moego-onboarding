@@ -65,18 +65,23 @@
           <a href="<?= payload.cofUrl ?>" target="_blank" class="btn">Add</a>
         </div>
 
-                <!-- File upload: uploads vaccination records to Google Drive via google.script.run -->
+        <!-- File upload: uploads vaccination records to Google Drive via google.script.run -->
         <!-- Initial state and cap enforcement handled by the script below -->
         <div class="step">
           <div class="step-info">
-            <div class="step-label">Rabies Vaccination Paperwork</div>
-            <div class="step-description">Upload a copy of your pet's current vaccination records.</div>
+            <div class="step-label">Rabies Vaccination Certificate</div>
+            <div class="step-description">Upload a photo or PDF of your pet's current <b>rabies vaccination certificate</b> from your vet with the expiration date visible.</div>
+            <div class="step-upload-hint">Accepted formats: PDF, JPG, PNG &middot; Max 10 MB per file</div>
+
             <!-- Upload count and error messages injected by script -->
             <div class="step-upload-status" id="vaccine-status" style="display:none;"></div>
             <div class="step-upload-error" id="vaccine-error" style="display:none;"></div>
           </div>
-          <label class="btn" id="vaccine-label" for="vaccine-upload">Upload</label>
-          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" />
+          <label class="btn" id="vaccine-label" for="vaccine-upload">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload Certificate
+          </label>
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" />
         </div>
       </div>
 

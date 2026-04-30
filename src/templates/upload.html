@@ -19,29 +19,52 @@
     var uploadCount = parseInt(input.dataset.uploadCount, 10) || 0;
     var businessPhone = input.dataset.businessPhone;
     var UPLOAD_CAP = 5;
+    var MAX_BYTES = 10 * 1024 * 1024;
+    var ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+
+    var UPLOAD_ICON =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+      '<polyline points="17 8 12 3 7 8"/>' +
+      '<line x1="12" y1="3" x2="12" y2="15"/>' +
+      '</svg>';
+
+    function setLabel(html, className) {
+      label.innerHTML = html;
+      label.className = className;
+    }
 
     function showStatus(text) {
       statusEl.textContent = text;
       statusEl.style.display = 'block';
     }
 
+    function hideError() {
+      errorEl.textContent = '';
+      errorEl.style.display = 'none';
+    }
+
+    function showError(text) {
+      errorEl.textContent = text;
+      errorEl.style.display = 'block';
+    }
+
     function lockAtCap() {
-      label.textContent = 'Upload';
-      label.className = 'btn btn-limit-reached';
+      setLabel(UPLOAD_ICON + ' Upload Certificate', 'btn btn-limit-reached');
       label.removeAttribute('for');
       input.disabled = true;
       showStatus('Maximum uploads reached');
     }
 
     function resetToUpload() {
-      label.textContent = 'Upload';
-      label.className = 'btn';
+      setLabel(UPLOAD_ICON + ' Upload Certificate', 'btn');
       label.setAttribute('for', 'vaccine-upload');
       input.disabled = false;
       input.value = '';
     }
 
-    // Apply initial state on page load
     if (uploadCount >= UPLOAD_CAP) {
       lockAtCap();
     } else if (uploadCount > 0) {
@@ -49,54 +72,121 @@
     }
 
     input.addEventListener('change', function (e) {
-      var file = e.target.files[0];
-      if (!file) return;
+      var files = Array.prototype.slice.call(e.target.files);
+      if (!files.length) return;
 
-      // Clear any previous error and transition to uploading state
-      errorEl.style.display = 'none';
-      errorEl.textContent = '';
-      label.textContent = 'Uploading...';
-      label.className = 'btn btn-uploading';
+      hideError();
+
+      var invalidType = files.filter(function (f) {
+        return ALLOWED_TYPES.indexOf(f.type) === -1;
+      });
+
+      var oversized = files.filter(function (f) {
+        return f.size > MAX_BYTES;
+      });
+
+      if (invalidType.length) {
+        showError(
+          (invalidType.length === 1
+            ? '"' + invalidType[0].name + '" is'
+            : invalidType.length + ' files are') +
+            ' not a supported format. Please upload a PDF, JPG, or PNG.'
+        );
+        input.value = '';
+        return;
+      }
+
+      if (oversized.length) {
+        showError(
+          (oversized.length === 1
+            ? '"' + oversized[0].name + '" exceeds'
+            : oversized.length + ' files exceed') + ' the 10 MB limit.'
+        );
+        input.value = '';
+        return;
+      }
+
+      var remaining = UPLOAD_CAP - uploadCount;
+
+      if (files.length > remaining) {
+        showError(
+          'You can upload ' +
+            remaining +
+            ' more file' +
+            (remaining === 1 ? '' : 's') +
+            '. Please select fewer files.'
+        );
+        input.value = '';
+        return;
+      }
+
+      setLabel('Uploading 1 of ' + files.length + '...', 'btn btn-uploading');
       label.removeAttribute('for');
       input.disabled = true;
 
-      var reader = new FileReader();
+      var successNames = [];
+      var failedNames = [];
 
-      reader.onload = function (event) {
-        // Strip the data URL prefix to get the raw base64 string
-        var base64 = event.target.result.split(',')[1];
+      function uploadNext(index) {
+        if (index >= files.length) {
+          uploadCount += successNames.length;
 
-        google.script.run
-          .withSuccessHandler(function () {
-            uploadCount++;
+          if (successNames.length) {
+            setLabel(UPLOAD_ICON + ' Uploaded', 'btn btn-uploaded');
+            showStatus(
+              uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded: ' + successNames.join(', ')
+            );
+          }
 
-            // Show green success state briefly, then reset or lock
-            label.textContent = 'Uploaded';
-            label.className = 'btn btn-uploaded';
-            showStatus(uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded');
+          if (failedNames.length) {
+            showError(
+              'Failed to upload: ' +
+                failedNames.join(', ') +
+                ' — please try again or call us at ' +
+                businessPhone
+            );
+          }
 
-            setTimeout(function () {
-              if (uploadCount >= UPLOAD_CAP) {
-                lockAtCap();
-              } else {
-                resetToUpload();
-              }
-            }, 2000);
-          })
-          .withFailureHandler(function () {
-            // Reset button to allow retry and show error with phone fallback
-            label.textContent = 'Try again';
-            label.className = 'btn btn-upload-error';
-            label.setAttribute('for', 'vaccine-upload');
-            input.disabled = false;
-            input.value = '';
-            errorEl.textContent = 'Upload failed — please try again or call us at ' + businessPhone;
-            errorEl.style.display = 'block';
-          })
-          .uploadVaccinationRecord(file.name, file.type, base64, token);
-      };
+          setTimeout(function () {
+            if (uploadCount >= UPLOAD_CAP) {
+              lockAtCap();
+            } else if (failedNames.length) {
+              setLabel(UPLOAD_ICON + ' Try again', 'btn btn-upload-error');
+              label.setAttribute('for', 'vaccine-upload');
+              input.disabled = false;
+              input.value = '';
+            } else {
+              resetToUpload();
+            }
+          }, 2000);
 
-      reader.readAsDataURL(file);
+          return;
+        }
+
+        var file = files[index];
+        setLabel('Uploading ' + (index + 1) + ' of ' + files.length + '...', 'btn btn-uploading');
+
+        var reader = new FileReader();
+
+        reader.onload = function (event) {
+          var base64 = event.target.result.split(',')[1];
+
+          google.script.run
+            .withSuccessHandler(function () {
+              successNames.push(file.name);
+              uploadNext(index + 1);
+            })
+            .withFailureHandler(function () {
+              failedNames.push(file.name);
+              uploadNext(index + 1);
+            })
+            .uploadVaccinationRecord(file.name, file.type, base64, token);
+        };
+
+        reader.readAsDataURL(file);
+      }
+
+      uploadNext(0);
     });
   })();
 </script>

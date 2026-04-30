@@ -147,18 +147,20 @@
      ========================================================================= */
 
   .btn {
+    align-items: center;
     background-color: #29a8e0;
     border: none;
     border-radius: 28px;
     color: #ffffff;
     cursor: pointer;
-    display: inline-block;
+    display: inline-flex;
     flex-shrink: 0;
     font-family: inherit;
     font-size: 18px;
     font-weight: 500;
+    gap: 8px;
     height: 56px;
-    line-height: 56px;
+    justify-content: center;
     padding: 0 28px;
     text-decoration: none;
     transition: background-color 0.2s ease-out;
@@ -224,6 +226,16 @@
     color: #dc3545;
     font-size: 13px;
     margin-top: 4px;
+  }
+
+  .step-upload-hint {
+    color: #888c96;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  #vaccine-label {
+    min-width: 220px;
   }
 
   /* Hidden file input — triggered by the Upload label button */
