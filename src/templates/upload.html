@@ -31,26 +31,69 @@
       '<line x1="12" y1="3" x2="12" y2="15"/>' +
       '</svg>';
 
+    /**
+     * Set the label button's content and state class.
+     *
+     * @function setLabel
+     * @description Sets the label's innerHTML and className in a single call.
+     * Used by all state transitions to keep label updates atomic.
+     *
+     * @param {string} html - HTML content to render inside the label.
+     * @param {string} className - CSS class string to apply to the label.
+     */
     function setLabel(html, className) {
       label.innerHTML = html;
       label.className = className;
     }
 
+    /**
+     * Show a message in the upload status element.
+     *
+     * @function showStatus
+     * @description Displays text in the persistent status element beneath the
+     * step description. Used to report cumulative upload count to the user.
+     *
+     * @param {string} text - The status message to display.
+     */
     function showStatus(text) {
       statusEl.textContent = text;
       statusEl.style.display = 'block';
     }
 
+    /**
+     * Clear and hide the upload error element.
+     *
+     * @function hideError
+     * @description Resets the error element before a new upload attempt so
+     * stale error messages do not persist alongside a fresh upload.
+     */
     function hideError() {
       errorEl.textContent = '';
       errorEl.style.display = 'none';
     }
 
+    /**
+     * Show a message in the upload error element.
+     *
+     * @function showError
+     * @description Displays an error message beneath the step description.
+     * Used for both pre-upload validation failures and server-side upload errors.
+     *
+     * @param {string} text - The error message to display.
+     */
     function showError(text) {
       errorEl.textContent = text;
       errorEl.style.display = 'block';
     }
 
+    /**
+     * Lock the upload control when the upload cap has been reached.
+     *
+     * @function lockAtCap
+     * @description Renders the label as permanently disabled and shows a status
+     * message. Called on page load if the cap is already met and after the final
+     * successful upload in a batch pushes the count to the cap.
+     */
     function lockAtCap() {
       setLabel(UPLOAD_ICON + ' Upload Certificate', 'btn btn-limit-reached');
       label.removeAttribute('for');
@@ -58,6 +101,14 @@
       showStatus('Maximum uploads reached');
     }
 
+    /**
+     * Reset the upload control to its default ready state.
+     *
+     * @function resetToUpload
+     * @description Re-enables the label and file input and restores the for
+     * attribute so clicking the label re-opens the file picker. Called after a
+     * successful upload batch when the cap has not been reached.
+     */
     function resetToUpload() {
       setLabel(UPLOAD_ICON + ' Upload Certificate', 'btn');
       label.setAttribute('for', 'vaccine-upload');
@@ -127,6 +178,18 @@
       var successNames = [];
       var failedNames = [];
 
+      /**
+       * Upload files sequentially, one at a time.
+       *
+       * @function uploadNext
+       * @description Reads the file at the given index as a base64 data URL and
+       * calls uploadVaccinationRecord via google.script.run. On success or failure,
+       * records the original device filename and recurses to the next index. When
+       * all files have been attempted, updates the UI with cumulative results and
+       * transitions to the appropriate final state.
+       *
+       * @param {number} index - Index into the files array of the next file to upload.
+       */
       function uploadNext(index) {
         if (index >= files.length) {
           uploadCount += successNames.length;
