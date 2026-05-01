@@ -97,7 +97,9 @@
     function lockAtCap() {
       setLabel(UPLOAD_ICON + ' Upload Certificate', 'btn btn-limit-reached');
       label.removeAttribute('for');
+      
       input.disabled = true;
+      
       showStatus('Maximum uploads reached');
     }
 
@@ -112,10 +114,141 @@
     function resetToUpload() {
       setLabel(UPLOAD_ICON + ' Upload Certificate', 'btn');
       label.setAttribute('for', 'vaccine-upload');
+      
       input.disabled = false;
       input.value = '';
     }
 
+    /**
+     * Read a single file and send it to the server.
+     *
+     * @function uploadFile
+     * @description Reads the file as a base64 data URL and calls
+     * uploadVaccinationRecord via google.script.run. Invokes onSuccess or
+     * onFailure with the file's device name when the server responds.
+     *
+     * @param {File} file - The file to upload.
+     * @param {Function} onSuccess - Called with file.name on successful upload.
+     * @param {Function} onFailure - Called with file.name on failed upload.
+     */
+    function uploadFile(file, onSuccess, onFailure) {
+      var reader = new FileReader();
+
+      reader.onload = function (event) {
+        // Strip the data URL prefix (e.g. "data:application/pdf;base64,") to get raw base64
+        var base64 = event.target.result.split(',')[1];
+
+        google.script.run
+          .withSuccessHandler(function () { onSuccess(file.name); })
+          .withFailureHandler(function () { onFailure(file.name); })
+          .uploadVaccinationRecord(file.name, file.type, base64, token);
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    /**
+     * Resolve UI state after all files in a batch have been attempted.
+     *
+     * @function finalizeBatch
+     * @description Updates the cumulative upload count, shows a success status
+     * with the original device filenames, and shows an error for any files that
+     * failed. After a 2-second delay, transitions to the appropriate final state:
+     * locked at cap, error with retry, or reset to ready.
+     *
+     * @param {object} batch - The batch state object.
+     * @param {string[]} batch.successNames - Device filenames of successfully uploaded files.
+     * @param {string[]} batch.failedNames - Device filenames of files that failed to upload.
+     */
+    function finalizeBatch(batch) {
+      // Only count files that actually reached the server
+      uploadCount += batch.successNames.length;
+
+      if (batch.successNames.length) {
+        setLabel(UPLOAD_ICON + ' Uploaded', 'btn btn-uploaded');
+        // Show device filenames so the user can confirm what was received
+        showStatus(
+          uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded: ' + batch.successNames.join(', ')
+        );
+      }
+
+      if (batch.failedNames.length) {
+        showError(
+          'Failed to upload: ' +
+            batch.failedNames.join(', ') +
+            ' — please try again or call us at ' +
+            businessPhone
+        );
+      }
+
+      // Hold the success/error state briefly so the user can read it before
+      // transitioning to the next actionable state
+      setTimeout(function () {
+        if (uploadCount >= UPLOAD_CAP) {
+          lockAtCap();
+        } else if (batch.failedNames.length) {
+          // Partial failure — re-enable so the user can retry the failed files
+          setLabel(UPLOAD_ICON + ' Try again', 'btn btn-upload-error');
+          label.setAttribute('for', 'vaccine-upload');
+          input.disabled = false;
+          input.value = '';
+        } else {
+          resetToUpload();
+        }
+      }, 2000);
+    }
+
+    /**
+     * Advance through a batch of files sequentially.
+     *
+     * @function nextInBatch
+     * @description Updates the progress label and delegates to uploadFile for
+     * the current index. On completion, recurses to the next index. When all
+     * files have been attempted, delegates to finalizeBatch.
+     *
+     * @param {object} batch - The batch state object.
+     * @param {File[]} batch.files - The full array of files selected for this batch.
+     * @param {string[]} batch.successNames - Accumulator for successfully uploaded device filenames.
+     * @param {string[]} batch.failedNames - Accumulator for failed device filenames.
+     * @param {number} index - Index of the next file to upload.
+     */
+    function nextInBatch(batch, index) {
+      if (index >= batch.files.length) {
+        finalizeBatch(batch);
+        return;
+      }
+
+      setLabel('Uploading ' + (index + 1) + ' of ' + batch.files.length + '...', 'btn btn-uploading');
+
+      uploadFile(
+        batch.files[index],
+        function (name) {
+          batch.successNames.push(name);
+          nextInBatch(batch, index + 1);
+        },
+        function (name) {
+          batch.failedNames.push(name);
+          // Continue rather than abort — attempt remaining files in the batch
+          nextInBatch(batch, index + 1);
+        }
+      );
+    }
+
+    /**
+     * Initialize a batch state object and begin sequential upload.
+     *
+     * @function startBatch
+     * @description Creates the batch state object and kicks off nextInBatch at
+     * index 0. All batch state is carried in the object rather than closed over,
+     * keeping finalizeBatch and nextInBatch at IIFE scope.
+     *
+     * @param {File[]} files - The files selected for this batch.
+     */
+    function startBatch(files) {
+      nextInBatch({ files: files, successNames: [], failedNames: [] }, 0);
+    }
+
+    // Apply initial state based on uploadCount from the token payload
     if (uploadCount >= UPLOAD_CAP) {
       lockAtCap();
     } else if (uploadCount > 0) {
@@ -124,10 +257,13 @@
 
     input.addEventListener('change', function (e) {
       var files = Array.prototype.slice.call(e.target.files);
+      
       if (!files.length) return;
 
       hideError();
 
+      // Validate all files before uploading any — surface all errors at once
+      // rather than discovering them mid-batch
       var invalidType = files.filter(function (f) {
         return ALLOWED_TYPES.indexOf(f.type) === -1;
       });
@@ -136,6 +272,8 @@
         return f.size > MAX_BYTES;
       });
 
+      var remaining = UPLOAD_CAP - uploadCount;
+
       if (invalidType.length) {
         showError(
           (invalidType.length === 1
@@ -143,7 +281,9 @@
             : invalidType.length + ' files are') +
             ' not a supported format. Please upload a PDF, JPG, or PNG.'
         );
+        
         input.value = '';
+        
         return;
       }
 
@@ -153,11 +293,11 @@
             ? '"' + oversized[0].name + '" exceeds'
             : oversized.length + ' files exceed') + ' the 10 MB limit.'
         );
+        
         input.value = '';
+        
         return;
       }
-
-      var remaining = UPLOAD_CAP - uploadCount;
 
       if (files.length > remaining) {
         showError(
@@ -167,89 +307,18 @@
             (remaining === 1 ? '' : 's') +
             '. Please select fewer files.'
         );
+        
         input.value = '';
+        
         return;
       }
 
+      // Lock the UI and begin sequential uploads
       setLabel('Uploading 1 of ' + files.length + '...', 'btn btn-uploading');
       label.removeAttribute('for');
       input.disabled = true;
 
-      var successNames = [];
-      var failedNames = [];
-
-      /**
-       * Upload files sequentially, one at a time.
-       *
-       * @function uploadNext
-       * @description Reads the file at the given index as a base64 data URL and
-       * calls uploadVaccinationRecord via google.script.run. On success or failure,
-       * records the original device filename and recurses to the next index. When
-       * all files have been attempted, updates the UI with cumulative results and
-       * transitions to the appropriate final state.
-       *
-       * @param {number} index - Index into the files array of the next file to upload.
-       */
-      function uploadNext(index) {
-        if (index >= files.length) {
-          uploadCount += successNames.length;
-
-          if (successNames.length) {
-            setLabel(UPLOAD_ICON + ' Uploaded', 'btn btn-uploaded');
-            showStatus(
-              uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded: ' + successNames.join(', ')
-            );
-          }
-
-          if (failedNames.length) {
-            showError(
-              'Failed to upload: ' +
-                failedNames.join(', ') +
-                ' — please try again or call us at ' +
-                businessPhone
-            );
-          }
-
-          setTimeout(function () {
-            if (uploadCount >= UPLOAD_CAP) {
-              lockAtCap();
-            } else if (failedNames.length) {
-              setLabel(UPLOAD_ICON + ' Try again', 'btn btn-upload-error');
-              label.setAttribute('for', 'vaccine-upload');
-              input.disabled = false;
-              input.value = '';
-            } else {
-              resetToUpload();
-            }
-          }, 2000);
-
-          return;
-        }
-
-        var file = files[index];
-        setLabel('Uploading ' + (index + 1) + ' of ' + files.length + '...', 'btn btn-uploading');
-
-        var reader = new FileReader();
-
-        reader.onload = function (event) {
-          var base64 = event.target.result.split(',')[1];
-
-          google.script.run
-            .withSuccessHandler(function () {
-              successNames.push(file.name);
-              uploadNext(index + 1);
-            })
-            .withFailureHandler(function () {
-              failedNames.push(file.name);
-              uploadNext(index + 1);
-            })
-            .uploadVaccinationRecord(file.name, file.type, base64, token);
-        };
-
-        reader.readAsDataURL(file);
-      }
-
-      uploadNext(0);
+      startBatch(files);
     });
   })();
 </script>
