@@ -40,6 +40,25 @@
 
 ---
 
+## Client-side JS in separate file, not TypeScript module — 2026-04-30
+
+**Decision:** Landing page client-side JavaScript lives in a dedicated `src/templates/upload.html` file injected at render time via `HtmlService.createHtmlOutputFromFile`. It is plain JavaScript, not TypeScript, and has no unit test coverage.
+
+**Context:** The upload script grew large enough that keeping it inline in `landing.html` made the template hard to read and maintain. Three structures were considered: inline in HTML, separate injected file, and a TypeScript module in `src/` bundled into the HTML at build time.
+
+**Alternatives considered:**
+
+- Inline in HTML — no separation of concerns; template becomes unwieldy as script grows
+- TypeScript module in `src/` with esbuild inlining — would enable Vitest unit test coverage; requires esbuild to emit the compiled output as an inline `<script>` block inside the HTML template at build time; not straightforward with the current `iife` bundle targeting GAS server-side code; out of scope for now
+
+**Rationale:** Separate injected file is the minimum change that improves maintainability without requiring a build pipeline change. The upload script is primarily UI state management — the critical validation logic (MIME type, size, cap) is duplicated server-side and covered by server-side tests.
+
+**Consequences:** Client-side upload logic has no unit test coverage. The TypeScript module approach remains the correct long-term solution if the client-side logic grows in complexity or correctness requirements increase. See also: _Unit-Tested Client-Side JavaScript_ in `docs/enhancements.md`.
+
+**Status:** Decided
+
+---
+
 ## Sheet insert order changed to most-recent-first — 2026-04-17
 
 **Decision:** New client rows are inserted as the first data row (row 2), pushing existing rows down so the most recent entries are always at the top. Alphabetical insert by last name is abandoned.
