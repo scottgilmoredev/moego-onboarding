@@ -171,6 +171,12 @@ export function uploadVaccinationRecord(
   dataBase64: string,
   token: string
 ): void {
+  const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+
+  if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+    throw new Error('Invalid file type');
+  }
+
   const { driveFolderId } = getConfig();
   const payload = getToken(token);
 

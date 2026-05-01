@@ -714,6 +714,42 @@ describe('uploadVaccinationRecord', () => {
 
   /**
    * @test
+   * @description Confirms upload is rejected and no file is created when the
+   * MIME type is not in the allowlist.
+   */
+  it('throws and does not upload when mimeType is not in the allowlist', () => {
+    expect(() =>
+      uploadVaccinationRecord('photo.gif', 'image/gif', 'base64data==', 'test-token')
+    ).toThrow('Invalid file type');
+    expect(mockFolder.createFile).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms upload proceeds for all allowed MIME types.
+   */
+  it.each([
+    ['application/pdf', 'rabies.pdf'],
+    ['image/jpeg', 'rabies.jpg'],
+    ['image/png', 'rabies.png'],
+  ])('allows upload for %s', (mimeType, fileName) => {
+    const mockSetProperty = vi.fn();
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(JSON.stringify(mockPayload)),
+        setProperty: mockSetProperty,
+        deleteProperty: mockDeleteProperty,
+      }),
+    });
+
+    expect(() =>
+      uploadVaccinationRecord(fileName, mimeType, 'base64data==', 'test-token')
+    ).not.toThrow();
+  });
+
+  /**
+   * @test
    * @description Confirms DriveApp errors propagate to the caller (and are
    * caught by google.script.run's withFailureHandler on the client).
    */
