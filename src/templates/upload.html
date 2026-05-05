@@ -90,8 +90,8 @@
       return null;
     }
 
-    function removeBtn(index) {
-      return '<button class="b-file-remove" data-remove="' + index + '" aria-label="Remove">' + SVG_CLOSE + '</button>';
+    function removeBtn(index, label) {
+      return '<button class="b-file-remove" data-remove="' + index + '" aria-label="Remove ' + label + '">' + SVG_CLOSE + '</button>';
     }
 
     function buildFileRowHtml(row, index, suppressServerError) {
@@ -114,7 +114,7 @@
                 '<span class="b-file-dot"></span>' +
                 '<span class="b-file-uploading-text">Uploading…</span>' +
               '</div>' +
-              '<div class="b-progress"><div class="b-progress-bar"></div></div>' +
+              '<div class="b-progress" role="progressbar" aria-label="Uploading ' + esc + '" aria-valuemin="0" aria-valuemax="100"><div class="b-progress-bar"></div></div>' +
             '</div>' +
             '<span class="b-file-spacer"></span>' +
           '</div>'
@@ -159,8 +159,8 @@
               '<div class="b-file-meta"><span class="b-file-meta-err">' + escHtml(typeErr) + '</span></div>' +
             '</div>' +
             '<div class="b-file-actions">' +
-              '<button class="b-file-retry" data-retry="' + index + '">Retry</button>' +
-              removeBtn(index) +
+              '<button class="b-file-retry" data-retry="' + index + '" aria-label="Retry ' + esc + '">Retry</button>' +
+              removeBtn(index, esc) +
             '</div>' +
           '</div>'
         );
@@ -176,8 +176,8 @@
               '<div class="b-file-meta"><span class="b-file-meta-err">' + escHtml(sizeErr) + '</span></div>' +
             '</div>' +
             '<div class="b-file-actions">' +
-              '<button class="b-file-retry" data-retry="' + index + '">Retry</button>' +
-              removeBtn(index) +
+              '<button class="b-file-retry" data-retry="' + index + '" aria-label="Retry ' + esc + '">Retry</button>' +
+              removeBtn(index, esc) +
             '</div>' +
           '</div>'
         );
@@ -192,8 +192,8 @@
               '<div class="b-file-meta"><span class="b-file-meta-err">Couldn\'t read this file — please try a different file.</span></div>' +
             '</div>' +
             '<div class="b-file-actions">' +
-              '<button class="b-file-retry" data-retry="' + index + '">Retry</button>' +
-              removeBtn(index) +
+              '<button class="b-file-retry" data-retry="' + index + '" aria-label="Retry ' + esc + '">Retry</button>' +
+              removeBtn(index, esc) +
             '</div>' +
           '</div>'
         );
@@ -207,7 +207,7 @@
               '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
               '<div class="b-file-meta"><span class="b-file-meta-err">Exceeds the ' + UPLOAD_CAP + '-file limit — this one was skipped.</span></div>' +
             '</div>' +
-            '<div class="b-file-actions">' + removeBtn(index) + '</div>' +
+            '<div class="b-file-actions">' + removeBtn(index, esc) + '</div>' +
           '</div>'
         );
       }
@@ -226,7 +226,7 @@
                   '<span class="b-file-size">' + size + '</span>' +
                 '</div>' +
               '</div>' +
-              '<div class="b-file-actions">' + removeBtn(index) + '</div>' +
+              '<div class="b-file-actions">' + removeBtn(index, esc) + '</div>' +
             '</div>'
           );
         }
@@ -238,8 +238,8 @@
               '<div class="b-file-meta"><span class="b-file-meta-err">Couldn\'t upload this file — please try again.</span></div>' +
             '</div>' +
             '<div class="b-file-actions">' +
-              '<button class="b-file-retry" data-retry-server="' + index + '">Retry</button>' +
-              removeBtn(index) +
+              '<button class="b-file-retry" data-retry-server="' + index + '" aria-label="Retry ' + esc + '">Retry</button>' +
+              removeBtn(index, esc) +
             '</div>' +
           '</div>'
         );
@@ -284,7 +284,7 @@
           '<div class="b-err-banner">' +
             '<span class="b-err-banner-badge">' + SVG_ALERT + '</span>' +
             '<div class="b-err-banner-text">We\'re having trouble completing this upload — please try again later or call us at ' + escHtml(businessPhone) + '.</div>' +
-            '<button class="b-err-banner-retry" id="vaccine-global-retry">Retry</button>' +
+            '<button class="b-err-banner-retry" id="vaccine-global-retry" aria-label="Retry all failed uploads">Retry</button>' +
           '</div>';
       }
 

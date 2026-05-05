@@ -47,7 +47,7 @@
             <div class="step-label">Service Agreement</div>
             <div class="step-description">Review and sign our standard service agreement.</div>
           </div>
-          <a href="<?= payload.serviceAgreementUrl ?>" target="_blank" class="btn">Sign</a>
+          <a href="<?= payload.serviceAgreementUrl ?>" target="_blank" rel="noopener noreferrer" class="btn" aria-label="Sign Service Agreement, opens in new tab">Sign</a>
         </div>
 
         <div class="step">
@@ -55,7 +55,7 @@
             <div class="step-label">SMS Agreement</div>
             <div class="step-description">Review and sign our SMS agreement.</div>
           </div>
-          <a href="<?= payload.smsAgreementUrl ?>" target="_blank" class="btn">Sign</a>
+          <a href="<?= payload.smsAgreementUrl ?>" target="_blank" rel="noopener noreferrer" class="btn" aria-label="Sign SMS Agreement, opens in new tab">Sign</a>
         </div>
 
         <div class="step">
@@ -63,7 +63,7 @@
             <div class="step-label">Card on File</div>
             <div class="step-description">Securely add a payment method for your appointment.</div>
           </div>
-          <a href="<?= payload.cofUrl ?>" target="_blank" class="btn">Add</a>
+          <a href="<?= payload.cofUrl ?>" target="_blank" rel="noopener noreferrer" class="btn" aria-label="Add Card on File, opens in new tab">Add</a>
         </div>
 
         <!-- File upload step: files are sent to Google Drive via google.script.run in upload.html -->
@@ -81,7 +81,7 @@
                values to the script without an additional round trip. -->
           <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" aria-label="Upload rabies vaccination certificate" title="Upload rabies vaccination certificate" />
           <!-- Populated by the upload script — spans full card width via grid-column: 1 / -1 -->
-          <div id="vaccine-content"></div>
+          <div id="vaccine-content" aria-live="polite"></div>
         </div>
       </div>
 
