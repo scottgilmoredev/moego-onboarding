@@ -67,28 +67,21 @@
         </div>
 
         <!-- File upload step: files are sent to Google Drive via google.script.run in upload.html -->
-        <div class="step">
+        <div class="step step-upload">
           <div class="step-info">
             <div class="step-label">Rabies Vaccination Certificate</div>
-            <div class="step-description">Upload a photo or PDF of your pet's current <b>rabies vaccination certificate</b> from your vet with the expiration date visible.</div>
-            <div class="step-upload-hint">Accepted formats: PDF, JPG, PNG &middot; Max 10 MB per file</div>
-
-            <!-- Populated and toggled by the upload script — hidden until there is something to show -->
-            <div class="step-upload-status" id="vaccine-status" style="display:none;"></div>
-            <div class="step-upload-error" id="vaccine-error" style="display:none;"></div>
+            <div class="step-description">Upload a photo or PDF of your pet's current rabies vaccination certificate from your vet with the <b>expiration date</b> visible.</div>
+            <div class="step-upload-hint">Accepted formats: PDF, JPG, PNG &middot; Max 10 MB per file &middot; Up to 5 files</div>
           </div>
 
-          <!-- The upload script manages the for attribute, className, and innerHTML across all
-               state transitions (default, uploading, uploaded, error, cap reached) -->
-          <label class="btn" id="vaccine-label" for="vaccine-upload">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Upload Certificate
-          </label>
+          <button class="btn" id="vaccine-btn" type="button">Upload</button>
 
           <!-- accept: extensions control the OS file picker display; MIME types are used by the
                upload script for client-side validation. data-* attributes pass server-rendered
                values to the script without an additional round trip. -->
-          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" />
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" aria-label="Upload rabies vaccination certificate" title="Upload rabies vaccination certificate" />
+          <!-- Populated by the upload script — spans full card width via grid-column: 1 / -1 -->
+          <div id="vaccine-content"></div>
         </div>
       </div>
 
