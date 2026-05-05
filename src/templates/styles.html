@@ -147,13 +147,13 @@
   }
 
   .step-description {
-    color: #888c96;
+    color: #6b7280;
     font-size: 14px;
     margin-top: 2px;
   }
 
   .step-upload-hint {
-    color: #888c96;
+    color: #6b7280;
     font-size: 13px;
     margin-top: 12px;
   }
@@ -202,6 +202,14 @@
     display: none;
   }
 
+  .btn:focus-visible,
+  .b-file-retry:focus-visible,
+  .b-file-remove:focus-visible,
+  .b-err-banner-retry:focus-visible {
+    outline: 3px solid #29a8e0;
+    outline-offset: 2px;
+  }
+
   /* =========================================================================
      Upload step — file list, banners, and capacity strip
      ========================================================================= */
@@ -221,7 +229,7 @@
     align-items: center;
     background: #e7f1fb;
     border-radius: 12px;
-    color: #2e8bd2;
+    color: #1a6fa8;
     display: inline-flex;
     height: 44px;
     justify-content: center;
@@ -236,7 +244,7 @@
   }
 
   .b-empty-hint {
-    color: #7a8595;
+    color: #6b7280;
     font-size: 12.5px;
     margin-top: 4px;
   }
@@ -286,7 +294,7 @@
 
   .b-file-icn-pdf {
     background: #fbe9e7;
-    color: #c2453a;
+    color: #b33d33;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     font-size: 10px;
     font-weight: 700;
@@ -294,7 +302,7 @@
 
   .b-file-icn-broken {
     background: #f3c8c2;
-    color: #c2453a;
+    color: #b33d33;
   }
 
   .b-file-img {
@@ -330,7 +338,7 @@
 
   .b-file-meta {
     align-items: center;
-    color: #7a8595;
+    color: #6b7280;
     display: flex;
     flex-wrap: wrap;
     font-size: 12px;
@@ -351,12 +359,12 @@
   }
 
   .b-file-uploading-text {
-    color: #2e8bd2;
+    color: #1a6fa8;
     font-weight: 600;
   }
 
   .b-file-meta-err {
-    color: #c2453a;
+    color: #b33d33;
     font-weight: 600;
   }
 
@@ -411,7 +419,7 @@
   }
 
   .b-file-retry:hover {
-    border-color: #c2453a;
+    border-color: #b33d33;
   }
 
   /* ── Per-row action button group ── */
@@ -429,7 +437,7 @@
     background: transparent;
     border: none;
     border-radius: 6px;
-    color: #9aa4b0;
+    color: #6b7280;
     cursor: pointer;
     display: flex;
     flex-shrink: 0;
@@ -448,7 +456,7 @@
 
   .b-slots {
     align-items: center;
-    color: #7a8595;
+    color: #6b7280;
     display: flex;
     font-size: 12.5px;
     justify-content: space-between;
@@ -527,7 +535,7 @@
     align-items: center;
     background: #fff;
     border-radius: 999px;
-    color: #c2453a;
+    color: #b33d33;
     display: flex;
     flex-shrink: 0;
     height: 32px;
@@ -556,7 +564,7 @@
   }
 
   .b-err-banner-retry:hover {
-    border-color: #c2453a;
+    border-color: #b33d33;
   }
 
   /* =========================================================================
@@ -582,7 +590,7 @@
   }
 
   .error-body {
-    color: #888c96;
+    color: #6b7280;
     font-size: 16px;
     max-width: 400px;
   }
@@ -592,7 +600,7 @@
      ========================================================================= */
 
   .footer {
-    color: #888c96;
+    color: #6b7280;
     font-size: 13px;
     margin-top: 24px;
     text-align: center;
