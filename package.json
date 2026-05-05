@@ -10,7 +10,8 @@
   "scripts": {
     "build": "node esbuild.config.js",
     "preview": "node scripts/preview.js",
-    "push": "pnpm build && clasp push",
+    "push:staging": "cp .clasp.staging.json .clasp.json && pnpm build && clasp push",
+    "push:prod": "cp .clasp.prod.json .clasp.json && pnpm build && clasp push",
     "dev": "node --watch dist/server.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

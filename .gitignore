@@ -25,3 +25,5 @@ yarn-debug.log*
 
 # clasp
 .clasp.json
+.clasp.prod.json
+.clasp.staging.json
