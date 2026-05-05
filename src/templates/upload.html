@@ -1,324 +1,487 @@
 <script>
-  /**
-   * Upload Script
-   *
-   * @module
-   * @description Client-side handler for the vaccination record upload step on
-   * the client landing page. Manages file selection, pre-upload validation,
-   * sequential google.script.run uploads, and all button and status UI state
-   * transitions. Rendered into the page at request time via
-   * HtmlService.createHtmlOutputFromFile — GAS template tags (token, uploadCount,
-   * businessPhone) are resolved server-side before delivery to the browser.
-   */
   (function () {
+    var btn = document.getElementById('vaccine-btn');
     var input = document.getElementById('vaccine-upload');
-    var label = document.getElementById('vaccine-label');
-    var statusEl = document.getElementById('vaccine-status');
-    var errorEl = document.getElementById('vaccine-error');
+    var contentEl = document.getElementById('vaccine-content');
+
     var token = '<?= token ?>';
     var uploadCount = parseInt(input.dataset.uploadCount, 10) || 0;
     var businessPhone = input.dataset.businessPhone;
     var UPLOAD_CAP = 5;
     var MAX_BYTES = 10 * 1024 * 1024;
     var ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+    var GLOBAL_ERROR_THRESHOLD = 3;
 
-    var UPLOAD_ICON =
+    // status values: 'uploading' | 'success' | 'error-type' | 'error-size' | 'error-cap' | 'error-server' | 'error-read'
+    var fileRows = [];
+    var consecutiveFailures = 0;
+
+    var SVG_PAPERCLIP =
       '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"' +
       ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
       ' stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
-      '<polyline points="17 8 12 3 7 8"/>' +
-      '<line x1="12" y1="3" x2="12" y2="15"/>' +
+      '<path d="M21 11l-9 9a5.5 5.5 0 0 1-7.78-7.78l9-9a3.7 3.7 0 1 1 5.24 5.24L9.4 17.5a1.85 1.85 0 1 1-2.62-2.62L15 6.5" />' +
       '</svg>';
 
-    /**
-     * Set the label button's content and state class.
-     *
-     * @function setLabel
-     * @description Sets the label's innerHTML and className in a single call.
-     * Used by all state transitions to keep label updates atomic.
-     *
-     * @param {string} html - HTML content to render inside the label.
-     * @param {string} className - CSS class string to apply to the label.
-     */
-    function setLabel(html, className) {
-      label.innerHTML = html;
-      label.className = className;
+    var SVG_CHECK =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M20 6L9 17l-5-5" />' +
+      '</svg>';
+
+    var SVG_WARN_TRI =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />' +
+      '<path d="M12 9v4" />' +
+      '<circle cx="12" cy="17" r=".6" fill="currentColor" />' +
+      '</svg>';
+
+    var SVG_ALERT =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<circle cx="12" cy="12" r="10" />' +
+      '<path d="M12 8v4" />' +
+      '<circle cx="12" cy="16" r=".6" fill="currentColor" />' +
+      '</svg>';
+
+    var SVG_CLOSE =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M18 6L6 18M6 6l12 12" />' +
+      '</svg>';
+
+    function escHtml(s) {
+      return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
 
-    /**
-     * Show a message in the upload status element.
-     *
-     * @function showStatus
-     * @description Displays text in the persistent status element beneath the
-     * step description. Used to report cumulative upload count to the user.
-     *
-     * @param {string} text - The status message to display.
-     */
-    function showStatus(text) {
-      statusEl.textContent = text;
-      statusEl.style.display = 'block';
+    function fmtSize(bytes) {
+      if (bytes >= 1024 * 1024) {
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+      return Math.round(bytes / 1024) + ' KB';
     }
 
-    /**
-     * Clear and hide the upload error element.
-     *
-     * @function hideError
-     * @description Resets the error element before a new upload attempt so
-     * stale error messages do not persist alongside a fresh upload.
-     */
-    function hideError() {
-      errorEl.textContent = '';
-      errorEl.style.display = 'none';
+    function typeLabel(mimeType) {
+      return mimeType === 'application/pdf' ? 'PDF' : 'Image';
     }
 
-    /**
-     * Show a message in the upload error element.
-     *
-     * @function showError
-     * @description Displays an error message beneath the step description.
-     * Used for both pre-upload validation failures and server-side upload errors.
-     *
-     * @param {string} text - The error message to display.
-     */
-    function showError(text) {
-      errorEl.textContent = text;
-      errorEl.style.display = 'block';
+    function fileExt(name) {
+      var parts = name.split('.');
+      return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : '';
     }
 
-    /**
-     * Lock the upload control when the upload cap has been reached.
-     *
-     * @function lockAtCap
-     * @description Renders the label as permanently disabled and shows a status
-     * message. Called on page load if the cap is already met and after the final
-     * successful upload in a batch pushes the count to the cap.
-     */
-    function lockAtCap() {
-      setLabel(UPLOAD_ICON + ' Upload Certificate', 'btn btn-limit-reached');
-      label.removeAttribute('for');
-      
-      input.disabled = true;
-      
-      showStatus('Maximum uploads reached');
+    function createObjectUrl(file) {
+      if (file.type !== 'application/pdf' && window.URL && window.URL.createObjectURL) {
+        try {
+          return window.URL.createObjectURL(file);
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
     }
 
-    /**
-     * Reset the upload control to its default ready state.
-     *
-     * @function resetToUpload
-     * @description Re-enables the label and file input and restores the for
-     * attribute so clicking the label re-opens the file picker. Called after a
-     * successful upload batch when the cap has not been reached.
-     */
-    function resetToUpload() {
-      setLabel(UPLOAD_ICON + ' Upload Certificate', 'btn');
-      label.setAttribute('for', 'vaccine-upload');
-      
-      input.disabled = false;
-      input.value = '';
+    function removeBtn(index) {
+      return '<button class="b-file-remove" data-remove="' + index + '" aria-label="Remove">' + SVG_CLOSE + '</button>';
     }
 
-    /**
-     * Read a single file and send it to the server.
-     *
-     * @function uploadFile
-     * @description Reads the file as a base64 data URL and calls
-     * uploadVaccinationRecord via google.script.run. Invokes onSuccess or
-     * onFailure with the file's device name when the server responds.
-     *
-     * @param {File} file - The file to upload.
-     * @param {Function} onSuccess - Called with file.name on successful upload.
-     * @param {Function} onFailure - Called with file.name on failed upload.
-     */
-    function uploadFile(file, onSuccess, onFailure) {
+    function buildFileRowHtml(row, index, suppressServerError) {
+      var file = row.file;
+      var esc = escHtml(file.name);
+      var size = fmtSize(file.size);
+      var isPdf = file.type === 'application/pdf';
+
+      if (row.status === 'uploading') {
+        var uploadingIcn = isPdf
+          ? '<div class="b-file-icn b-file-icn-pdf">PDF</div>'
+          : '<div class="b-file-icn"><div class="b-file-thumb"></div></div>';
+        return (
+          '<div class="b-file b-file-uploading">' +
+            uploadingIcn +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta">' +
+                '<span class="b-file-size">' + size + '</span>' +
+                '<span class="b-file-dot"></span>' +
+                '<span class="b-file-uploading-text">Uploading…</span>' +
+              '</div>' +
+              '<div class="b-progress"><div class="b-progress-bar"></div></div>' +
+            '</div>' +
+            '<span class="b-file-spacer"></span>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'success') {
+        var successIcn;
+        if (isPdf) {
+          successIcn = '<div class="b-file-icn b-file-icn-pdf">PDF</div>';
+        } else if (row.objectUrl) {
+          successIcn = '<div class="b-file-icn"><img class="b-file-img" src="' + row.objectUrl + '" alt="" /></div>';
+        } else {
+          successIcn = '<div class="b-file-icn"><div class="b-file-thumb"></div></div>';
+        }
+        return (
+          '<div class="b-file">' +
+            successIcn +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta">' +
+                '<span>' + typeLabel(file.type) + '</span>' +
+                '<span class="b-file-dot"></span>' +
+                '<span class="b-file-size">' + size + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<span class="b-file-check">' + SVG_CHECK + '</span>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-type') {
+        var ext = fileExt(file.name);
+        var typeErr = ext
+          ? ext + ' isn\'t supported — please upload a PDF, JPG, or PNG.'
+          : 'Unsupported format — please upload a PDF, JPG, or PNG.';
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">' + escHtml(typeErr) + '</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' +
+              '<button class="b-file-retry" data-retry="' + index + '">Retry</button>' +
+              removeBtn(index) +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-size') {
+        var sizeErr = 'Exceeds the 10 MB limit (' + size + ') — please use a smaller file.';
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">' + escHtml(sizeErr) + '</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' +
+              '<button class="b-file-retry" data-retry="' + index + '">Retry</button>' +
+              removeBtn(index) +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-read') {
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">Couldn\'t read this file — please try a different file.</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' +
+              '<button class="b-file-retry" data-retry="' + index + '">Retry</button>' +
+              removeBtn(index) +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-cap') {
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">Exceeds the ' + UPLOAD_CAP + '-file limit — this one was skipped.</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' + removeBtn(index) + '</div>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-server') {
+        if (suppressServerError) {
+          var neutralIcn = isPdf
+            ? '<div class="b-file-icn b-file-icn-pdf">PDF</div>'
+            : '<div class="b-file-icn"><div class="b-file-thumb"></div></div>';
+          return (
+            '<div class="b-file">' +
+              neutralIcn +
+              '<div class="b-file-info">' +
+                '<div class="b-file-nm" title="' + esc + '">' + esc + '</div>' +
+                '<div class="b-file-meta">' +
+                  '<span class="b-file-size">' + size + '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="b-file-actions">' + removeBtn(index) + '</div>' +
+            '</div>'
+          );
+        }
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">Couldn\'t upload this file — please try again.</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' +
+              '<button class="b-file-retry" data-retry-server="' + index + '">Retry</button>' +
+              removeBtn(index) +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      return '';
+    }
+
+    function buildSlotsHtml(count) {
+      var pips = '';
+      for (var i = 0; i < UPLOAD_CAP; i++) {
+        pips += '<span class="b-slots-pip' + (i < count ? ' b-slots-pip-on' : '') + '"></span>';
+      }
+      var remaining = UPLOAD_CAP - count;
+      var remainingHtml = (count > 0 && remaining > 0)
+        ? '<span>' + remaining + ' more allowed</span>'
+        : '';
+      return (
+        '<div class="b-slots">' +
+          '<span class="b-slots-left">' +
+            '<span>' + count + ' of ' + UPLOAD_CAP + ' files attached</span>' +
+            '<span class="b-slots-pips">' + pips + '</span>' +
+          '</span>' +
+          remainingHtml +
+        '</div>'
+      );
+    }
+
+    function render() {
+      var atCap = uploadCount >= UPLOAD_CAP;
+      var hasRows = fileRows.length > 0;
+      var uploading = fileRows.some(function (r) { return r.status === 'uploading'; });
+      var showGlobalError = consecutiveFailures >= GLOBAL_ERROR_THRESHOLD;
+
+      btn.disabled = atCap || uploading;
+      btn.textContent = 'Upload';
+
+      var html = '';
+
+      if (showGlobalError) {
+        html +=
+          '<div class="b-err-banner">' +
+            '<span class="b-err-banner-badge">' + SVG_ALERT + '</span>' +
+            '<div class="b-err-banner-text">We\'re having trouble completing this upload — please try again later or call us at ' + escHtml(businessPhone) + '.</div>' +
+            '<button class="b-err-banner-retry" id="vaccine-global-retry">Retry</button>' +
+          '</div>';
+      }
+
+      if (!hasRows && uploadCount === 0) {
+        html +=
+          '<div class="b-empty">' +
+            '<span class="b-empty-ic">' + SVG_PAPERCLIP + '</span>' +
+            '<div class="b-empty-lead">No files attached</div>' +
+            '<div class="b-empty-hint">Tap Upload to add a photo or PDF — up to ' + UPLOAD_CAP + ' files.</div>' +
+          '</div>';
+      } else if (hasRows) {
+        html += '<div class="b-files">';
+        for (var i = 0; i < fileRows.length; i++) {
+          html += buildFileRowHtml(fileRows[i], i, showGlobalError);
+        }
+        html += '</div>';
+      }
+
+      if (atCap) {
+        html +=
+          '<div class="b-max-banner">' +
+            '<span class="b-max-banner-badge">' + SVG_CHECK + '</span>' +
+            '<div class="b-max-banner-text">Maximum uploads reached</div>' +
+          '</div>';
+      } else if (hasRows || uploadCount > 0) {
+        html += buildSlotsHtml(uploadCount);
+      }
+
+      contentEl.innerHTML = html;
+
+      var globalRetryBtn = document.getElementById('vaccine-global-retry');
+      if (globalRetryBtn) {
+        globalRetryBtn.onclick = function () {
+          consecutiveFailures = 0;
+          var retryQueue = [];
+          for (var i = 0; i < fileRows.length; i++) {
+            if (fileRows[i].status === 'error-server') {
+              fileRows[i].status = 'uploading';
+              fileRows[i].retryCount = 0;
+              retryQueue.push(fileRows[i]);
+            }
+          }
+          render();
+          if (retryQueue.length > 0) {
+            processQueue(retryQueue, 0);
+          }
+        };
+      }
+
+      var retryBtns = contentEl.querySelectorAll('[data-retry]');
+      for (var j = 0; j < retryBtns.length; j++) {
+        (function (rb) {
+          rb.onclick = function () {
+            var idx = parseInt(rb.getAttribute('data-retry'), 10);
+            fileRows.splice(idx, 1);
+            render();
+            input.click();
+          };
+        })(retryBtns[j]);
+      }
+
+      var serverRetryBtns = contentEl.querySelectorAll('[data-retry-server]');
+      for (var k = 0; k < serverRetryBtns.length; k++) {
+        (function (rb) {
+          rb.onclick = function () {
+            var idx = parseInt(rb.getAttribute('data-retry-server'), 10);
+            var row = fileRows[idx];
+            row.status = 'uploading';
+            render();
+            doUpload(
+              row.file,
+              function () {
+                row.status = 'success';
+                row.objectUrl = createObjectUrl(row.file);
+                uploadCount++;
+                consecutiveFailures = 0;
+                render();
+              },
+              function () {
+                row.status = 'error-server';
+                if (fileRows.length === 1) {
+                  row.retryCount = (row.retryCount || 0) + 1;
+                  if (row.retryCount + consecutiveFailures >= GLOBAL_ERROR_THRESHOLD) {
+                    consecutiveFailures = GLOBAL_ERROR_THRESHOLD;
+                  }
+                }
+                render();
+              },
+              function () {
+                row.status = 'error-read';
+                render();
+              }
+            );
+          };
+        })(serverRetryBtns[k]);
+      }
+
+      var removeBtns = contentEl.querySelectorAll('[data-remove]');
+      for (var m = 0; m < removeBtns.length; m++) {
+        (function (rb) {
+          rb.onclick = function () {
+            var idx = parseInt(rb.getAttribute('data-remove'), 10);
+            fileRows.splice(idx, 1);
+            render();
+          };
+        })(removeBtns[m]);
+      }
+    }
+
+    function doUpload(file, onSuccess, onFailure, onReadError) {
       var reader = new FileReader();
-
-      reader.onload = function (event) {
-        // Strip the data URL prefix (e.g. "data:application/pdf;base64,") to get raw base64
-        var base64 = event.target.result.split(',')[1];
-
+      reader.onload = function (e) {
+        var base64 = e.target.result.split(',')[1];
         google.script.run
-          .withSuccessHandler(function () { onSuccess(file.name); })
-          .withFailureHandler(function () { onFailure(file.name); })
+          .withSuccessHandler(onSuccess)
+          .withFailureHandler(onFailure)
           .uploadVaccinationRecord(file.name, file.type, base64, token);
       };
-
+      reader.onerror = function () {
+        if (onReadError) { onReadError(); } else { onFailure(); }
+      };
       reader.readAsDataURL(file);
     }
 
-    /**
-     * Resolve UI state after all files in a batch have been attempted.
-     *
-     * @function finalizeBatch
-     * @description Updates the cumulative upload count, shows a success status
-     * with the original device filenames, and shows an error for any files that
-     * failed. After a 2-second delay, transitions to the appropriate final state:
-     * locked at cap, error with retry, or reset to ready.
-     *
-     * @param {object} batch - The batch state object.
-     * @param {string[]} batch.successNames - Device filenames of successfully uploaded files.
-     * @param {string[]} batch.failedNames - Device filenames of files that failed to upload.
-     */
-    function finalizeBatch(batch) {
-      // Only count files that actually reached the server
-      uploadCount += batch.successNames.length;
-
-      if (batch.successNames.length) {
-        setLabel(UPLOAD_ICON + ' Uploaded', 'btn btn-uploaded');
-        // Show device filenames so the user can confirm what was received
-        showStatus(
-          uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded: ' + batch.successNames.join(', ')
-        );
-      }
-
-      if (batch.failedNames.length) {
-        showError(
-          'Failed to upload: ' +
-            batch.failedNames.join(', ') +
-            ' — please try again or call us at ' +
-            businessPhone
-        );
-      }
-
-      // Hold the success/error state briefly so the user can read it before
-      // transitioning to the next actionable state
-      setTimeout(function () {
-        if (uploadCount >= UPLOAD_CAP) {
-          lockAtCap();
-        } else if (batch.failedNames.length) {
-          // Partial failure — re-enable so the user can retry the failed files
-          setLabel(UPLOAD_ICON + ' Try again', 'btn btn-upload-error');
-          label.setAttribute('for', 'vaccine-upload');
-          input.disabled = false;
-          input.value = '';
-        } else {
-          resetToUpload();
-        }
-      }, 2000);
-    }
-
-    /**
-     * Advance through a batch of files sequentially.
-     *
-     * @function nextInBatch
-     * @description Updates the progress label and delegates to uploadFile for
-     * the current index. On completion, recurses to the next index. When all
-     * files have been attempted, delegates to finalizeBatch.
-     *
-     * @param {object} batch - The batch state object.
-     * @param {File[]} batch.files - The full array of files selected for this batch.
-     * @param {string[]} batch.successNames - Accumulator for successfully uploaded device filenames.
-     * @param {string[]} batch.failedNames - Accumulator for failed device filenames.
-     * @param {number} index - Index of the next file to upload.
-     */
-    function nextInBatch(batch, index) {
-      if (index >= batch.files.length) {
-        finalizeBatch(batch);
+    function processQueue(queue, index) {
+      if (index >= queue.length) {
+        render();
         return;
       }
 
-      setLabel('Uploading ' + (index + 1) + ' of ' + batch.files.length + '...', 'btn btn-uploading');
+      var row = queue[index];
+      row.status = 'uploading';
 
-      uploadFile(
-        batch.files[index],
-        function (name) {
-          batch.successNames.push(name);
-          nextInBatch(batch, index + 1);
+      doUpload(
+        row.file,
+        function () {
+          row.status = 'success';
+          row.objectUrl = createObjectUrl(row.file);
+          uploadCount++;
+          consecutiveFailures = 0;
+          render();
+          processQueue(queue, index + 1);
         },
-        function (name) {
-          batch.failedNames.push(name);
-          // Continue rather than abort — attempt remaining files in the batch
-          nextInBatch(batch, index + 1);
+        function () {
+          row.status = 'error-server';
+          consecutiveFailures++;
+          processQueue(queue, index + 1);
+        },
+        function () {
+          row.status = 'error-read';
+          processQueue(queue, index + 1);
         }
       );
     }
 
-    /**
-     * Initialize a batch state object and begin sequential upload.
-     *
-     * @function startBatch
-     * @description Creates the batch state object and kicks off nextInBatch at
-     * index 0. All batch state is carried in the object rather than closed over,
-     * keeping finalizeBatch and nextInBatch at IIFE scope.
-     *
-     * @param {File[]} files - The files selected for this batch.
-     */
-    function startBatch(files) {
-      nextInBatch({ files: files, successNames: [], failedNames: [] }, 0);
-    }
+    render();
 
-    // Apply initial state based on uploadCount from the token payload
-    if (uploadCount >= UPLOAD_CAP) {
-      lockAtCap();
-    } else if (uploadCount > 0) {
-      showStatus(uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded');
-    }
+    btn.addEventListener('click', function () {
+      input.click();
+    });
 
     input.addEventListener('change', function (e) {
       var files = Array.prototype.slice.call(e.target.files);
-      
       if (!files.length) return;
 
-      hideError();
-
-      // Validate all files before uploading any — surface all errors at once
-      // rather than discovering them mid-batch
-      var invalidType = files.filter(function (f) {
-        return ALLOWED_TYPES.indexOf(f.type) === -1;
-      });
-
-      var oversized = files.filter(function (f) {
-        return f.size > MAX_BYTES;
-      });
+      input.value = '';
 
       var remaining = UPLOAD_CAP - uploadCount;
+      var validQueue = [];
 
-      if (invalidType.length) {
-        showError(
-          (invalidType.length === 1
-            ? '"' + invalidType[0].name + '" is'
-            : invalidType.length + ' files are') +
-            ' not a supported format. Please upload a PDF, JPG, or PNG.'
-        );
-        
-        input.value = '';
-        
-        return;
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+
+        if (ALLOWED_TYPES.indexOf(file.type) === -1) {
+          fileRows.push({ file: file, status: 'error-type', objectUrl: null });
+          continue;
+        }
+
+        if (file.size > MAX_BYTES) {
+          fileRows.push({ file: file, status: 'error-size', objectUrl: null });
+          continue;
+        }
+
+        if (validQueue.length < remaining) {
+          var row = { file: file, status: 'uploading', objectUrl: null };
+          fileRows.push(row);
+          validQueue.push(row);
+        } else {
+          fileRows.push({ file: file, status: 'error-cap', objectUrl: null });
+        }
       }
 
-      if (oversized.length) {
-        showError(
-          (oversized.length === 1
-            ? '"' + oversized[0].name + '" exceeds'
-            : oversized.length + ' files exceed') + ' the 10 MB limit.'
-        );
-        
-        input.value = '';
-        
-        return;
+      render();
+
+      if (validQueue.length > 0) {
+        processQueue(validQueue, 0);
       }
-
-      if (files.length > remaining) {
-        showError(
-          'You can upload ' +
-            remaining +
-            ' more file' +
-            (remaining === 1 ? '' : 's') +
-            '. Please select fewer files.'
-        );
-        
-        input.value = '';
-        
-        return;
-      }
-
-      // Lock the UI and begin sequential uploads
-      setLabel('Uploading 1 of ' + files.length + '...', 'btn btn-uploading');
-      label.removeAttribute('for');
-      input.disabled = true;
-
-      startBatch(files);
     });
   })();
 </script>
