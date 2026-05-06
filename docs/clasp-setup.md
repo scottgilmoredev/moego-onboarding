@@ -186,6 +186,22 @@ You do not need a new deployment URL for every code change. Use **Edit deploymen
 
 ---
 
+## Script Properties — per-environment values
+
+Each GAS project maintains its own Script Properties. The following must be set independently per environment and must not be shared between staging and prod:
+
+| Property               | Reason                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ENVIRONMENT`          | Identifies the running environment (`staging` or `prod`)                                                   |
+| `MOEGO_WEBHOOK_SECRET` | Unique per environment — reusing prod's secret allows staging requests to pass prod signature verification |
+| `LANDING_PAGE_URL`     | Each GAS project has a distinct deployment URL                                                             |
+| `SPREADSHEET_ID`       | Staging writes must not pollute the production sheet                                                       |
+| `DRIVE_FOLDER_ID`      | Staging uploads must not land in the production Drive folder                                               |
+
+All other properties (`MOEGO_API_KEY`, `MOEGO_COMPANY_ID`, `BUSINESS_*`, `SHORTIO_*`, etc.) can share the same values across environments.
+
+---
+
 ## GitHub Secrets (CD pipeline)
 
 The deploy workflow requires the following secrets configured per environment in **GitHub → Settings → Environments**:
