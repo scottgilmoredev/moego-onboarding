@@ -214,11 +214,13 @@ export function uploadVaccinationRecord(
 
   const file = folder.createFile(blob);
 
-  // Increment upload count, append file metadata for client-side row persistence, and notify the owner
+  // Increment upload count and append file metadata (including Drive URL) for
+  // client-side row persistence and batch notification retrieval.
   if (payload) {
+    const fileUrl = file.getUrl();
     const uploads = [
       ...(payload.uploads ?? []),
-      { name: fileName, size: bytes.length, type: normalizedMimeType },
+      { name: fileName, size: bytes.length, type: normalizedMimeType, fileUrl },
     ];
 
     PropertiesService.getScriptProperties().setProperty(
@@ -226,17 +228,40 @@ export function uploadVaccinationRecord(
       JSON.stringify({ ...payload, uploadCount: uploadCount + 1, uploads })
     );
 
-    sendUploadNotificationEmail({
-      firstName: payload.firstName,
-      lastName: payload.lastName,
-      fileUrl: file.getUrl(),
-    });
-
     writeVaccinationRecord({
       customerId: payload.customerId,
-      fileUrl: file.getUrl(),
+      fileUrl,
     });
   }
+}
+
+/**
+ * Send a single batch upload notification email to the business owner.
+ *
+ * @function sendBatchUploadNotification
+ * @description Called by the client after the full upload queue completes.
+ * Reads all Drive file URLs stored in the token payload and sends one email
+ * listing them all, avoiding per-file inbox spam.
+ *
+ * @param {string} token - The client's landing page token.
+ * @returns {void}
+ */
+export function sendBatchUploadNotification(token: string): void {
+  const payload = getToken(token);
+
+  if (!payload) return;
+
+  const fileUrls = (payload.uploads ?? [])
+    .map((u: { fileUrl?: string }) => u.fileUrl)
+    .filter((url: string | undefined): url is string => Boolean(url));
+
+  if (fileUrls.length === 0) return;
+
+  sendUploadNotificationEmail({
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    fileUrls,
+  });
 }
 
 // ============================================================================

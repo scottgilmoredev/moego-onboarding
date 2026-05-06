@@ -83,7 +83,15 @@
      * @param {number} index - Current position in the queue.
      */
     function processQueue(queue, index) {
-      if (index >= queue.length) { render(); return; }
+      if (index >= queue.length) {
+        if (queue.some(r => r.status === 'success')) {
+          google.script.run
+            .withFailureHandler(() => {})
+            .sendBatchUploadNotification(token);
+        }
+        render();
+        return;
+      }
 
       const row = queue[index];
 
@@ -118,7 +126,13 @@
       render();
       doUpload(
         row.file,
-        () => { onUploadSuccess(row); render(); },
+        () => {
+          onUploadSuccess(row);
+          google.script.run
+            .withFailureHandler(() => {})
+            .sendBatchUploadNotification(token);
+          render();
+        },
         () => {
           row.status = 'error-server';
 

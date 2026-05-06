@@ -221,7 +221,8 @@ describe('sendShortIoFailureEmail', () => {
  * sendUploadNotificationEmail
  *
  * @description Tests for the upload notification email. Covers correct
- * recipient, subject, and Drive file URL in the body.
+ * recipient, subject, and Drive file URLs in the body for single and
+ * multiple file batches.
  */
 describe('sendUploadNotificationEmail', () => {
   beforeEach(() => {
@@ -240,7 +241,7 @@ describe('sendUploadNotificationEmail', () => {
     sendUploadNotificationEmail({
       firstName: 'Jane',
       lastName: 'Smith',
-      fileUrl: 'https://drive.google.com/file/d/abc123',
+      fileUrls: ['https://drive.google.com/file/d/abc123'],
     });
 
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
@@ -252,17 +253,36 @@ describe('sendUploadNotificationEmail', () => {
 
   /**
    * @test
-   * @description Confirms the Drive file URL is included in the body.
+   * @description Confirms the Drive file URL is included in the body for a single upload.
    */
   it('includes the Drive file URL in the body', () => {
     sendUploadNotificationEmail({
       firstName: 'Jane',
       lastName: 'Smith',
-      fileUrl: 'https://drive.google.com/file/d/abc123',
+      fileUrls: ['https://drive.google.com/file/d/abc123'],
     });
 
     const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
     expect(body).toContain('https://drive.google.com/file/d/abc123');
+  });
+
+  /**
+   * @test
+   * @description Confirms all Drive file URLs are included in the body for a batch upload.
+   */
+  it('includes all Drive file URLs in the body for a batch', () => {
+    sendUploadNotificationEmail({
+      firstName: 'Jane',
+      lastName: 'Smith',
+      fileUrls: [
+        'https://drive.google.com/file/d/abc123',
+        'https://drive.google.com/file/d/def456',
+      ],
+    });
+
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('https://drive.google.com/file/d/abc123');
+    expect(body).toContain('https://drive.google.com/file/d/def456');
   });
 });
 
