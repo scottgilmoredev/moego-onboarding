@@ -23,7 +23,8 @@
       const atCap = uploadCount >= UPLOAD_CAP;
       const hasRows = fileRows.length > 0;
       const uploading = fileRows.some(r => r.status === 'uploading');
-      const showGlobalError = consecutiveFailures >= GLOBAL_ERROR_THRESHOLD;
+      // Suppress the banner while uploads are still active — wait for the batch to complete.
+      const showGlobalError = consecutiveFailures >= GLOBAL_ERROR_THRESHOLD && !uploading;
 
       btn.disabled = atCap || uploading;
       btn.textContent = 'Upload';

@@ -98,8 +98,8 @@
       doUpload(
         row.file,
         () => { onUploadSuccess(row); render(); next(); },
-        () => { onUploadFailure(row); next(); },
-        () => { onReadError(row); next(); }
+        () => { onUploadFailure(row); render(); next(); },
+        () => { onReadError(row); render(); next(); }
       );
     }
 
