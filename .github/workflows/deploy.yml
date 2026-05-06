@@ -48,7 +48,7 @@ jobs:
   deploy-prod:
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
-    environment: production
+    environment: prod
 
     steps:
       - name: Checkout repository
