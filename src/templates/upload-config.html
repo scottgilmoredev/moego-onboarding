@@ -10,7 +10,7 @@
     const input = document.getElementById('vaccine-upload');
     const contentEl = document.getElementById('vaccine-content');
 
-    const token = '<?= token ?>';
+    const token = input.dataset.token;
     let uploadCount = parseInt(input.dataset.uploadCount, 10) || 0;
     const businessPhone = input.dataset.businessPhone;
     const UPLOAD_CAP = 5;
