@@ -125,6 +125,17 @@
     padding-bottom: 0;
   }
 
+  .step-upload {
+    align-items: start;
+    display: grid;
+    gap: 0 16px;
+    grid-template-columns: 1fr auto;
+  }
+
+  #vaccine-content {
+    grid-column: 1 / -1;
+  }
+
   .step-info {
     flex: 1;
   }
@@ -136,29 +147,36 @@
   }
 
   .step-description {
-    color: #888c96;
+    color: #6b7280;
     font-size: 14px;
     margin-top: 2px;
   }
 
+  .step-upload-hint {
+    color: #6b7280;
+    font-size: 13px;
+    margin-top: 12px;
+  }
 
   /* =========================================================================
      Buttons
      ========================================================================= */
 
   .btn {
+    align-items: center;
     background-color: #29a8e0;
     border: none;
     border-radius: 28px;
     color: #ffffff;
     cursor: pointer;
-    display: inline-block;
+    display: inline-flex;
     flex-shrink: 0;
     font-family: inherit;
     font-size: 18px;
     font-weight: 500;
+    gap: 8px;
     height: 56px;
-    line-height: 56px;
+    justify-content: center;
     padding: 0 28px;
     text-decoration: none;
     transition: background-color 0.2s ease-out;
@@ -169,66 +187,384 @@
     background-color: #1e8fc0;
   }
 
-  /* Non-functional placeholder — file upload not yet implemented */
-  .btn-disabled {
+  button.btn:disabled {
+    background-color: #e2e6ea;
+    color: #9aa4b0;
     cursor: not-allowed;
-    opacity: 0.4;
   }
 
-    /* Upload in progress — prevent re-click */
-  .btn-uploading {
-    cursor: not-allowed;
-    opacity: 0.6;
-    pointer-events: none;
+  button.btn:disabled:hover {
+    background-color: #e2e6ea;
   }
 
-  /* Upload succeeded — temporary state, resets after 3 seconds */
-  .btn-uploaded {
-    background-color: #28a745;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-
-  .btn-uploaded:hover {
-    background-color: #28a745;
-  }
-
-  /* Upload limit reached — permanent locked state */
-  .btn-limit-reached {
-    background-color: #888c96;
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-
-  .btn-limit-reached:hover {
-    background-color: #888c96;
-  }
-
-  /* Upload failed — allow retry */
-  .btn-upload-error {
-    background-color: #dc3545;
-  }
-
-  .btn-upload-error:hover {
-    background-color: #b02a37;
-  }
-
-  .step-upload-status {
-    color: #333333;
-    font-size: 13px;
-    font-weight: 600;
-    margin-top: 4px;
-  }
-
-  .step-upload-error {
-    color: #dc3545;
-    font-size: 13px;
-    margin-top: 4px;
-  }
-
-  /* Hidden file input — triggered by the Upload label button */
+  /* Hidden file input — triggered by the upload button via input.click() */
   #vaccine-upload {
     display: none;
+  }
+
+  .btn:focus-visible,
+  .b-file-retry:focus-visible,
+  .b-file-remove:focus-visible,
+  .b-err-banner-retry:focus-visible {
+    outline: 3px solid #29a8e0;
+    outline-offset: 2px;
+  }
+
+  /* =========================================================================
+     Upload step — file list, banners, and capacity strip
+     ========================================================================= */
+
+  /* ── Empty placeholder ── */
+
+  .b-empty {
+    background: #fbfbfa;
+    border: 1.5px dashed #d3d8df;
+    border-radius: 12px;
+    margin-top: 10px;
+    padding: 22px 16px;
+    text-align: center;
+  }
+
+  .b-empty-ic {
+    align-items: center;
+    background: #e7f1fb;
+    border-radius: 12px;
+    color: #1a6fa8;
+    display: inline-flex;
+    height: 44px;
+    justify-content: center;
+    margin-bottom: 10px;
+    width: 44px;
+  }
+
+  .b-empty-lead {
+    color: #0f1d2e;
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+
+  .b-empty-hint {
+    color: #6b7280;
+    font-size: 12.5px;
+    margin-top: 4px;
+  }
+
+  /* ── File rows ── */
+
+  .b-files {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .b-file {
+    align-items: center;
+    background: #fafbfc;
+    border: 1px solid #eef0f3;
+    border-radius: 10px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 40px 1fr auto;
+    padding: 10px 12px;
+  }
+
+  .b-file-uploading {
+    background: #f6faff;
+    border-color: #d6e7f5;
+  }
+
+  .b-file-error {
+    background: #fbe9e7;
+    border-color: #f3c8c2;
+  }
+
+  .b-file-icn {
+    align-items: center;
+    background: #eef1f5;
+    border-radius: 8px;
+    color: #3b4858;
+    display: flex;
+    flex-shrink: 0;
+    height: 40px;
+    justify-content: center;
+    overflow: hidden;
+    width: 40px;
+  }
+
+  .b-file-icn-pdf {
+    background: #fbe9e7;
+    color: #b33d33;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .b-file-icn-broken {
+    background: #f3c8c2;
+    color: #b33d33;
+  }
+
+  .b-file-img {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+  }
+
+  /* Placeholder pattern for images when object URL is unavailable */
+  .b-file-thumb {
+    background: repeating-linear-gradient(45deg, #d8dde4 0 5px, #cfd5dd 5px 10px);
+    height: 100%;
+    width: 100%;
+  }
+
+  .b-file-info {
+    min-width: 0;
+  }
+
+  .b-file-nm {
+    color: #0f1d2e;
+    font-size: 13.5px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .b-file-nm-err {
+    color: #7a2620;
+  }
+
+  .b-file-meta {
+    align-items: center;
+    color: #6b7280;
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 12px;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .b-file-dot {
+    background: #c8cfd8;
+    border-radius: 999px;
+    flex-shrink: 0;
+    height: 3px;
+    width: 3px;
+  }
+
+  .b-file-size {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  .b-file-uploading-text {
+    color: #1a6fa8;
+    font-weight: 600;
+  }
+
+  .b-file-meta-err {
+    color: #b33d33;
+    font-weight: 600;
+  }
+
+  .b-file-check {
+    color: #2f9e6b;
+    flex-shrink: 0;
+  }
+
+  /* Spacer keeps the success/uploading row grid consistent with the 3-column layout */
+  .b-file-spacer {
+    flex-shrink: 0;
+    width: 18px;
+  }
+
+  /* ── Progress bar ── */
+
+  .b-progress {
+    background: #e0ecf7;
+    border-radius: 999px;
+    height: 4px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+
+  .b-progress-bar {
+    animation: b-shimmer 1.4s linear infinite;
+    background: linear-gradient(90deg, transparent, #4ea3e0 40%, #4ea3e0 60%, transparent);
+    border-radius: 999px;
+    height: 100%;
+    width: 40%;
+  }
+
+  @keyframes b-shimmer {
+    0%   { transform: translateX(-250%); }
+    100% { transform: translateX(350%); }
+  }
+
+  /* ── Per-row retry button ── */
+
+  .b-file-retry {
+    appearance: none;
+    background: #fff;
+    border: 1px solid #e8b6af;
+    border-radius: 7px;
+    color: #7a2620;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 11px;
+  }
+
+  .b-file-retry:hover {
+    border-color: #b33d33;
+  }
+
+  /* ── Per-row action button group ── */
+
+  .b-file-actions {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+  }
+
+  .b-file-remove {
+    align-items: center;
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex;
+    flex-shrink: 0;
+    height: 28px;
+    justify-content: center;
+    padding: 0;
+    width: 28px;
+  }
+
+  .b-file-remove:hover {
+    background: #f0f2f5;
+    color: #4a5568;
+  }
+
+  /* ── Capacity strip ── */
+
+  .b-slots {
+    align-items: center;
+    color: #6b7280;
+    display: flex;
+    font-size: 12.5px;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+
+  .b-slots-left {
+    align-items: center;
+    display: inline-flex;
+    gap: 8px;
+  }
+
+  .b-slots-pips {
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .b-slots-pip {
+    background: #e2e6ea;
+    border-radius: 999px;
+    height: 6px;
+    width: 18px;
+  }
+
+  .b-slots-pip-on {
+    background: #2f9e6b;
+  }
+
+  /* ── Maximum reached banner ── */
+
+  .b-max-banner {
+    align-items: center;
+    background: #e3f3eb;
+    border: 1px solid #c5e3d3;
+    border-radius: 10px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 32px 1fr;
+    margin-top: 12px;
+    padding: 12px 14px;
+  }
+
+  .b-max-banner-badge {
+    align-items: center;
+    background: #fff;
+    border-radius: 999px;
+    color: #2f9e6b;
+    display: flex;
+    flex-shrink: 0;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+  }
+
+  .b-max-banner-text {
+    color: #0f4a30;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  /* ── Global error banner ── */
+
+  .b-err-banner {
+    align-items: center;
+    background: #fbe9e7;
+    border: 1px solid #f3c8c2;
+    border-radius: 10px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 32px 1fr auto;
+    margin-top: 10px;
+    padding: 12px 14px;
+  }
+
+  .b-err-banner-badge {
+    align-items: center;
+    background: #fff;
+    border-radius: 999px;
+    color: #b33d33;
+    display: flex;
+    flex-shrink: 0;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+  }
+
+  .b-err-banner-text {
+    color: #7a2620;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .b-err-banner-retry {
+    appearance: none;
+    background: #fff;
+    border: 1px solid #e8b6af;
+    border-radius: 8px;
+    color: #7a2620;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 8px 12px;
+  }
+
+  .b-err-banner-retry:hover {
+    border-color: #b33d33;
   }
 
   /* =========================================================================
@@ -254,7 +590,7 @@
   }
 
   .error-body {
-    color: #888c96;
+    color: #6b7280;
     font-size: 16px;
     max-width: 400px;
   }
@@ -264,7 +600,7 @@
      ========================================================================= */
 
   .footer {
-    color: #888c96;
+    color: #6b7280;
     font-size: 13px;
     margin-top: 24px;
     text-align: center;

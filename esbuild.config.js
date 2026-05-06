@@ -7,7 +7,7 @@
  */
 
 import esbuild from 'esbuild';
-import { copyFileSync } from 'fs';
+import { copyFileSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 
 await esbuild.build({
   entryPoints: ['src/server.ts'],
@@ -30,7 +30,26 @@ await esbuild.build({
   },
 });
 
-// Copy HTML templates to dist/ for Clasp deployment
-for (const template of ['landing', 'error', 'styles']) {
-  copyFileSync(`src/templates/${template}.html`, `dist/${template}.html`);
+// Copy standalone HTML templates to dist/ for Clasp deployment
+for (const file of readdirSync('src/templates')) {
+  if (file.endsWith('.html') && !file.includes('upload')) {
+    copyFileSync(`src/templates/${file}`, `dist/${file}`);
+  }
 }
+
+// Assemble dist/upload.html from ordered fragments wrapped in an IIFE
+const UPLOAD_FRAGMENTS = [
+  'upload-config',
+  'upload-icons',
+  'upload-utils',
+  'upload-builders',
+  'upload-render',
+  'upload-upload',
+  'upload-events',
+];
+
+const stripScriptTags = s => s.replace(/^<script>\n/, '').replace(/\n<\/script>\n$/, '');
+const body = UPLOAD_FRAGMENTS.map(name =>
+  stripScriptTags(readFileSync(`src/templates/${name}.html`, 'utf8'))
+).join('\n');
+writeFileSync('dist/upload.html', `<script>\n  (function () {\n${body}\n  })();\n</script>\n`);

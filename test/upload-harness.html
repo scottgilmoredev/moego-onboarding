@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<!--
+  Upload Step Test Harness
+
+  Standalone browser test for the vaccination record upload step. Mocks
+  google.script.run so the UI can be exercised without a GAS deployment.
+
+  Open directly in a browser — no server required. Not included in the clasp
+  push (rootDir is dist/).
+
+  NOTE: The upload script below is a copy of src/templates/upload.html with
+  GAS template tags replaced by hardcoded values. Keep it in sync with that
+  file when the upload logic changes.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Harness</title>
+    <style>
+      /* =========================================================================
+         Harness controls — not part of the production UI
+         ========================================================================= */
+
+      #harness {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 12px 20px;
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      #harness label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      #harness select,
+      #harness input[type="number"] {
+        background: #2d2d2d;
+        border: 1px solid #555;
+        border-radius: 4px;
+        color: #d4d4d4;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 2px 6px;
+      }
+
+      #harness button {
+        background: #0e639c;
+        border: none;
+        border-radius: 4px;
+        color: #fff;
+        cursor: pointer;
+        font-family: monospace;
+        font-size: 13px;
+        padding: 4px 12px;
+      }
+
+      #harness button:hover {
+        background: #1177bb;
+      }
+
+      /* =========================================================================
+         Production styles (copied from styles.html)
+         ========================================================================= */
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: #f5f2f0;
+        color: #333333;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.375;
+        min-height: 100vh;
+        padding: 32px 20px;
+      }
+
+      .container {
+        margin: 0 auto;
+        max-width: 600px;
+      }
+
+      .header {
+        align-items: center;
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .logo {
+        background-color: #e9ecef;
+        background-position: center;
+        background-size: cover;
+        border-radius: 9999px;
+        flex-shrink: 0;
+        height: 80px;
+        width: 80px;
+      }
+
+      .business-name {
+        color: #00112c;
+        font-size: 16px;
+        font-weight: 400;
+      }
+
+      .page-title {
+        color: #00112c;
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        margin-top: 20px;
+      }
+
+      .page-body {
+        margin-bottom: 24px;
+      }
+
+      .page-body p {
+        color: #333333;
+        font-size: 16px;
+        line-height: 1.5;
+        margin-bottom: 12px;
+      }
+
+      .page-body p:last-child {
+        margin-bottom: 0;
+      }
+
+      .card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 -8px 20px 0 rgba(0, 0, 0, 0.06);
+        margin-bottom: 16px;
+        padding: 32px;
+      }
+
+      .steps-title {
+        color: #00112c;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 20px;
+      }
+
+      .step {
+        align-items: center;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        padding: 16px 0;
+      }
+
+      .step:first-child {
+        padding-top: 0;
+      }
+
+      .step:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .step-upload {
+        align-items: start;
+        display: grid;
+        gap: 0 16px;
+        grid-template-columns: 1fr auto;
+      }
+
+      #vaccine-content {
+        grid-column: 1 / -1;
+      }
+
+      .step-info {
+        flex: 1;
+      }
+
+      .step-label {
+        color: #00112c;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .step-description {
+        color: #6b7280;
+        font-size: 14px;
+        margin-top: 2px;
+      }
+
+      .step-upload-hint {
+        color: #6b7280;
+        font-size: 13px;
+        margin-top: 12px;
+      }
+
+      .btn {
+        align-items: center;
+        background-color: #29a8e0;
+        border: none;
+        border-radius: 28px;
+        color: #ffffff;
+        cursor: pointer;
+        display: inline-flex;
+        flex-shrink: 0;
+        font-family: inherit;
+        font-size: 18px;
+        font-weight: 500;
+        gap: 8px;
+        height: 56px;
+        justify-content: center;
+        padding: 0 28px;
+        text-decoration: none;
+        transition: background-color 0.2s ease-out;
+        white-space: nowrap;
+      }
+
+      .btn:hover {
+        background-color: #1e8fc0;
+      }
+
+      button.btn:disabled {
+        background-color: #e2e6ea;
+        color: #9aa4b0;
+        cursor: not-allowed;
+      }
+
+      button.btn:disabled:hover {
+        background-color: #e2e6ea;
+      }
+
+      #vaccine-upload {
+        display: none;
+      }
+
+      .btn:focus-visible,
+      .b-file-retry:focus-visible,
+      .b-file-remove:focus-visible,
+      .b-err-banner-retry:focus-visible {
+        outline: 3px solid #29a8e0;
+        outline-offset: 2px;
+      }
+
+      /* ── Empty placeholder ── */
+
+      .b-empty {
+        background: #fbfbfa;
+        border: 1.5px dashed #d3d8df;
+        border-radius: 12px;
+        margin-top: 10px;
+        padding: 22px 16px;
+        text-align: center;
+      }
+
+      .b-empty-ic {
+        align-items: center;
+        background: #e7f1fb;
+        border-radius: 12px;
+        color: #1a6fa8;
+        display: inline-flex;
+        height: 44px;
+        justify-content: center;
+        margin-bottom: 10px;
+        width: 44px;
+      }
+
+      .b-empty-lead {
+        color: #0f1d2e;
+        font-size: 14.5px;
+        font-weight: 600;
+      }
+
+      .b-empty-hint {
+        color: #6b7280;
+        font-size: 12.5px;
+        margin-top: 4px;
+      }
+
+      /* ── File rows ── */
+
+      .b-files {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .b-file {
+        align-items: center;
+        background: #fafbfc;
+        border: 1px solid #eef0f3;
+        border-radius: 10px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 40px 1fr auto;
+        padding: 10px 12px;
+      }
+
+      .b-file-uploading {
+        background: #f6faff;
+        border-color: #d6e7f5;
+      }
+
+      .b-file-error {
+        background: #fbe9e7;
+        border-color: #f3c8c2;
+      }
+
+      .b-file-icn {
+        align-items: center;
+        background: #eef1f5;
+        border-radius: 8px;
+        color: #3b4858;
+        display: flex;
+        flex-shrink: 0;
+        height: 40px;
+        justify-content: center;
+        overflow: hidden;
+        width: 40px;
+      }
+
+      .b-file-icn-pdf {
+        background: #fbe9e7;
+        color: #b33d33;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .b-file-icn-broken {
+        background: #f3c8c2;
+        color: #b33d33;
+      }
+
+      .b-file-img {
+        display: block;
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+      }
+
+      .b-file-thumb {
+        background: repeating-linear-gradient(45deg, #d8dde4 0 5px, #cfd5dd 5px 10px);
+        height: 100%;
+        width: 100%;
+      }
+
+      .b-file-info {
+        min-width: 0;
+      }
+
+      .b-file-nm {
+        color: #0f1d2e;
+        font-size: 13.5px;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .b-file-nm-err {
+        color: #7a2620;
+      }
+
+      .b-file-meta {
+        align-items: center;
+        color: #6b7280;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 12px;
+        gap: 6px;
+        margin-top: 2px;
+      }
+
+      .b-file-dot {
+        background: #c8cfd8;
+        border-radius: 999px;
+        flex-shrink: 0;
+        height: 3px;
+        width: 3px;
+      }
+
+      .b-file-size {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+      }
+
+      .b-file-uploading-text {
+        color: #1a6fa8;
+        font-weight: 600;
+      }
+
+      .b-file-meta-err {
+        color: #b33d33;
+        font-weight: 600;
+      }
+
+      .b-file-check {
+        color: #2f9e6b;
+        flex-shrink: 0;
+      }
+
+      .b-file-spacer {
+        flex-shrink: 0;
+        width: 18px;
+      }
+
+      /* ── Progress bar ── */
+
+      .b-progress {
+        background: #e0ecf7;
+        border-radius: 999px;
+        height: 4px;
+        margin-top: 6px;
+        overflow: hidden;
+      }
+
+      .b-progress-bar {
+        animation: b-shimmer 1.4s linear infinite;
+        background: linear-gradient(90deg, transparent, #4ea3e0 40%, #4ea3e0 60%, transparent);
+        border-radius: 999px;
+        height: 100%;
+        width: 40%;
+      }
+
+      @keyframes b-shimmer {
+        0%   { transform: translateX(-250%); }
+        100% { transform: translateX(350%); }
+      }
+
+      /* ── Per-row retry button ── */
+
+      .b-file-retry {
+        appearance: none;
+        background: #fff;
+        border: 1px solid #e8b6af;
+        border-radius: 7px;
+        color: #7a2620;
+        cursor: pointer;
+        flex-shrink: 0;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 7px 11px;
+      }
+
+      .b-file-retry:hover {
+        border-color: #b33d33;
+      }
+
+      /* ── Per-row action button group ── */
+
+      .b-file-actions {
+        align-items: center;
+        display: flex;
+        flex-shrink: 0;
+        gap: 4px;
+      }
+
+      .b-file-remove {
+        align-items: center;
+        appearance: none;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        color: #6b7280;
+        cursor: pointer;
+        display: flex;
+        flex-shrink: 0;
+        height: 28px;
+        justify-content: center;
+        padding: 0;
+        width: 28px;
+      }
+
+      .b-file-remove:hover {
+        background: #f0f2f5;
+        color: #4a5568;
+      }
+
+      /* ── Capacity strip ── */
+
+      .b-slots {
+        align-items: center;
+        color: #6b7280;
+        display: flex;
+        font-size: 12.5px;
+        justify-content: space-between;
+        margin-top: 10px;
+      }
+
+      .b-slots-left {
+        align-items: center;
+        display: inline-flex;
+        gap: 8px;
+      }
+
+      .b-slots-pips {
+        display: inline-flex;
+        gap: 4px;
+      }
+
+      .b-slots-pip {
+        background: #e2e6ea;
+        border-radius: 999px;
+        height: 6px;
+        width: 18px;
+      }
+
+      .b-slots-pip-on {
+        background: #2f9e6b;
+      }
+
+      /* ── Maximum reached banner ── */
+
+      .b-max-banner {
+        align-items: center;
+        background: #e3f3eb;
+        border: 1px solid #c5e3d3;
+        border-radius: 10px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 32px 1fr;
+        margin-top: 12px;
+        padding: 12px 14px;
+      }
+
+      .b-max-banner-badge {
+        align-items: center;
+        background: #fff;
+        border-radius: 999px;
+        color: #2f9e6b;
+        display: flex;
+        flex-shrink: 0;
+        height: 32px;
+        justify-content: center;
+        width: 32px;
+      }
+
+      .b-max-banner-text {
+        color: #0f4a30;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      /* ── Global error banner ── */
+
+      .b-err-banner {
+        align-items: center;
+        background: #fbe9e7;
+        border: 1px solid #f3c8c2;
+        border-radius: 10px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 32px 1fr auto;
+        margin-top: 10px;
+        padding: 12px 14px;
+      }
+
+      .b-err-banner-badge {
+        align-items: center;
+        background: #fff;
+        border-radius: 999px;
+        color: #b33d33;
+        display: flex;
+        flex-shrink: 0;
+        height: 32px;
+        justify-content: center;
+        width: 32px;
+      }
+
+      .b-err-banner-text {
+        color: #7a2620;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .b-err-banner-retry {
+        appearance: none;
+        background: #fff;
+        border: 1px solid #e8b6af;
+        border-radius: 8px;
+        color: #7a2620;
+        cursor: pointer;
+        flex-shrink: 0;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 8px 12px;
+      }
+
+      .b-err-banner-retry:hover {
+        border-color: #b33d33;
+      }
+
+      .footer {
+        color: #6b7280;
+        font-size: 13px;
+        margin-top: 24px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- Harness control panel -->
+    <div id="harness">
+      <span style="color:#888;">upload harness</span>
+      <label>
+        initial count
+        <select id="ctrl-count">
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5 (at cap)</option>
+        </select>
+      </label>
+      <label>
+        behavior
+        <select id="ctrl-behavior">
+          <option value="succeed">always succeed</option>
+          <option value="fail">always fail</option>
+          <option value="random">random (50/50)</option>
+          <option value="first-fail">first file fails, rest succeed</option>
+        </select>
+      </label>
+      <label>
+        delay ms
+        <input id="ctrl-delay" type="number" value="800" min="0" max="5000" style="width:60px;" />
+      </label>
+      <button id="ctrl-apply">Apply &amp; Reset</button>
+    </div>
+
+    <!-- Landing page -->
+    <div class="container">
+      <div class="header">
+        <div class="logo" role="img" aria-label="Zoomin Groomin"></div>
+        <span class="business-name">Zoomin Groomin</span>
+      </div>
+
+      <h1 class="page-title">Secure your spot</h1>
+
+      <div class="page-body">
+        <p>We're so excited to have you here, Test!</p>
+        <p>
+          This is the final step in reserving your grooming appointment with us. To provide a safe,
+          smooth, and personalized experience, we just need a few more details and signed agreements
+          from you. Please take a few moments to complete each step below.
+        </p>
+      </div>
+
+      <div class="card">
+        <p class="steps-title">Complete each step to finish your onboarding</p>
+
+        <div class="step">
+          <div class="step-info">
+            <div class="step-label">Service Agreement</div>
+            <div class="step-description">Review and sign our standard service agreement.</div>
+          </div>
+          <a href="#" class="btn">Sign</a>
+        </div>
+
+        <div class="step">
+          <div class="step-info">
+            <div class="step-label">SMS Agreement</div>
+            <div class="step-description">Review and sign our SMS agreement.</div>
+          </div>
+          <a href="#" class="btn">Sign</a>
+        </div>
+
+        <div class="step">
+          <div class="step-info">
+            <div class="step-label">Card on File</div>
+            <div class="step-description">Securely add a payment method for your appointment.</div>
+          </div>
+          <a href="#" class="btn">Add</a>
+        </div>
+
+        <div class="step step-upload">
+          <div class="step-info">
+            <div class="step-label">Rabies Vaccination Certificate</div>
+            <div class="step-description">Upload a photo or PDF of your pet's current rabies vaccination certificate from your vet with the <b>expiration date</b> visible.</div>
+            <div class="step-upload-hint">Accepted formats: PDF, JPG, PNG &middot; Max 10 MB per file &middot; Up to 5 files</div>
+          </div>
+          <button class="btn" id="vaccine-btn" type="button">Upload</button>
+          <input
+            id="vaccine-upload"
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+            multiple
+            data-upload-count="0"
+            data-business-phone="(404) 555-0100"
+          />
+          <div id="vaccine-content"></div>
+        </div>
+      </div>
+
+      <p class="footer">
+        This link expires in 7 days. If you have any questions, please call or text us at
+        <a href="tel:4045550100">(404) 555-0100</a>.
+      </p>
+    </div>
+
+    <!-- Harness: control panel logic + google.script.run mock -->
+    <script>
+      (function () {
+        var countEl = document.getElementById('ctrl-count');
+        var behaviorEl = document.getElementById('ctrl-behavior');
+        var delayEl = document.getElementById('ctrl-delay');
+        var applyBtn = document.getElementById('ctrl-apply');
+        var uploadInput = document.getElementById('vaccine-upload');
+
+        // Restore control state from sessionStorage across resets
+        ['ctrl-count', 'ctrl-behavior', 'ctrl-delay'].forEach(function (id) {
+          var el = document.getElementById(id);
+          var saved = sessionStorage.getItem(id);
+          if (saved !== null) el.value = saved;
+        });
+
+        // Apply initial upload count to the input before the upload script reads it
+        uploadInput.dataset.uploadCount = countEl.value;
+
+        applyBtn.addEventListener('click', function () {
+          sessionStorage.setItem('ctrl-count', countEl.value);
+          sessionStorage.setItem('ctrl-behavior', behaviorEl.value);
+          sessionStorage.setItem('ctrl-delay', delayEl.value);
+          location.reload();
+        });
+
+        var callCount = 0;
+
+        // google.script.run mock — simulates server response per selected behavior
+        window.google = {
+          script: {
+            run: {
+              _success: null,
+              _failure: null,
+              withSuccessHandler: function (fn) { this._success = fn; return this; },
+              withFailureHandler: function (fn) { this._failure = fn; return this; },
+              uploadVaccinationRecord: function () {
+                var self = this;
+                var behavior = behaviorEl.value;
+                var delay = parseInt(delayEl.value, 10) || 0;
+
+                callCount++;
+                var thisCall = callCount;
+
+                setTimeout(function () {
+                  var succeed =
+                    behavior === 'succeed' ? true :
+                    behavior === 'fail' ? false :
+                    behavior === 'first-fail' ? thisCall > 1 :
+                    Math.random() >= 0.5;
+
+                  if (succeed) {
+                    self._success();
+                  } else {
+                    self._failure();
+                  }
+                }, delay);
+              }
+            }
+          }
+        };
+      })();
+    </script>
+
+    <!-- Upload script (copy of src/templates/upload.html with GAS template tags replaced) -->
+    <script>
+  (function () {
+    var btn = document.getElementById('vaccine-btn');
+    var input = document.getElementById('vaccine-upload');
+    var contentEl = document.getElementById('vaccine-content');
+
+    // GAS template tag replaced: token value is irrelevant for UI testing
+        var token = 'harness-token';
+    var uploadCount = parseInt(input.dataset.uploadCount, 10) || 0;
+    var businessPhone = input.dataset.businessPhone;
+    var UPLOAD_CAP = 5;
+    var MAX_BYTES = 10 * 1024 * 1024;
+    var ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+    var GLOBAL_ERROR_THRESHOLD = 3;
+
+    // status values: 'uploading' | 'success' | 'error-type' | 'error-size' | 'error-cap' | 'error-server' | 'error-read'
+    var fileRows = [];
+    var consecutiveFailures = 0;
+
+    var SVG_PAPERCLIP =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M21 11l-9 9a5.5 5.5 0 0 1-7.78-7.78l9-9a3.7 3.7 0 1 1 5.24 5.24L9.4 17.5a1.85 1.85 0 1 1-2.62-2.62L15 6.5" />' +
+      '</svg>';
+
+    var SVG_CHECK =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M20 6L9 17l-5-5" />' +
+      '</svg>';
+
+    var SVG_WARN_TRI =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />' +
+      '<path d="M12 9v4" />' +
+      '<circle cx="12" cy="17" r=".6" fill="currentColor" />' +
+      '</svg>';
+
+    var SVG_ALERT =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<circle cx="12" cy="12" r="10" />' +
+      '<path d="M12 8v4" />' +
+      '<circle cx="12" cy="16" r=".6" fill="currentColor" />' +
+      '</svg>';
+
+    var SVG_CLOSE =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"' +
+      ' fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"' +
+      ' stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M18 6L6 18M6 6l12 12" />' +
+      '</svg>';
+
+    function escHtml(s) {
+      return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function fmtSize(bytes) {
+      if (bytes >= 1024 * 1024) {
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+      return Math.round(bytes / 1024) + ' KB';
+    }
+
+    function typeLabel(mimeType) {
+      return mimeType === 'application/pdf' ? 'PDF' : 'Image';
+    }
+
+    function fileExt(name) {
+      var parts = name.split('.');
+      return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : '';
+    }
+
+    function createObjectUrl(file) {
+      if (file.type !== 'application/pdf' && window.URL && window.URL.createObjectURL) {
+        try {
+          return window.URL.createObjectURL(file);
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
+    }
+
+    function removeBtn(index, label) {
+      return '<button class="b-file-remove" data-remove="' + index + '" aria-label="Remove ' + label + '">' + SVG_CLOSE + '</button>';
+    }
+
+    function buildFileRowHtml(row, index, suppressServerError) {
+      var file = row.file;
+      var esc = escHtml(file.name);
+      var size = fmtSize(file.size);
+      var isPdf = file.type === 'application/pdf';
+
+      if (row.status === 'uploading') {
+        var uploadingIcn = isPdf
+          ? '<div class="b-file-icn b-file-icn-pdf">PDF</div>'
+          : '<div class="b-file-icn"><div class="b-file-thumb"></div></div>';
+        return (
+          '<div class="b-file b-file-uploading">' +
+            uploadingIcn +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta">' +
+                '<span class="b-file-size">' + size + '</span>' +
+                '<span class="b-file-dot"></span>' +
+                '<span class="b-file-uploading-text">Uploading ' + row.progressIndex + ' of ' + row.progressTotal + '…</span>' +
+              '</div>' +
+              '<div class="b-progress" role="progressbar" aria-label="Uploading ' + row.progressIndex + ' of ' + row.progressTotal + ': ' + esc + '" aria-valuemin="0" aria-valuemax="100"><div class="b-progress-bar"></div></div>' +
+            '</div>' +
+            '<span class="b-file-spacer"></span>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'success') {
+        var successIcn;
+        if (isPdf) {
+          successIcn = '<div class="b-file-icn b-file-icn-pdf">PDF</div>';
+        } else if (row.objectUrl) {
+          successIcn = '<div class="b-file-icn"><img class="b-file-img" src="' + row.objectUrl + '" alt="" /></div>';
+        } else {
+          successIcn = '<div class="b-file-icn"><div class="b-file-thumb"></div></div>';
+        }
+        return (
+          '<div class="b-file">' +
+            successIcn +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta">' +
+                '<span>' + typeLabel(file.type) + '</span>' +
+                '<span class="b-file-dot"></span>' +
+                '<span class="b-file-size">' + size + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<span class="b-file-check">' + SVG_CHECK + '</span>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-type') {
+        var ext = fileExt(file.name);
+        var typeErr = ext
+          ? ext + ' isn\'t supported — please upload a PDF, JPG, or PNG.'
+          : 'Unsupported format — please upload a PDF, JPG, or PNG.';
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">' + escHtml(typeErr) + '</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' +
+              '<button class="b-file-retry" data-retry="' + index + '" aria-label="Retry ' + esc + '">Retry</button>' +
+              removeBtn(index, esc) +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-size') {
+        var sizeErr = 'Exceeds the 10 MB limit (' + size + ') — please use a smaller file.';
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">' + escHtml(sizeErr) + '</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' +
+              '<button class="b-file-retry" data-retry="' + index + '" aria-label="Retry ' + esc + '">Retry</button>' +
+              removeBtn(index, esc) +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-read') {
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">Couldn\'t read this file — please try a different file.</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' +
+              '<button class="b-file-retry" data-retry="' + index + '" aria-label="Retry ' + esc + '">Retry</button>' +
+              removeBtn(index, esc) +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-cap') {
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">Exceeds the ' + UPLOAD_CAP + '-file limit — this one was skipped.</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' + removeBtn(index, esc) + '</div>' +
+          '</div>'
+        );
+      }
+
+      if (row.status === 'error-server') {
+        if (suppressServerError) {
+          var neutralIcn = isPdf
+            ? '<div class="b-file-icn b-file-icn-pdf">PDF</div>'
+            : '<div class="b-file-icn"><div class="b-file-thumb"></div></div>';
+          return (
+            '<div class="b-file">' +
+              neutralIcn +
+              '<div class="b-file-info">' +
+                '<div class="b-file-nm" title="' + esc + '">' + esc + '</div>' +
+                '<div class="b-file-meta">' +
+                  '<span class="b-file-size">' + size + '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="b-file-actions">' + removeBtn(index, esc) + '</div>' +
+            '</div>'
+          );
+        }
+        return (
+          '<div class="b-file b-file-error">' +
+            '<div class="b-file-icn b-file-icn-broken">' + SVG_WARN_TRI + '</div>' +
+            '<div class="b-file-info">' +
+              '<div class="b-file-nm b-file-nm-err" title="' + esc + '">' + esc + '</div>' +
+              '<div class="b-file-meta"><span class="b-file-meta-err">Couldn\'t upload this file — please try again.</span></div>' +
+            '</div>' +
+            '<div class="b-file-actions">' +
+              '<button class="b-file-retry" data-retry-server="' + index + '" aria-label="Retry ' + esc + '">Retry</button>' +
+              removeBtn(index, esc) +
+            '</div>' +
+          '</div>'
+        );
+      }
+
+      return '';
+    }
+
+    function buildSlotsHtml(count) {
+      var pips = '';
+      for (var i = 0; i < UPLOAD_CAP; i++) {
+        pips += '<span class="b-slots-pip' + (i < count ? ' b-slots-pip-on' : '') + '"></span>';
+      }
+      var remaining = UPLOAD_CAP - count;
+      var remainingHtml = (count > 0 && remaining > 0)
+        ? '<span>' + remaining + ' more allowed</span>'
+        : '';
+      return (
+        '<div class="b-slots">' +
+          '<span class="b-slots-left">' +
+            '<span>' + count + ' of ' + UPLOAD_CAP + ' files attached</span>' +
+            '<span class="b-slots-pips">' + pips + '</span>' +
+          '</span>' +
+          remainingHtml +
+        '</div>'
+      );
+    }
+
+    function render() {
+      var atCap = uploadCount >= UPLOAD_CAP;
+      var hasRows = fileRows.length > 0;
+      var uploading = fileRows.some(function (r) { return r.status === 'uploading'; });
+      var showGlobalError = consecutiveFailures >= GLOBAL_ERROR_THRESHOLD;
+
+      btn.disabled = atCap || uploading;
+      btn.textContent = 'Upload';
+
+      var html = '';
+
+      if (showGlobalError) {
+        html +=
+          '<div class="b-err-banner">' +
+            '<span class="b-err-banner-badge">' + SVG_ALERT + '</span>' +
+            '<div class="b-err-banner-text">We\'re having trouble completing this upload — please try again later or call us at ' + escHtml(businessPhone) + '.</div>' +
+            '<button class="b-err-banner-retry" id="vaccine-global-retry" aria-label="Retry all failed uploads">Retry</button>' +
+          '</div>';
+      }
+
+      if (!hasRows && uploadCount === 0) {
+        html +=
+          '<div class="b-empty">' +
+            '<span class="b-empty-ic">' + SVG_PAPERCLIP + '</span>' +
+            '<div class="b-empty-lead">No files attached</div>' +
+            '<div class="b-empty-hint">Tap Upload to add a photo or PDF — up to ' + UPLOAD_CAP + ' files.</div>' +
+          '</div>';
+      } else if (hasRows) {
+        html += '<div class="b-files">';
+        for (var i = 0; i < fileRows.length; i++) {
+          html += buildFileRowHtml(fileRows[i], i, showGlobalError);
+        }
+        html += '</div>';
+      }
+
+      if (atCap) {
+        html +=
+          '<div class="b-max-banner">' +
+            '<span class="b-max-banner-badge">' + SVG_CHECK + '</span>' +
+            '<div class="b-max-banner-text">Maximum uploads reached</div>' +
+          '</div>';
+      } else if (hasRows || uploadCount > 0) {
+        html += buildSlotsHtml(uploadCount);
+      }
+
+      contentEl.innerHTML = html;
+
+      var globalRetryBtn = document.getElementById('vaccine-global-retry');
+      if (globalRetryBtn) {
+        globalRetryBtn.onclick = function () {
+          consecutiveFailures = 0;
+          var retryQueue = [];
+          for (var i = 0; i < fileRows.length; i++) {
+            if (fileRows[i].status === 'error-server') {
+              fileRows[i].status = 'uploading';
+              fileRows[i].retryCount = 0;
+              retryQueue.push(fileRows[i]);
+            }
+          }
+          render();
+          if (retryQueue.length > 0) {
+            processQueue(retryQueue, 0);
+          }
+        };
+      }
+
+      var retryBtns = contentEl.querySelectorAll('[data-retry]');
+      for (var j = 0; j < retryBtns.length; j++) {
+        (function (rb) {
+          rb.onclick = function () {
+            var idx = parseInt(rb.getAttribute('data-retry'), 10);
+            fileRows.splice(idx, 1);
+            render();
+            input.click();
+          };
+        })(retryBtns[j]);
+      }
+
+      var serverRetryBtns = contentEl.querySelectorAll('[data-retry-server]');
+      for (var k = 0; k < serverRetryBtns.length; k++) {
+        (function (rb) {
+          rb.onclick = function () {
+            var idx = parseInt(rb.getAttribute('data-retry-server'), 10);
+            var row = fileRows[idx];
+            row.status = 'uploading';
+            render();
+            doUpload(
+              row.file,
+              function () {
+                row.status = 'success';
+                row.objectUrl = createObjectUrl(row.file);
+                uploadCount++;
+                consecutiveFailures = 0;
+                render();
+              },
+              function () {
+                row.status = 'error-server';
+                if (fileRows.length === 1) {
+                  row.retryCount = (row.retryCount || 0) + 1;
+                  if (row.retryCount + consecutiveFailures >= GLOBAL_ERROR_THRESHOLD) {
+                    consecutiveFailures = GLOBAL_ERROR_THRESHOLD;
+                  }
+                }
+                render();
+              },
+              function () {
+                row.status = 'error-read';
+                render();
+              }
+            );
+          };
+        })(serverRetryBtns[k]);
+      }
+
+      var removeBtns = contentEl.querySelectorAll('[data-remove]');
+      for (var m = 0; m < removeBtns.length; m++) {
+        (function (rb) {
+          rb.onclick = function () {
+            var idx = parseInt(rb.getAttribute('data-remove'), 10);
+            fileRows.splice(idx, 1);
+            render();
+          };
+        })(removeBtns[m]);
+      }
+    }
+
+    function doUpload(file, onSuccess, onFailure, onReadError) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var base64 = e.target.result.split(',')[1];
+        google.script.run
+          .withSuccessHandler(onSuccess)
+          .withFailureHandler(onFailure)
+          .uploadVaccinationRecord(file.name, file.type, base64, token);
+      };
+      reader.onerror = function () {
+        if (onReadError) { onReadError(); } else { onFailure(); }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function processQueue(queue, index) {
+      if (index >= queue.length) {
+        render();
+        return;
+      }
+
+      var row = queue[index];
+      row.status = 'uploading';
+      row.progressIndex = index + 1;
+      row.progressTotal = queue.length;
+      render();
+
+      doUpload(
+        row.file,
+        function () {
+          row.status = 'success';
+          row.objectUrl = createObjectUrl(row.file);
+          uploadCount++;
+          consecutiveFailures = 0;
+          render();
+          processQueue(queue, index + 1);
+        },
+        function () {
+          row.status = 'error-server';
+          consecutiveFailures++;
+          processQueue(queue, index + 1);
+        },
+        function () {
+          row.status = 'error-read';
+          processQueue(queue, index + 1);
+        }
+      );
+    }
+
+    render();
+
+    btn.addEventListener('click', function () {
+      input.click();
+    });
+
+    input.addEventListener('change', function (e) {
+      var files = Array.prototype.slice.call(e.target.files);
+      if (!files.length) return;
+
+      input.value = '';
+
+      var remaining = UPLOAD_CAP - uploadCount;
+      var validQueue = [];
+
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+
+        if (ALLOWED_TYPES.indexOf(file.type) === -1) {
+          fileRows.push({ file: file, status: 'error-type', objectUrl: null });
+          continue;
+        }
+
+        if (file.size > MAX_BYTES) {
+          fileRows.push({ file: file, status: 'error-size', objectUrl: null });
+          continue;
+        }
+
+        if (validQueue.length < remaining) {
+          var row = { file: file, status: 'uploading', objectUrl: null };
+          fileRows.push(row);
+          validQueue.push(row);
+        } else {
+          fileRows.push({ file: file, status: 'error-cap', objectUrl: null });
+        }
+      }
+
+      render();
+
+      if (validQueue.length > 0) {
+        processQueue(validQueue, 0);
+      }
+    });
+  })();
+</script>
+
+  </body>
+</html>

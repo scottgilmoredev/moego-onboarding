@@ -117,6 +117,12 @@ A deployment automation tool that provisions a new GAS project, configures Scrip
 
 ---
 
+**Unit-Tested Client-Side JavaScript**
+
+The landing page upload script currently lives in `src/templates/upload.html` with no unit test coverage. Moving it to a TypeScript module in `src/` and configuring esbuild to inline the compiled output as a `<script>` block in the HTML template at build time would enable Vitest coverage. The server-side MIME/size/cap validations duplicate the critical logic, so this is low urgency — worth pursuing if client-side complexity grows.
+
+---
+
 **Middleware Layer for Webhook Signature Verification**
 
 Google Apps Script does not expose incoming HTTP request headers in the DoPost event object, making HMAC-SHA256 webhook signature verification impossible in the current runtime. A middleware layer — such as a lightweight Express server or cloud function — positioned in front of the Apps Script web app would receive the raw webhook request, verify the X-Moe-Signature-256 header, and forward validated requests to the Apps Script endpoint. This would restore signature verification as a security control without requiring a runtime change.

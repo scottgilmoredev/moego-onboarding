@@ -41,12 +41,13 @@
       <div class="card">
         <p class="steps-title">Complete each step to finish your onboarding</p>
 
+        <!-- Sign steps: buttons link to MoeGo-hosted agreement and COF pages -->
         <div class="step">
           <div class="step-info">
             <div class="step-label">Service Agreement</div>
             <div class="step-description">Review and sign our standard service agreement.</div>
           </div>
-          <a href="<?= payload.serviceAgreementUrl ?>" target="_blank" class="btn">Sign</a>
+          <a href="<?= payload.serviceAgreementUrl ?>" target="_blank" rel="noopener noreferrer" class="btn" aria-label="Sign Service Agreement, opens in new tab">Sign</a>
         </div>
 
         <div class="step">
@@ -54,7 +55,7 @@
             <div class="step-label">SMS Agreement</div>
             <div class="step-description">Review and sign our SMS agreement.</div>
           </div>
-          <a href="<?= payload.smsAgreementUrl ?>" target="_blank" class="btn">Sign</a>
+          <a href="<?= payload.smsAgreementUrl ?>" target="_blank" rel="noopener noreferrer" class="btn" aria-label="Sign SMS Agreement, opens in new tab">Sign</a>
         </div>
 
         <div class="step">
@@ -62,21 +63,25 @@
             <div class="step-label">Card on File</div>
             <div class="step-description">Securely add a payment method for your appointment.</div>
           </div>
-          <a href="<?= payload.cofUrl ?>" target="_blank" class="btn">Add</a>
+          <a href="<?= payload.cofUrl ?>" target="_blank" rel="noopener noreferrer" class="btn" aria-label="Add Card on File, opens in new tab">Add</a>
         </div>
 
-                <!-- File upload: uploads vaccination records to Google Drive via google.script.run -->
-        <!-- Initial state and cap enforcement handled by the script below -->
-        <div class="step">
+        <!-- File upload step: files are sent to Google Drive via google.script.run in upload.html -->
+        <div class="step step-upload">
           <div class="step-info">
-            <div class="step-label">Rabies Vaccination Paperwork</div>
-            <div class="step-description">Upload a copy of your pet's current vaccination records.</div>
-            <!-- Upload count and error messages injected by script -->
-            <div class="step-upload-status" id="vaccine-status" style="display:none;"></div>
-            <div class="step-upload-error" id="vaccine-error" style="display:none;"></div>
+            <div class="step-label">Rabies Vaccination Certificate</div>
+            <div class="step-description">Upload a photo or PDF of your pet's current rabies vaccination certificate from your vet with the <b>expiration date</b> visible.</div>
+            <div class="step-upload-hint">Accepted formats: PDF, JPG, PNG &middot; Max 10 MB per file &middot; Up to 5 files</div>
           </div>
-          <label class="btn" id="vaccine-label" for="vaccine-upload">Upload</label>
-          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png" data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" />
+
+          <button class="btn" id="vaccine-btn" type="button">Upload</button>
+
+          <!-- accept: extensions control the OS file picker display; MIME types are used by the
+               upload script for client-side validation. data-* attributes pass server-rendered
+               values to the script without an additional round trip. -->
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" aria-label="Upload rabies vaccination certificate" title="Upload rabies vaccination certificate" />
+          <!-- Populated by the upload script — spans full card width via grid-column: 1 / -1 -->
+          <div id="vaccine-content" aria-live="polite"></div>
         </div>
       </div>
 
@@ -85,96 +90,7 @@
       </p>
     </div>
 
-    <script>
-      (function () {
-        var input = document.getElementById('vaccine-upload');
-        var label = document.getElementById('vaccine-label');
-        var statusEl = document.getElementById('vaccine-status');
-        var errorEl = document.getElementById('vaccine-error');
-        var token = '<?= token ?>';
-        var uploadCount = parseInt(input.dataset.uploadCount, 10) || 0;
-        var businessPhone = input.dataset.businessPhone;
-        var UPLOAD_CAP = 5;
-
-        function showStatus(text) {
-          statusEl.textContent = text;
-          statusEl.style.display = 'block';
-        }
-
-        function lockAtCap() {
-          label.textContent = 'Upload';
-          label.className = 'btn btn-limit-reached';
-          label.removeAttribute('for');
-          input.disabled = true;
-          showStatus('Maximum uploads reached');
-        }
-
-        function resetToUpload() {
-          label.textContent = 'Upload';
-          label.className = 'btn';
-          label.setAttribute('for', 'vaccine-upload');
-          input.disabled = false;
-          input.value = '';
-        }
-
-        // Apply initial state on page load
-        if (uploadCount >= UPLOAD_CAP) {
-          lockAtCap();
-        } else if (uploadCount > 0) {
-          showStatus(uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded');
-        }
-
-        input.addEventListener('change', function (e) {
-          var file = e.target.files[0];
-          if (!file) return;
-
-          // Clear any previous error and transition to uploading state
-          errorEl.style.display = 'none';
-          errorEl.textContent = '';
-          label.textContent = 'Uploading...';
-          label.className = 'btn btn-uploading';
-          label.removeAttribute('for');
-          input.disabled = true;
-
-          var reader = new FileReader();
-
-          reader.onload = function (event) {
-            // Strip the data URL prefix to get the raw base64 string
-            var base64 = event.target.result.split(',')[1];
-
-            google.script.run
-              .withSuccessHandler(function () {
-                uploadCount++;
-
-                // Show green success state briefly, then reset or lock
-                label.textContent = 'Uploaded';
-                label.className = 'btn btn-uploaded';
-                showStatus(uploadCount + ' file' + (uploadCount === 1 ? '' : 's') + ' uploaded');
-
-                setTimeout(function () {
-                  if (uploadCount >= UPLOAD_CAP) {
-                    lockAtCap();
-                  } else {
-                    resetToUpload();
-                  }
-                }, 2000);
-              })
-              .withFailureHandler(function () {
-                // Reset button to allow retry and show error with phone fallback
-                label.textContent = 'Try again';
-                label.className = 'btn btn-upload-error';
-                label.setAttribute('for', 'vaccine-upload');
-                input.disabled = false;
-                input.value = '';
-                errorEl.textContent = 'Upload failed — please try again or call us at ' + businessPhone;
-                errorEl.style.display = 'block';
-              })
-              .uploadVaccinationRecord(file.name, file.type, base64, token);
-          };
-
-          reader.readAsDataURL(file);
-        });
-      })();
-    </script>
+    <!-- Upload script injected at render time by HtmlService — GAS template tags inside a <script> block cause IDE parse errors, so the script tag lives in upload.html -->
+    <?!= HtmlService.createHtmlOutputFromFile('upload').getContent() ?>
   </body>
 </html>

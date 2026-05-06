@@ -1,0 +1,65 @@
+<script>
+    /**
+     * @file upload-render.html
+     * @description The render function, which rebuilds and writes the upload widget's
+     * HTML on every state change.
+     */
+
+    /**
+     * Re-renders the entire upload UI into #vaccine-content.
+     *
+     * Called after every state change. Rebuilds HTML from scratch and sets
+     * innerHTML — no incremental DOM patching. Also updates the upload button's
+     * disabled state and label.
+     *
+     * Rendering logic:
+     *  - Global error banner: shown when consecutiveFailures >= GLOBAL_ERROR_THRESHOLD.
+     *  - Empty placeholder: shown only when there are no rows and no prior uploads.
+     *  - File list: shown when fileRows is non-empty.
+     *  - Max banner: shown when uploadCount has reached UPLOAD_CAP.
+     *  - Slots strip: shown when there are files or prior uploads, but cap not yet reached.
+     */
+    function render() {
+      const atCap = uploadCount >= UPLOAD_CAP;
+      const hasRows = fileRows.length > 0;
+      const uploading = fileRows.some(r => r.status === 'uploading');
+      const showGlobalError = consecutiveFailures >= GLOBAL_ERROR_THRESHOLD;
+
+      btn.disabled = atCap || uploading;
+      btn.textContent = 'Upload';
+
+      let html = '';
+
+      if (showGlobalError) {
+        html += `
+          <div class="b-err-banner">
+            <span class="b-err-banner-badge">${SVG_ALERT}</span>
+            <div class="b-err-banner-text">We're having trouble completing this upload — please try again later or call us at ${escHtml(businessPhone)}.</div>
+            <button class="b-err-banner-retry" data-global-retry aria-label="Retry all failed uploads">Retry</button>
+          </div>`;
+      }
+
+      if (!hasRows && uploadCount === 0) {
+        html += `
+          <div class="b-empty">
+            <span class="b-empty-ic">${SVG_PAPERCLIP}</span>
+            <div class="b-empty-lead">No files attached</div>
+            <div class="b-empty-hint">Tap Upload to add a photo or PDF — up to ${UPLOAD_CAP} files.</div>
+          </div>`;
+      } else if (hasRows) {
+        html += `<div class="b-files">${fileRows.map((row, i) => buildFileRowHtml(row, i, showGlobalError)).join('')}</div>`;
+      }
+
+      if (atCap) {
+        html += `
+          <div class="b-max-banner">
+            <span class="b-max-banner-badge">${SVG_CHECK}</span>
+            <div class="b-max-banner-text">Maximum uploads reached</div>
+          </div>`;
+      } else if (hasRows || uploadCount > 0) {
+        html += buildSlotsHtml(uploadCount);
+      }
+
+      contentEl.innerHTML = html;
+    }
+</script>

@@ -1,0 +1,144 @@
+<script>
+    /**
+     * @file upload-events.html
+     * @description Event wiring for the upload widget: delegated click handler for
+     * dynamic buttons, Upload button passthrough, and file input change handler.
+     */
+
+    /**
+     * Retries all server-error rows by re-queuing them through processQueue.
+     * Resets the consecutive failure counter so the global error banner is cleared.
+     */
+    function handleGlobalRetry() {
+      const retryQueue = fileRows.filter(r => r.status === 'error-server');
+
+      consecutiveFailures = 0;
+      retryQueue.forEach(r => { r.status = 'uploading'; r.retryCount = 0; });
+
+      render();
+
+      if (retryQueue.length > 0) processQueue(retryQueue, 0);
+    }
+
+    /**
+     * Removes a row with a client-side error and re-opens the file picker so the
+     * user can select a replacement without dismissing the row manually first.
+     *
+     * @param {number} index - Index of the row to remove from fileRows.
+     */
+    function handleRetry(index) {
+      fileRows.splice(index, 1);
+      render();
+      input.click();
+    }
+
+    /**
+     * Removes a row from the file list.
+     *
+     * @param {number} index - Index of the row to remove from fileRows.
+     */
+    function handleRemove(index) {
+      fileRows.splice(index, 1);
+      render();
+    }
+
+    /**
+     * Delegated click handler for all dynamic buttons inside #vaccine-content.
+     *
+     * Uses closest() to match data-* attributes so handlers remain valid across
+     * re-renders. Dispatches to named handler functions; inline logic lives there,
+     * not here.
+     */
+    contentEl.addEventListener('click', e => {
+      if (e.target.closest('[data-global-retry]')) {
+        handleGlobalRetry();
+        return;
+      }
+
+      const retryBtn = e.target.closest('[data-retry]');
+
+      if (retryBtn) {
+        handleRetry(parseInt(retryBtn.getAttribute('data-retry'), 10));
+        return;
+      }
+
+      const serverRetryBtn = e.target.closest('[data-retry-server]');
+
+      if (serverRetryBtn) {
+        retrySingle(fileRows[parseInt(serverRetryBtn.getAttribute('data-retry-server'), 10)]);
+        return;
+      }
+
+      const removeButton = e.target.closest('[data-remove]');
+
+      if (removeButton) {
+        handleRemove(parseInt(removeButton.getAttribute('data-remove'), 10));
+      }
+    });
+
+    // Initial render to show empty state or pre-existing upload count on page load.
+    render();
+
+    // Forward Upload button clicks to the hidden file input.
+    btn.addEventListener('click', () => input.click());
+
+    /**
+     * Determines the initial status for a file being added to the upload list.
+     *
+     * Evaluated in priority order: type check → size check → cap check → valid.
+     * validQueueLength must reflect how many files have already been accepted in
+     * the current selection batch so the cap is enforced correctly mid-loop.
+     *
+     * @param {File} file
+     * @param {number} validQueueLength - Number of valid files accepted so far in this batch.
+     * @param {number} remaining - Remaining upload slots before the cap is reached.
+     * @returns {string} One of: 'uploading', 'error-type', 'error-size', 'error-cap'.
+     */
+    const classifyFile = (file, validQueueLength, remaining) => {
+      if (!ALLOWED_TYPES.includes(file.type)) return 'error-type';
+      if (file.size > MAX_BYTES) return 'error-size';
+      if (validQueueLength < remaining) return 'uploading';
+
+      return 'error-cap';
+    };
+
+    /**
+     * Handles file selection from the native file picker.
+     *
+     * Classifies each selected file, adds it to fileRows, and builds a queue of
+     * valid rows for sequential upload. Invalid files are added immediately so
+     * the user sees all rejections in one pass.
+     *
+     * progressIndex and progressTotal are set on all queued rows before the
+     * first render so the "Uploading X of Y" label is correct from the start.
+     */
+    input.addEventListener('change', e => {
+      const files = Array.from(e.target.files);
+
+      if (!files.length) return;
+
+      // Clear the input so the same file can be re-selected after removal.
+      input.value = '';
+
+      const remaining = UPLOAD_CAP - uploadCount;
+      const validQueue = [];
+
+      for (const file of files) {
+        const status = classifyFile(file, validQueue.length, remaining);
+        const row = { file, status, objectUrl: null };
+
+        fileRows.push(row);
+
+        if (status === 'uploading') validQueue.push(row);
+      }
+
+      validQueue.forEach((row, i) => {
+        row.progressIndex = i + 1;
+        row.progressTotal = validQueue.length;
+      });
+
+      render();
+
+      if (validQueue.length > 0) processQueue(validQueue, 0);
+    });
+</script>

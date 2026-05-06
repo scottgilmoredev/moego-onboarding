@@ -584,7 +584,7 @@ describe('uploadVaccinationRecord', () => {
       getFolderById: vi.fn().mockReturnValue(mockFolder),
     });
     vi.stubGlobal('Utilities', {
-      base64Decode: vi.fn().mockReturnValue([1, 2, 3]),
+      base64Decode: vi.fn().mockReturnValue([0x25, 0x50, 0x44, 0x46]),
       newBlob: vi.fn().mockReturnValue({}),
     });
     vi.stubGlobal('PropertiesService', {
@@ -625,7 +625,7 @@ describe('uploadVaccinationRecord', () => {
     uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token');
 
     expect(Utilities.newBlob).toHaveBeenCalledWith(
-      [1, 2, 3],
+      [0x25, 0x50, 0x44, 0x46],
       'application/pdf',
       'Smith_Jane_vaccination.pdf'
     );
@@ -707,9 +707,96 @@ describe('uploadVaccinationRecord', () => {
 
     uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token');
 
-    expect(Utilities.newBlob).toHaveBeenCalledWith([1, 2, 3], 'application/pdf', 'rabies.pdf');
+    expect(Utilities.newBlob).toHaveBeenCalledWith(
+      [0x25, 0x50, 0x44, 0x46],
+      'application/pdf',
+      'rabies.pdf'
+    );
     expect(mockSetProperty).not.toHaveBeenCalled();
     expect(MailApp.sendEmail).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms upload is rejected and no file is created when the
+   * MIME type is not in the allowlist.
+   */
+  it('throws and does not upload when mimeType is not in the allowlist', () => {
+    expect(() =>
+      uploadVaccinationRecord('photo.gif', 'image/gif', 'base64data==', 'test-token')
+    ).toThrow('Invalid file type');
+    expect(mockFolder.createFile).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms upload proceeds for all allowed MIME types with matching magic bytes.
+   */
+  it.each([
+    ['application/pdf', 'rabies.pdf', [0x25, 0x50, 0x44, 0x46]],
+    ['image/jpeg', 'rabies.jpg', [0xff, 0xd8, 0xff]],
+    ['image/png', 'rabies.png', [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+  ])('allows upload for %s', (mimeType, fileName, magicBytes) => {
+    const mockSetProperty = vi.fn();
+
+    vi.stubGlobal('Utilities', {
+      base64Decode: vi.fn().mockReturnValue(magicBytes),
+      newBlob: vi.fn().mockReturnValue({}),
+    });
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(JSON.stringify(mockPayload)),
+        setProperty: mockSetProperty,
+        deleteProperty: mockDeleteProperty,
+      }),
+    });
+
+    expect(() =>
+      uploadVaccinationRecord(fileName, mimeType, 'base64data==', 'test-token')
+    ).not.toThrow();
+  });
+
+  /**
+   * @test
+   * @description Confirms upload is rejected when bytes don't match the claimed MIME type.
+   */
+  it.each([
+    ['application/pdf', 'rabies.pdf', [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+    ['image/jpeg', 'rabies.jpg', [0x25, 0x50, 0x44, 0x46]],
+    ['image/png', 'rabies.png', [0xff, 0xd8, 0xff]],
+  ])(
+    'throws when magic bytes do not match claimed mimeType %s',
+    (mimeType, fileName, wrongBytes) => {
+      vi.stubGlobal('Utilities', {
+        base64Decode: vi.fn().mockReturnValue(wrongBytes),
+        newBlob: vi.fn().mockReturnValue({}),
+      });
+
+      expect(() =>
+        uploadVaccinationRecord(fileName, mimeType, 'base64data==', 'test-token')
+      ).toThrow('Invalid file type');
+      expect(mockFolder.createFile).not.toHaveBeenCalled();
+    }
+  );
+
+  /**
+   * @test
+   * @description Confirms mimeType is normalized to lowercase before validation.
+   */
+  it('accepts mixed-case mimeType', () => {
+    const mockSetProperty = vi.fn();
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(JSON.stringify(mockPayload)),
+        setProperty: mockSetProperty,
+        deleteProperty: mockDeleteProperty,
+      }),
+    });
+
+    expect(() =>
+      uploadVaccinationRecord('rabies.pdf', 'Application/PDF', 'base64data==', 'test-token')
+    ).not.toThrow();
   });
 
   /**
