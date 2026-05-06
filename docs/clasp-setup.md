@@ -27,20 +27,24 @@ This creates `.clasp.json` at the project root. See [Version Control](#version-c
 
 ## Version Control
 
-`.clasp.json` is excluded from version control as it contains the Script ID which identifies your specific Apps Script project. After cloning the repository, copy the example file and populate it with your Script ID:
+Per-environment clasp configs (`.clasp.staging.json`, `.clasp.prod.json`) and the generated active config (`.clasp.json`) are excluded from version control — they contain Script IDs which identify specific Apps Script projects.
+
+`.clasp.template.json` is committed and serves as the shared config structure. After cloning, create the per-environment files from it:
 
 ```bash
-cp .clasp.json.example .clasp.json
+cp .clasp.template.json .clasp.staging.json  # then set staging scriptId
+cp .clasp.template.json .clasp.prod.json      # then set prod scriptId
 ```
 
-Then replace `<your-script-id>` in `.clasp.json` with your actual Script ID.
+The `push:staging` and `push:prod` scripts generate `.clasp.json` automatically by copying the appropriate env file before invoking `clasp push` — you do not need to create `.clasp.json` manually.
 
-`.clasp.json` structure:
+`.clasp.template.json` structure:
 
 ```json
 {
-  "scriptId": "<your-script-id>",
-  "rootDir": "./dist",
+  "scriptId": "",
+  "projectId": "moego-onboarding",
+  "rootDir": "dist",
   "scriptExtensions": [".js", ".gs"],
   "htmlExtensions": [".html"],
   "jsonExtensions": [".json"],
@@ -102,11 +106,12 @@ await esbuild.build({
 
 ## Scripts
 
-| Script      | Command                    | Description                               |
-| ----------- | -------------------------- | ----------------------------------------- |
-| `build`     | `node esbuild.config.js`   | Compile TypeScript to `dist/` via esbuild |
-| `typecheck` | `tsc --noEmit`             | Type check without emitting output        |
-| `push`      | `pnpm build && clasp push` | Build and push to GAS                     |
+| Script         | Command                                                          | Description                               |
+| -------------- | ---------------------------------------------------------------- | ----------------------------------------- |
+| `build`        | `node esbuild.config.js`                                         | Compile TypeScript to `dist/` via esbuild |
+| `typecheck`    | `tsc --noEmit`                                                   | Type check without emitting output        |
+| `push:staging` | `cp .clasp.staging.json .clasp.json && pnpm build && clasp push` | Build and push to staging GAS project     |
+| `push:prod`    | `cp .clasp.prod.json .clasp.json && pnpm build && clasp push`    | Build and push to production GAS project  |
 
 ---
 
@@ -125,18 +130,44 @@ With Clasp 3.x and `rootDir` pointing to `dist/`, `.claspignore` is largely redu
 ```
 Edit .ts files in src/
        ↓
-pnpm typecheck    ← catch type errors
+pnpm typecheck         ← catch type errors
        ↓
-pnpm build        ← esbuild compiles to dist/
+pnpm build             ← esbuild compiles to dist/
        ↓
-pnpm push         ← clasp pushes dist/ to GAS
+pnpm push:staging      ← clasp pushes dist/ to staging GAS project
        ↓
-Test in GAS editor
+Test in staging GAS editor / staging deployment URL
+       ↓
+merge to main          ← CI deploys to staging automatically
+       ↓
+publish release tag    ← CI deploys to production (requires approval)
 ```
 
 ---
 
 ## Deploying Updates
+
+### Automated CD (normal flow)
+
+The GitHub Actions deploy workflow handles deployments automatically:
+
+| Trigger             | Target     | Approval required |
+| ------------------- | ---------- | ----------------- |
+| Merge to `main`     | Staging    | No                |
+| Publish release tag | Production | Yes (reviewer)    |
+
+To deploy to production, publish a GitHub release with a `v*` tag (e.g. `v1.2.0`) from `main`. The workflow will pause for reviewer approval before pushing to GAS.
+
+### Manual push (local override)
+
+```bash
+pnpm push:staging   # push directly to staging GAS project
+pnpm push:prod      # push directly to production GAS project
+```
+
+Use manual pushes for urgent fixes or when testing changes before committing.
+
+### GAS deployment versioning
 
 You do not need a new deployment URL for every code change. Use **Edit deployment** to deploy a new version under the existing URL:
 
@@ -146,12 +177,27 @@ You do not need a new deployment URL for every code change. Use **Edit deploymen
 4. In the **Version** dropdown, select **New version**
 5. Click **Deploy**
 
-| Action             | When to use                                    | Result                 |
-| ------------------ | ---------------------------------------------- | ---------------------- |
-| Edit (New version) | Code changes, bug fixes — 99% of the time      | Same URL, updated code |
-| New deployment     | Separate environments (staging vs. production) | New URL, new code      |
+| Action             | When to use                               | Result                 |
+| ------------------ | ----------------------------------------- | ---------------------- |
+| Edit (New version) | Code changes, bug fixes — 99% of the time | Same URL, updated code |
+| New deployment     | New environment setup                     | New URL, new code      |
 
 > **Head deployment:** Under **Deploy → Test deployments**, the Head URL always runs the latest saved code without versioning. Use this for local testing only — it requires a logged-in Google session and will not work for MoeGo webhooks.
+
+---
+
+## GitHub Secrets (CD pipeline)
+
+The deploy workflow requires the following secrets configured per environment in **GitHub → Settings → Environments**:
+
+| Secret              | Environment | Value                                             |
+| ------------------- | ----------- | ------------------------------------------------- |
+| `CLASP_TOKEN`       | staging     | Contents of `~/.clasprc.json` after `clasp login` |
+| `CLASP_TOKEN`       | prod        | Same as above                                     |
+| `SCRIPT_ID_STAGING` | staging     | Script ID from the staging GAS project            |
+| `SCRIPT_ID_PROD`    | prod        | Script ID from the production GAS project         |
+
+To generate `~/.clasprc.json`, run `clasp login` locally and complete the OAuth flow. Then copy the file contents as the `CLASP_TOKEN` secret value.
 
 ---
 
