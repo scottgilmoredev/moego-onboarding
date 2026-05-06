@@ -13,6 +13,7 @@ import {
   fetchCustomer,
   fetchOnboardingLinks,
   retriggerOnboarding,
+  sendBatchUploadNotification,
   uploadVaccinationRecord,
 } from '#/server.js';
 import {
@@ -608,10 +609,10 @@ describe('uploadVaccinationRecord', () => {
   /**
    * @test
    * @description Confirms the file is renamed to LastName_FirstName_vaccination.ext,
-   * uploadCount is set to 1 on the first upload, the owner is notified, and the
-   * Drive URL is written to the sheet.
+   * uploadCount is set to 1 on the first upload, the Drive URL is stored in uploads,
+   * no notification email is sent, and the Drive URL is written to the sheet.
    */
-  it('renames file, sets uploadCount to 1 on first upload, notifies owner, and writes to sheet', () => {
+  it('renames file, sets uploadCount to 1 on first upload, stores fileUrl, and writes to sheet', () => {
     const mockSetProperty = vi.fn();
 
     vi.stubGlobal('PropertiesService', {
@@ -635,14 +636,17 @@ describe('uploadVaccinationRecord', () => {
       JSON.stringify({
         ...mockPayload,
         uploadCount: 1,
-        uploads: [{ name: 'rabies.pdf', size: 4, type: 'application/pdf' }],
+        uploads: [
+          {
+            name: 'rabies.pdf',
+            size: 4,
+            type: 'application/pdf',
+            fileUrl: 'https://drive.google.com/file/d/abc123',
+          },
+        ],
       })
     );
-    expect(MailApp.sendEmail).toHaveBeenCalledWith(
-      'owner@example.com, another-owner@example.com',
-      'Vaccination Record Uploaded — Jane S.',
-      expect.stringContaining('https://drive.google.com/file/d/abc123')
-    );
+    expect(MailApp.sendEmail).not.toHaveBeenCalled();
     expect(mockSetValue).toHaveBeenCalledWith(
       expect.stringContaining('https://drive.google.com/file/d/abc123')
     );
@@ -821,6 +825,106 @@ describe('uploadVaccinationRecord', () => {
     expect(() =>
       uploadVaccinationRecord('rabies.pdf', 'application/pdf', 'base64data==', 'test-token')
     ).toThrow('Drive folder not found');
+  });
+});
+
+// ============================================================================
+// sendBatchUploadNotification
+// ============================================================================
+
+/**
+ * sendBatchUploadNotification
+ *
+ * @description Tests for the batch upload notification. Covers the happy path
+ * with multiple stored file URLs, no-op when the token is missing, and no-op
+ * when the payload has no uploads.
+ */
+describe('sendBatchUploadNotification', () => {
+  const mockPayloadForBatch = {
+    customerId: 'cus_001',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    serviceAgreementUrl: 'https://client.moego.pet/agreement/sign/abc123',
+    smsAgreementUrl: 'https://client.moego.pet/agreement/sign/def456',
+    cofUrl: 'https://client.moego.pet/payment/cof/client?c=ghi789',
+    uploadCount: 2,
+    uploads: [
+      {
+        name: 'rabies.pdf',
+        size: 4,
+        type: 'application/pdf',
+        fileUrl: 'https://drive.google.com/file/d/abc123',
+      },
+      {
+        name: 'bordetella.pdf',
+        size: 4,
+        type: 'application/pdf',
+        fileUrl: 'https://drive.google.com/file/d/def456',
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(JSON.stringify(mockPayloadForBatch)),
+      }),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  /**
+   * @test
+   * @description Confirms a single email is sent with all stored Drive file URLs.
+   */
+  it('sends one email containing all stored Drive file URLs', () => {
+    sendBatchUploadNotification('test-token');
+
+    expect(MailApp.sendEmail).toHaveBeenCalledTimes(1);
+
+    const body = (MailApp.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0][2] as string;
+    expect(body).toContain('https://drive.google.com/file/d/abc123');
+    expect(body).toContain('https://drive.google.com/file/d/def456');
+  });
+
+  /**
+   * @test
+   * @description Confirms no email is sent when the token is not found.
+   */
+  it('does nothing when token is not found', () => {
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(null),
+      }),
+    });
+
+    sendBatchUploadNotification('test-token');
+
+    expect(MailApp.sendEmail).not.toHaveBeenCalled();
+  });
+
+  /**
+   * @test
+   * @description Confirms no email is sent when the payload has no uploads.
+   */
+  it('does nothing when payload has no uploads', () => {
+    const payloadNoUploads = { ...mockPayloadForBatch, uploads: [] };
+
+    vi.stubGlobal('PropertiesService', {
+      getScriptProperties: vi.fn().mockReturnValue({
+        getProperty: vi.fn().mockReturnValue(JSON.stringify(payloadNoUploads)),
+      }),
+    });
+
+    sendBatchUploadNotification('test-token');
+
+    expect(MailApp.sendEmail).not.toHaveBeenCalled();
   });
 });
 

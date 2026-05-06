@@ -211,21 +211,21 @@ ${shortUrl}`;
  * @interface SendUploadNotificationEmailParams
  * @property {string} firstName - The client's first name.
  * @property {string} lastName - The client's last name.
- * @property {string} fileUrl - The Google Drive URL of the uploaded file.
+ * @property {string[]} fileUrls - The Google Drive URLs of all uploaded files in the batch.
  */
 export interface SendUploadNotificationEmailParams {
   firstName: string;
   lastName: string;
-  fileUrl: string;
+  fileUrls: string[];
 }
 
 /**
  * Send an upload notification email to the business owner.
  *
  * @function sendUploadNotificationEmail
- * @description Composes and delivers an email to the business owner when a
- * client uploads their vaccination record. Includes the client's name and a
- * direct link to the uploaded file in Google Drive.
+ * @description Composes and delivers a single email to the business owner after
+ * a client completes a batch upload. Lists all Drive file URLs in one message
+ * so multiple uploads do not produce multiple inbox notifications.
  *
  * @param {SendUploadNotificationEmailParams} params - The email parameters.
  * @returns {void}
@@ -233,13 +233,14 @@ export interface SendUploadNotificationEmailParams {
 export function sendUploadNotificationEmail({
   firstName,
   lastName,
-  fileUrl,
+  fileUrls,
 }: SendUploadNotificationEmailParams): void {
   const { businessOwnerEmails } = getConfig();
 
   const subject = `Vaccination Record Uploaded — ${firstName} ${lastName.charAt(0)}.`;
 
-  const body = `${firstName} ${lastName.charAt(0)}. has uploaded their vaccination record.\n\nView the file in Google Drive:\n${fileUrl}`;
+  const fileList = fileUrls.join('\n');
+  const body = `${firstName} ${lastName.charAt(0)}. has uploaded their vaccination record.\n\nView the files in Google Drive:\n${fileList}`;
 
   MailApp.sendEmail(businessOwnerEmails.join(', '), subject, body);
 }

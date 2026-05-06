@@ -28,7 +28,7 @@ export interface TokenPayload {
   smsAgreementUrl: string;
   cofUrl: string;
   uploadCount?: number;
-  uploads?: { name: string; size: number; type: string }[];
+  uploads?: { name: string; size: number; type: string; fileUrl?: string }[];
 }
 
 /**
