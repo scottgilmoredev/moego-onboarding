@@ -214,11 +214,16 @@ export function uploadVaccinationRecord(
 
   const file = folder.createFile(blob);
 
-  // Increment upload count and notify the owner
+  // Increment upload count, append file metadata for client-side row persistence, and notify the owner
   if (payload) {
+    const uploads = [
+      ...(payload.uploads ?? []),
+      { name: fileName, size: bytes.length, type: normalizedMimeType },
+    ];
+
     PropertiesService.getScriptProperties().setProperty(
       token,
-      JSON.stringify({ ...payload, uploadCount: uploadCount + 1 })
+      JSON.stringify({ ...payload, uploadCount: uploadCount + 1, uploads })
     );
 
     sendUploadNotificationEmail({

@@ -632,7 +632,11 @@ describe('uploadVaccinationRecord', () => {
     expect(mockFolder.createFile).toHaveBeenCalled();
     expect(mockSetProperty).toHaveBeenCalledWith(
       'test-token',
-      JSON.stringify({ ...mockPayload, uploadCount: 1 })
+      JSON.stringify({
+        ...mockPayload,
+        uploadCount: 1,
+        uploads: [{ name: 'rabies.pdf', size: 4, type: 'application/pdf' }],
+      })
     );
     expect(MailApp.sendEmail).toHaveBeenCalledWith(
       'owner@example.com, another-owner@example.com',
@@ -664,7 +668,11 @@ describe('uploadVaccinationRecord', () => {
 
     expect(mockSetProperty).toHaveBeenCalledWith(
       'test-token',
-      JSON.stringify({ ...payloadWithCount, uploadCount: 3 })
+      JSON.stringify({
+        ...payloadWithCount,
+        uploadCount: 3,
+        uploads: [{ name: 'rabies.pdf', size: 4, type: 'application/pdf' }],
+      })
     );
   });
 
