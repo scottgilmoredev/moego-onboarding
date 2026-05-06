@@ -734,8 +734,9 @@ describe('uploadVaccinationRecord', () => {
    */
   it.each([
     ['application/pdf', 'rabies.pdf', [0x25, 0x50, 0x44, 0x46]],
-    ['image/jpeg', 'rabies.jpg', [0xff, 0xd8, 0xff]],
-    ['image/png', 'rabies.png', [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+    // GAS Utilities.base64Decode returns signed bytes; values > 127 are negative
+    ['image/jpeg', 'rabies.jpg', [-1, -40, -1]],
+    ['image/png', 'rabies.png', [-119, 80, 78, 71, 13, 10, 26, 10]],
   ])('allows upload for %s', (mimeType, fileName, magicBytes) => {
     const mockSetProperty = vi.fn();
 
@@ -761,9 +762,9 @@ describe('uploadVaccinationRecord', () => {
    * @description Confirms upload is rejected when bytes don't match the claimed MIME type.
    */
   it.each([
-    ['application/pdf', 'rabies.pdf', [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+    ['application/pdf', 'rabies.pdf', [-119, 80, 78, 71, 13, 10, 26, 10]],
     ['image/jpeg', 'rabies.jpg', [0x25, 0x50, 0x44, 0x46]],
-    ['image/png', 'rabies.png', [0xff, 0xd8, 0xff]],
+    ['image/png', 'rabies.png', [-1, -40, -1]],
   ])(
     'throws when magic bytes do not match claimed mimeType %s',
     (mimeType, fileName, wrongBytes) => {
