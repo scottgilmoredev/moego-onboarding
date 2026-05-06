@@ -19,6 +19,11 @@
     const GLOBAL_ERROR_THRESHOLD = 3;
 
     // status values: 'uploading' | 'success' | 'error-type' | 'error-size' | 'error-cap' | 'error-server' | 'error-read'
-    let fileRows = [];
+    const persistedUploads = JSON.parse(document.getElementById('vaccine-uploads').textContent || '[]');
+    let fileRows = persistedUploads.map(u => ({
+      file: { name: u.name, size: u.size, type: u.type },
+      status: 'success',
+      objectUrl: null,
+    }));
     let consecutiveFailures = 0;
 </script>
