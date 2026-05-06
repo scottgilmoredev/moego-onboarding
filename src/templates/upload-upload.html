@@ -1,0 +1,140 @@
+<script>
+    /**
+     * @file upload-upload.html
+     * @description File upload logic: FileReader → google.script.run bridge, shared
+     * state mutation callbacks, sequential queue processor, and single-file retry handler.
+     */
+
+    /**
+     * Reads a file and sends it to the server via google.script.run.
+     *
+     * Reads the file as a base64 data URL using FileReader, then invokes
+     * uploadVaccinationRecord on the server. All three callbacks are required
+     * by processQueue; onReadError is optional for ad-hoc callers.
+     *
+     * @param {File} file
+     * @param {Function} onSuccess - Called with no arguments on server success.
+     * @param {Function} onFailure - Called with no arguments on server failure.
+     * @param {Function|null} onReadError - Called if FileReader fails. Falls back
+     *   to onFailure if omitted.
+     */
+    function doUpload(file, onSuccess, onFailure, onReadError) {
+      const reader = new FileReader();
+
+      reader.onload = e => {
+        const base64 = e.target.result.split(',')[1];
+
+        google.script.run
+          .withSuccessHandler(onSuccess)
+          .withFailureHandler(onFailure)
+          .uploadVaccinationRecord(file.name, file.type, base64, token);
+      };
+
+      reader.onerror = () => onReadError ? onReadError() : onFailure();
+      reader.readAsDataURL(file);
+    }
+
+    /**
+     * Marks a row as successfully uploaded and updates shared counters.
+     *
+     * Callers are responsible for calling render() after this.
+     *
+     * @param {object} row - File row object.
+     */
+    function onUploadSuccess(row) {
+      row.status = 'success';
+      row.objectUrl = createObjectUrl(row.file);
+      uploadCount++;
+      consecutiveFailures = 0;
+    }
+
+    /**
+     * Marks a row as having a server error and increments the failure counter.
+     *
+     * Callers are responsible for calling render() and advancing the queue after this.
+     *
+     * @param {object} row - File row object.
+     */
+    function onUploadFailure(row) {
+      row.status = 'error-server';
+      consecutiveFailures++;
+    }
+
+    /**
+     * Marks a row as having a local read error.
+     *
+     * Callers are responsible for calling render() and advancing the queue after this.
+     *
+     * @param {object} row - File row object.
+     */
+    function onReadError(row) {
+      row.status = 'error-read';
+    }
+
+    /**
+     * Uploads files in a queue sequentially, one at a time.
+     *
+     * Sets progressIndex and progressTotal on each row before uploading so the
+     * "Uploading X of Y" label reflects the current position. Calls render()
+     * before each upload to show the in-progress state, and again on completion
+     * before advancing to the next file.
+     *
+     * @param {object[]} queue - Array of file row objects to upload.
+     * @param {number} index - Current position in the queue.
+     */
+    function processQueue(queue, index) {
+      if (index >= queue.length) { render(); return; }
+
+      const row = queue[index];
+
+      row.status = 'uploading';
+      row.progressIndex = index + 1;
+      row.progressTotal = queue.length;
+
+      render();
+
+      const next = () => processQueue(queue, index + 1);
+
+      doUpload(
+        row.file,
+        () => { onUploadSuccess(row); render(); next(); },
+        () => { onUploadFailure(row); next(); },
+        () => { onReadError(row); next(); }
+      );
+    }
+
+    /**
+     * Retries a single server-error row.
+     *
+     * Separate from processQueue because single-file retries apply special
+     * global error threshold logic: if this is the only file and it keeps
+     * failing, escalate consecutiveFailures to trigger the global error banner.
+     *
+     * @param {object} row - File row object with status 'error-server'.
+     */
+    function retrySingle(row) {
+      row.status = 'uploading';
+
+      render();
+      doUpload(
+        row.file,
+        () => { onUploadSuccess(row); render(); },
+        () => {
+          row.status = 'error-server';
+
+          // Only escalate when this is the sole file — with multiple files,
+          // consecutiveFailures already increments via the queue path.
+          if (fileRows.length === 1) {
+            row.retryCount = (row.retryCount || 0) + 1;
+
+            if (row.retryCount + consecutiveFailures >= GLOBAL_ERROR_THRESHOLD) {
+              consecutiveFailures = GLOBAL_ERROR_THRESHOLD;
+            }
+          }
+
+          render();
+        },
+        () => { row.status = 'error-read'; render(); }
+      );
+    }
+</script>

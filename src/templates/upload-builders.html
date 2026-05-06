@@ -1,0 +1,205 @@
+<script>
+    /**
+     * @file upload-builders.html
+     * @description HTML string builder functions for the upload widget's file rows,
+     * error states, and capacity strip. Each builder returns an HTML string; all
+     * output is assembled and written to innerHTML by render().
+     */
+
+    /**
+     * Returns the file type icon element for a row.
+     *
+     * @param {boolean} isPdf
+     * @returns {string} HTML string.
+     */
+    const fileIcn = isPdf => isPdf
+      ? '<div class="b-file-icn b-file-icn-pdf">PDF</div>'
+      : '<div class="b-file-icn"><div class="b-file-thumb"></div></div>';
+
+    /**
+     * Returns a remove button element for a file row.
+     *
+     * @param {number} index - Index of the row in fileRows.
+     * @param {string} label - HTML-escaped filename for the aria-label.
+     * @returns {string} HTML string.
+     */
+    const removeBtn = (index, label) =>
+      `<button class="b-file-remove" data-remove="${index}" aria-label="Remove ${label}">${SVG_CLOSE}</button>`;
+
+    /**
+     * Returns the actions container for an error row, optionally including a retry button.
+     *
+     * @param {number} index - Index of the row in fileRows.
+     * @param {string} esc - HTML-escaped filename.
+     * @param {string|null} retryAttr - data-* attribute name for the retry button (e.g.
+     *   'data-retry', 'data-retry-server'), or null to omit the retry button.
+     * @returns {string} HTML string.
+     */
+    const actionsHtml = (index, esc, retryAttr) => `
+      <div class="b-file-actions">
+        ${retryAttr ? `<button class="b-file-retry" ${retryAttr}="${index}" aria-label="Retry ${esc}">Retry</button>` : ''}
+        ${removeBtn(index, esc)}
+      </div>`;
+
+    /**
+     * Builds the HTML for a row in the 'uploading' state.
+     *
+     * @param {object} row - File row object.
+     * @param {string} esc - HTML-escaped filename.
+     * @param {string} size - Formatted file size string.
+     * @param {boolean} isPdf
+     * @returns {string} HTML string.
+     */
+    const buildUploadingRow = (row, esc, size, isPdf) => {
+      const progress = `${row.progressIndex} of ${row.progressTotal}`;
+
+      return `
+        <div class="b-file b-file-uploading">
+          ${fileIcn(isPdf)}
+          <div class="b-file-info">
+            <div class="b-file-nm" title="${esc}">${esc}</div>
+            <div class="b-file-meta">
+              <span class="b-file-size">${size}</span>
+              <span class="b-file-dot"></span>
+              <span class="b-file-uploading-text">Uploading ${progress}…</span>
+            </div>
+            <div class="b-progress" role="progressbar" aria-label="Uploading ${progress}: ${esc}" aria-valuemin="0" aria-valuemax="100"><div class="b-progress-bar"></div></div>
+          </div>
+          <span class="b-file-spacer"></span>
+        </div>`;
+    };
+
+    /**
+     * Builds the HTML for a row in the 'success' state.
+     *
+     * Uses an image preview when an object URL is available for non-PDF files;
+     * falls back to the generic icon otherwise.
+     *
+     * @param {object} row - File row object.
+     * @param {string} esc - HTML-escaped filename.
+     * @param {string} size - Formatted file size string.
+     * @param {boolean} isPdf
+     * @returns {string} HTML string.
+     */
+    const buildSuccessRow = (row, esc, size, isPdf) => {
+      const icn = !isPdf && row.objectUrl
+        ? `<div class="b-file-icn"><img class="b-file-img" src="${row.objectUrl}" alt="" /></div>`
+        : fileIcn(isPdf);
+  
+      return `
+        <div class="b-file">
+          ${icn}
+          <div class="b-file-info">
+            <div class="b-file-nm" title="${esc}">${esc}</div>
+            <div class="b-file-meta">
+              <span>${typeLabel(row.file.type)}</span>
+              <span class="b-file-dot"></span>
+              <span class="b-file-size">${size}</span>
+            </div>
+          </div>
+          <span class="b-file-check">${SVG_CHECK}</span>
+        </div>`;
+    };
+
+    /**
+     * Builds the HTML for a generic error row.
+     *
+     * @param {string} esc - HTML-escaped filename.
+     * @param {string} message - Already-escaped error message string.
+     * @param {number} index - Index of the row in fileRows.
+     * @param {string|null} retryAttr - data-* attribute name for the retry button, or null.
+     * @returns {string} HTML string.
+     */
+    const buildErrorRow = (esc, message, index, retryAttr) => `
+      <div class="b-file b-file-error">
+        <div class="b-file-icn b-file-icn-broken">${SVG_WARN_TRI}</div>
+        <div class="b-file-info">
+          <div class="b-file-nm b-file-nm-err" title="${esc}">${esc}</div>
+          <div class="b-file-meta"><span class="b-file-meta-err">${message}</span></div>
+        </div>
+        ${actionsHtml(index, esc, retryAttr)}
+      </div>`;
+
+    /**
+     * Builds the HTML for a row in the 'error-server' state.
+     *
+     * When the global error banner is showing (suppress=true), server-error rows
+     * are rendered neutrally — no error styling, no retry button — because the
+     * banner's global retry already covers them.
+     *
+     * @param {string} esc - HTML-escaped filename.
+     * @param {string} size - Formatted file size string.
+     * @param {number} index - Index of the row in fileRows.
+     * @param {boolean} isPdf
+     * @param {boolean} suppress - True when the global error threshold has been reached.
+     * @returns {string} HTML string.
+     */
+    const buildServerErrorRow = (esc, size, index, isPdf, suppress) =>
+      suppress
+        ? `
+          <div class="b-file">
+            ${fileIcn(isPdf)}
+            <div class="b-file-info">
+              <div class="b-file-nm" title="${esc}">${esc}</div>
+              <div class="b-file-meta"><span class="b-file-size">${size}</span></div>
+            </div>
+            ${actionsHtml(index, esc, null)}
+          </div>`
+        : buildErrorRow(esc, "Couldn't upload this file — please try again.", index, 'data-retry-server');
+
+    /**
+     * Dispatches to the appropriate per-status row builder for a file row.
+     *
+     * @param {object} row - File row object with at minimum { file, status }.
+     * @param {number} index - Index of the row in fileRows.
+     * @param {boolean} suppressServerError - Passed through to buildServerErrorRow.
+     * @returns {string} HTML string, or empty string for unknown statuses.
+     */
+    function buildFileRowHtml(row, index, suppressServerError) {
+      const { file } = row;
+      const esc = escHtml(file.name);
+      const size = fmtSize(file.size);
+      const isPdf = file.type === 'application/pdf';
+
+      switch (row.status) {
+        case 'uploading':    return buildUploadingRow(row, esc, size, isPdf);
+        case 'success':      return buildSuccessRow(row, esc, size, isPdf);
+        case 'error-read':   return buildErrorRow(esc, "Couldn't read this file — please try a different file.", index, 'data-retry');
+        case 'error-size':   return buildErrorRow(esc, `Exceeds the 10 MB limit (${size}) — please use a smaller file.`, index, 'data-retry');
+        case 'error-cap':    return buildErrorRow(esc, `Exceeds the ${UPLOAD_CAP}-file limit — this one was skipped.`, index, null);
+        case 'error-server': return buildServerErrorRow(esc, size, index, isPdf, suppressServerError);
+        case 'error-type': {
+          const ext = fileExt(file.name);
+          const msg = ext
+            ? `${ext} isn't supported — please upload a PDF, JPG, or PNG.`
+            : 'Unsupported format — please upload a PDF, JPG, or PNG.';
+
+          return buildErrorRow(esc, escHtml(msg), index, 'data-retry');
+        }
+
+        default: return '';
+      }
+    }
+
+    /**
+     * Builds the file count / capacity strip shown below the file list.
+     *
+     * @param {number} count - Number of successfully uploaded files.
+     * @returns {string} HTML string.
+     */
+    function buildSlotsHtml(count) {
+      const remaining = UPLOAD_CAP - count;
+      const pips = Array.from({ length: UPLOAD_CAP }, (_, i) =>
+        `<span class="b-slots-pip${i < count ? ' b-slots-pip-on' : ''}"></span>`
+      ).join('');
+
+      return `
+        <div class="b-slots">
+          <span class="b-slots-left">
+            <span>${count} of ${UPLOAD_CAP} files attached</span>
+            <span class="b-slots-pips">${pips}</span>
+          </span>
+          ${count > 0 && remaining > 0 ? `<span>${remaining} more allowed</span>` : ''}
+        </div>`;
+    }
+</script>

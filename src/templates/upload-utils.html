@@ -1,0 +1,65 @@
+<script>
+    /**
+     * @file upload-utils.html
+     * @description Pure utility functions for formatting and DOM-safe string handling
+     * used by the upload widget's HTML builders.
+     */
+
+    /**
+     * Escapes a string for safe insertion into HTML attribute values and text content.
+     *
+     * @param {string} s - Raw string to escape.
+     * @returns {string} HTML-safe string.
+     */
+    const escHtml = s => s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    /**
+     * Formats a byte count as a human-readable file size string.
+     *
+     * @param {number} bytes - File size in bytes.
+     * @returns {string} Formatted size, e.g. "1.4 MB" or "340 KB".
+     */
+    const fmtSize = bytes => bytes >= 1024 * 1024
+      ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.round(bytes / 1024)} KB`;
+
+    /**
+     * Returns a display label for a MIME type.
+     *
+     * @param {string} mimeType
+     * @returns {'PDF'|'Image'}
+     */
+    const typeLabel = mimeType => mimeType === 'application/pdf' ? 'PDF' : 'Image';
+
+    /**
+     * Extracts and uppercases the file extension from a filename.
+     *
+     * @param {string} name - Filename, e.g. "photo.jpg".
+     * @returns {string} Uppercase extension (e.g. "JPG"), or empty string if none.
+     */
+    const fileExt = name => {
+      const parts = name.split('.');
+      return parts.length > 1 ? parts[parts.length - 1].toUpperCase() : '';
+    };
+
+    /**
+     * Creates an object URL for image preview.
+     *
+     * Returns null for PDFs (no preview needed) and on any error, so callers
+     * can fall back to the generic thumbnail icon.
+     *
+     * @param {File} file
+     * @returns {string|null} Object URL, or null.
+     */
+    const createObjectUrl = file => {
+      if (file.type !== 'application/pdf' && window.URL && window.URL.createObjectURL) {
+        try { return window.URL.createObjectURL(file); } catch (e) { return null; }
+      }
+
+      return null;
+    };
+</script>

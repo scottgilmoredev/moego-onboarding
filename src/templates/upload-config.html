@@ -1,0 +1,24 @@
+<script>
+    /**
+     * @file upload-config.html
+     * @description DOM references, configuration constants, and runtime state for
+     * the vaccination record upload widget. Assembled into upload.html by the build
+     * step as the first fragment inside the IIFE.
+     */
+
+    const btn = document.getElementById('vaccine-btn');
+    const input = document.getElementById('vaccine-upload');
+    const contentEl = document.getElementById('vaccine-content');
+
+    const token = '<?= token ?>';
+    let uploadCount = parseInt(input.dataset.uploadCount, 10) || 0;
+    const businessPhone = input.dataset.businessPhone;
+    const UPLOAD_CAP = 5;
+    const MAX_BYTES = 10 * 1024 * 1024;
+    const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+    const GLOBAL_ERROR_THRESHOLD = 3;
+
+    // status values: 'uploading' | 'success' | 'error-type' | 'error-size' | 'error-cap' | 'error-server' | 'error-read'
+    let fileRows = [];
+    let consecutiveFailures = 0;
+</script>
