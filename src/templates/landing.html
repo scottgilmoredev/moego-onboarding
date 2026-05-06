@@ -79,7 +79,11 @@
           <!-- accept: extensions control the OS file picker display; MIME types are used by the
                upload script for client-side validation. data-* attributes pass server-rendered
                values to the script without an additional round trip. -->
+<<<<<<< feature/145-file-upload-ux
+          <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple data-token="<?= token ?>" data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" aria-label="Upload rabies vaccination certificate" title="Upload rabies vaccination certificate" />
+=======
           <input id="vaccine-upload" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple data-upload-count="<?= payload.uploadCount || 0 ?>" data-business-phone="<?= businessPhone ?>" aria-label="Upload rabies vaccination certificate" title="Upload rabies vaccination certificate" />
+>>>>>>> main
           <!-- Populated by the upload script — spans full card width via grid-column: 1 / -1 -->
           <div id="vaccine-content" aria-live="polite"></div>
         </div>
