@@ -675,7 +675,14 @@ describe('uploadVaccinationRecord', () => {
       JSON.stringify({
         ...payloadWithCount,
         uploadCount: 3,
-        uploads: [{ name: 'rabies.pdf', size: 4, type: 'application/pdf' }],
+        uploads: [
+          {
+            name: 'rabies.pdf',
+            size: 4,
+            type: 'application/pdf',
+            fileUrl: 'https://drive.google.com/file/d/abc123',
+          },
+        ],
       })
     );
   });
