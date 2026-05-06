@@ -112,9 +112,9 @@
               '<div class="b-file-meta">' +
                 '<span class="b-file-size">' + size + '</span>' +
                 '<span class="b-file-dot"></span>' +
-                '<span class="b-file-uploading-text">Uploading…</span>' +
+                '<span class="b-file-uploading-text">Uploading ' + row.progressIndex + ' of ' + row.progressTotal + '…</span>' +
               '</div>' +
-              '<div class="b-progress" role="progressbar" aria-label="Uploading ' + esc + '" aria-valuemin="0" aria-valuemax="100"><div class="b-progress-bar"></div></div>' +
+              '<div class="b-progress" role="progressbar" aria-label="Uploading ' + row.progressIndex + ' of ' + row.progressTotal + ': ' + esc + '" aria-valuemin="0" aria-valuemax="100"><div class="b-progress-bar"></div></div>' +
             '</div>' +
             '<span class="b-file-spacer"></span>' +
           '</div>'
@@ -417,6 +417,9 @@
 
       var row = queue[index];
       row.status = 'uploading';
+      row.progressIndex = index + 1;
+      row.progressTotal = queue.length;
+      render();
 
       doUpload(
         row.file,

@@ -156,9 +156,10 @@ export function fetchCustomer(customerId: string, apiKey: string): MoeGoCustomer
  * @function uploadVaccinationRecord
  * @description Called via google.script.run from the client landing page.
  * Resolves the client name from the token payload to prefix the filename, then
- * decodes the base64-encoded file and creates it in the configured Drive folder.
- * Invalidates the token after a successful upload. Falls back to the original
- * filename if the token cannot be resolved.
+ * decodes the base64-encoded file, validates its magic bytes against the claimed
+ * MIME type, and creates it in the configured Drive folder. Invalidates the token
+ * after a successful upload. Falls back to the original filename if the token
+ * cannot be resolved.
  *
  * @param {string} fileName - The original file name.
  * @param {string} mimeType - The MIME type of the file.
@@ -171,9 +172,23 @@ export function uploadVaccinationRecord(
   dataBase64: string,
   token: string
 ): void {
-  const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+  const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png'] as const;
+  const normalizedMimeType = mimeType.toLowerCase();
 
-  if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+  if (!ALLOWED_MIME_TYPES.includes(normalizedMimeType as (typeof ALLOWED_MIME_TYPES)[number])) {
+    throw new Error('Invalid file type');
+  }
+
+  const bytes = Utilities.base64Decode(dataBase64);
+  const signatures: Record<string, number[]> = {
+    'application/pdf': [0x25, 0x50, 0x44, 0x46],
+    'image/jpeg': [0xff, 0xd8, 0xff],
+    'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  };
+  const sig = signatures[normalizedMimeType];
+  const hasValidSignature = sig.every((byte, i) => bytes[i] === byte);
+
+  if (!hasValidSignature) {
     throw new Error('Invalid file type');
   }
 
@@ -194,8 +209,7 @@ export function uploadVaccinationRecord(
   }
 
   const folder = DriveApp.getFolderById(driveFolderId);
-  const bytes = Utilities.base64Decode(dataBase64);
-  const blob = Utilities.newBlob(bytes, mimeType, resolvedFileName);
+  const blob = Utilities.newBlob(bytes, normalizedMimeType, resolvedFileName);
 
   const file = folder.createFile(blob);
 
