@@ -124,6 +124,46 @@ Visit the landing page URL with a malformed or missing token (e.g. `?token=inval
 
 ## GAS Logs
 
-Execution logs are available in the GAS editor under **Executions**. Each `doPost` call logs progress and any errors at key steps — useful for diagnosing failures without a local debugger.
+All functions emit structured JSON log entries via the centralized logger. Each entry contains `module`, `message`, and relevant context fields (e.g. `customerId`, `appointmentId`, `error`). Severity levels map directly to Cloud Logging: `logger.info` → INFO, `logger.warn` → WARNING, `logger.error` → ERROR.
 
-Cloud Logging is also available in Google Cloud Console under the project associated with the GAS script. Filter by `script.googleapis.com/console_logs` to see structured log output.
+**GAS editor — Executions view**
+
+The Executions tab shows all log output for recent runs. Useful for inspecting individual executions during development or after a manual retrigger.
+
+**Cloud Logging — Log Explorer**
+
+Full log history is available in GCP Console → Logging → Log Explorer. Log entries appear as `textPayload` (GAS `console` methods do not produce `jsonPayload`). Filter and search options:
+
+Filter by severity:
+
+```text
+severity=ERROR
+```
+
+Filter by environment (staging and production share the same GCP project):
+
+```text
+resource.labels.script_id="<SCRIPT_ID_STAGING>"
+```
+
+```text
+resource.labels.script_id="<SCRIPT_ID_PROD>"
+```
+
+Script IDs are in `.clasp.staging.json` and `.clasp.prod.json` at the repo root.
+
+Text search within log entries (e.g. to trace a specific client):
+
+```text
+"cus_123"
+```
+
+Combine filters:
+
+```text
+resource.labels.script_id="<SCRIPT_ID_PROD>" severity=ERROR
+```
+
+**Log-based alerting**
+
+To receive email notifications on errors: GCP Console → Logging → Log-based Alerts → Create Alert. Use `severity=ERROR` as the filter and configure a Cloud Monitoring notification channel.

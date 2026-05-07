@@ -46,7 +46,7 @@ describe('smoke', () => {
   const mockSpreadsheet = { getActiveSheet: vi.fn().mockReturnValue(mockSheet) };
 
   beforeEach(() => {
-    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('console', { log: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
     vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),

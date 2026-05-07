@@ -122,7 +122,7 @@ describe('doPost', () => {
   const mockSpreadsheet = { getActiveSheet: vi.fn().mockReturnValue(mockSheet) };
 
   beforeEach(() => {
-    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('console', { log: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
     vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('ContentService', {
       createTextOutput: vi.fn().mockReturnValue({ setMimeType: vi.fn() }),
@@ -342,7 +342,7 @@ describe('doPost', () => {
  */
 describe('fetchCustomer', () => {
   beforeEach(() => {
-    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('console', { log: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
   });
 
   afterEach(() => {
@@ -391,7 +391,7 @@ describe('fetchOnboardingLinks', () => {
   };
 
   beforeEach(() => {
-    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('console', { log: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
   });
 
   afterEach(() => {
@@ -470,7 +470,7 @@ describe('doGet', () => {
     ({ parameter: token ? { token } : {} }) as unknown as GoogleAppsScript.Events.DoGet;
 
   beforeEach(() => {
-    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('console', { log: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
     vi.stubGlobal('PropertiesService', {
       getScriptProperties: vi.fn().mockReturnValue({
         getProperty: vi.fn(),
@@ -983,7 +983,7 @@ describe('retriggerOnboarding', () => {
   }
 
   beforeEach(() => {
-    vi.stubGlobal('console', { log: vi.fn() });
+    vi.stubGlobal('console', { log: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
     vi.stubGlobal('MailApp', { sendEmail: vi.fn() });
     vi.stubGlobal('PropertiesService', {
       getScriptProperties: vi.fn().mockReturnValue({
