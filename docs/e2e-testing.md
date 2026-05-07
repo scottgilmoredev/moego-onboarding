@@ -136,17 +136,17 @@ Full log history is available in GCP Console → Logging → Log Explorer. Log e
 
 Filter by severity:
 
-```
+```text
 severity=ERROR
 ```
 
 Filter by environment (staging and production share the same GCP project):
 
-```
+```text
 resource.labels.script_id="<SCRIPT_ID_STAGING>"
 ```
 
-```
+```text
 resource.labels.script_id="<SCRIPT_ID_PROD>"
 ```
 
@@ -154,13 +154,13 @@ Script IDs are in `.clasp.staging.json` and `.clasp.prod.json` at the repo root.
 
 Text search within log entries (e.g. to trace a specific client):
 
-```
+```text
 "cus_123"
 ```
 
 Combine filters:
 
-```
+```text
 resource.labels.script_id="<SCRIPT_ID_PROD>" severity=ERROR
 ```
 
