@@ -35,7 +35,12 @@ interface LogEntry {
 function buildEntry(module: string, message: string, context?: Record<string, unknown>): string {
   // module and message take precedence over any colliding context keys
   const entry: LogEntry = { ...context, module, message };
-  return JSON.stringify(entry);
+
+  try {
+    return JSON.stringify(entry);
+  } catch {
+    return JSON.stringify({ module, message, error: 'serialization failed' });
+  }
 }
 
 /**
