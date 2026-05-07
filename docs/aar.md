@@ -2,6 +2,74 @@
 
 ---
 
+**Date:** 2026-05-07
+**Scope:** Issue #145 — Multi-file batch upload queue (PRs #152–#157)
+**Participants:** Solo
+
+---
+
+**What Was Planned**
+
+Issue #145 scoped replacing the one-at-a-time file upload flow with a multi-file batch queue. Users could already upload up to 5 files, but each required a separate interaction — select one file, upload, wait, repeat. The planned scope: multi-file selection with a per-file status row UI, sequential queue processing, per-file progress and error state, retry handling; server-side MIME type and magic byte validation; an upload step layout and style redesign; ARIA accessibility and WCAG AA color contrast; a fragment-based build assembly splitting the upload script into six single-concern template files assembled by esbuild; upload metadata persisted in the token payload so page reload re-populates the file list; and a single batch owner notification email per session replacing one email per file.
+
+---
+
+**What Actually Happened**
+
+All planned functionality shipped across PRs #152–#157. Four post-merge hotfixes were required before the feature was stable in production.
+
+**PNG files were always rejected by magic byte validation** — `Utilities.base64Decode` returns a signed Java byte array. PNG's first magic byte `0x89` (137 unsigned) arrives as `-119`. The comparison in PR #152 failed for every PNG regardless of file validity. PDF and JPEG were unaffected because their magic bytes are all below 128 and sign-extend identically. Hotfixed in PR #153 by masking each byte before comparison: `(bytes[i] & 0xff) === byte`.
+
+**Mid-batch consecutive failure escalation had an edge case** — a specific sequence of failures across multiple files could escalate `consecutiveFailures` to the global error threshold prematurely, surfacing the global error banner before it was warranted. Hotfixed in PR #153.
+
+**Client token was inaccessible inside the IIFE-wrapped upload script** — the upload script fragments are assembled into a single IIFE by esbuild. The client token was injected as a GAS scriptlet (`<?= token ?>`) at template render time, placing it in the outer page scope — not inside the IIFE closure. Every `uploadVaccinationRecord` call received `undefined` for the token parameter. Files were uploaded without client metadata and the upload count was never incremented. Hotfixed in PR #154 by embedding the token in a `data-token` attribute on a container element and reading it from the DOM inside the script.
+
+**`sendBatchUploadNotification` was unreachable via `google.script.run`** — the function was exported from `server.ts` and present in the compiled bundle, but the esbuild IIFE banner was missing a wrapper for it. `google.script.run.sendBatchUploadNotification` failed silently on every call. With the per-file email already removed, no owner notification was sent after any upload. Hotfixed in PR #157 by adding the banner wrapper.
+
+---
+
+**Why the Difference**
+
+**GAS `Utilities.base64Decode` signed byte behavior was not researched before implementing magic byte validation.** The signed/unsigned byte distinction is a Java-ism that applies throughout GAS byte handling. It is verifiable before implementation — the return type behavior is documented. Any byte-level comparison against unsigned hex constants is wrong in GAS without the `& 0xff` mask. This is the kind of GAS platform constraint that prior AARs identified as needing upfront research; it was not applied here.
+
+**IIFE scope isolation was not considered when designing token injection.** The fragment assembly architecture puts client scripts inside an IIFE at build time. Scriptlet injection puts values into the outer page scope at render time. The two mechanisms are incompatible — outer scope variables are not accessible inside the closure. This implication was not worked through when the assembly approach was designed.
+
+**The esbuild banner improvement from the Milestones 7–10 AAR was not made durable.** The prior AAR identified the missing banner entry as a root cause and listed improving `google.script.run` awareness as an action. That stayed as text in the AAR rather than a required step in a workflow document. The same gap recurred on the first new `google.script.run`-callable function added afterward.
+
+**Client-side failure escalation logic had no automated test coverage.** The edge case was in client-side JavaScript, which has no Vitest coverage per the accepted architectural decision. It was only caught through manual testing after merge.
+
+---
+
+**Sustains**
+
+- **Fragment-based build assembly scaled well.** Splitting the upload script into six single-concern files made a large and complex script maintainable and independently reviewable. The esbuild assembly step is clean and repeatable.
+- **Defense-in-depth file validation is the right approach.** MIME type alone is client-controlled and spoofable. Magic byte validation against actual file content is the correct security control, even though the signed byte issue required a hotfix.
+- **Accessibility built in from the start.** ARIA attributes and WCAG AA color contrast were included in PR #152 rather than deferred. No accessibility debt carried forward.
+- **Upload metadata persistence for page reload was the right UX call.** Clients who return mid-session see their previously uploaded files without re-uploading or losing context.
+
+---
+
+**Improvements**
+
+- **Document GAS `Utilities.base64Decode` signed byte behavior as a named platform constraint.** Any byte-level comparison in GAS must use `(bytes[i] & 0xff)`. This belongs in `docs/clasp-setup.md` alongside the other documented GAS constraints — not discovered at the hotfix stage.
+- **Establish the data attribute pattern as the canonical approach for passing server-rendered values into IIFE-wrapped scripts.** Scriptlet injection into the outer page scope does not work inside an IIFE. The data attribute approach is the correct substitute and should be the documented standard for any future template work using this assembly model.
+- **Translate the banner checklist from lesson to enforced step.** Done in this session — `docs/clasp-setup.md` now has an explicit checklist item. It must be consulted when adding any new server-callable function.
+- **Revisit client-side JS test coverage when the upload logic next changes significantly.** Three of the four hotfixes were in client-side JavaScript. The upload harness created and deleted during PR #152 demonstrated that harness-based testing is feasible. The coverage gap should not be treated as permanently acceptable.
+
+---
+
+**Actions**
+
+| Action                                                                            | Owner           | By When           |
+| --------------------------------------------------------------------------------- | --------------- | ----------------- |
+| Document GAS signed byte behavior in `docs/clasp-setup.md`                        | scottgilmoredev | Next doc pass     |
+| Document data attribute pattern for IIFE token injection in `docs/clasp-setup.md` | scottgilmoredev | Next doc pass     |
+| Add banner entry requirement to `docs/clasp-setup.md` development workflow        | scottgilmoredev | Done — 2026-05-07 |
+
+---
+
+---
+
 **Date:** 2026-04-29
 **Scope:** Production incident — transient bandwidth quota errors, two clients failed onboarding
 **Participants:** Solo

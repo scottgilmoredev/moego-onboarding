@@ -1,5 +1,84 @@
 # Decision Log — moego-onboarding
 
+## Upload metadata persisted in token payload for client-side pre-population — 2026-05-07
+
+**Decision:** Each successful upload appends a `{ name, size, type }` entry to a `uploads` array in the token payload stored in ScriptProperties. On page reload, `doGet` passes the array to the template, which uses it to pre-populate the file row list with previously uploaded files.
+
+**Context:** After the multi-file queue was introduced, clients who reloaded the page mid-session saw an empty file list even though their files had already been uploaded. The owner notification and sheet write had occurred, but the client had no visual confirmation on reload.
+
+**Alternatives considered:**
+
+- No persistence — client always starts fresh on reload; loses context for multi-file sessions
+- Separate ScriptProperties key per upload — more granular but adds key management complexity and stays within the same storage medium
+- Store in the sheet row — the sheet is write-only from the upload path; reading back from it on `doGet` would require a sheet lookup keyed on customer ID for every page load
+
+**Rationale:** The token payload is already read on every `doGet` and passed to the template. Appending upload metadata to the existing payload adds zero additional storage reads. Storing `name`, `size`, and `type` (not the Drive URL) is sufficient for re-rendering the row — the URL is not needed client-side.
+
+**Consequences:** `TokenPayload.uploads` is an optional array of `{ name: string; size: number; type: string; fileUrl?: string }`. `fileUrl` was added later as part of the batch notification design (see _Batch upload notification via stored Drive URLs_). The `uploads` array grows with each successful upload and is bounded by the upload cap of 5.
+
+**Status:** Decided
+
+---
+
+## Magic byte validation as server-side file type check — 2026-05-07
+
+**Decision:** `uploadVaccinationRecord` validates the actual file content against known magic byte sequences for PDF, JPEG, and PNG in addition to checking the client-submitted MIME type.
+
+**Context:** Server-side MIME type validation alone checks only what the client claims the file is — the `type` field in a `FileReader` result is trivially spoofable. A client can submit `application/pdf` as the MIME type while the file content is anything else.
+
+**Alternatives considered:**
+
+- MIME type check only — fast but trivially bypassed by setting a correct MIME type header on any file
+- Full file content parsing — would catch more edge cases but is disproportionate for this use case and not practical in GAS
+
+**Rationale:** Magic bytes are the first N bytes of a file and are set by the file format itself, not by the client's declared MIME type. Checking them against known signatures for the three allowed types provides meaningful defense in depth with minimal overhead.
+
+**Consequences:** GAS `Utilities.base64Decode` returns a signed Java byte array. Magic bytes above 127 (PNG's `0x89`, for example) arrive as negative values. All byte comparisons must use `(bytes[i] & 0xff) === byte` to mask to unsigned before comparison — using raw byte values against unsigned hex constants silently fails for any byte above 127.
+
+**Status:** Decided
+
+---
+
+## Server-rendered token passed via DOM data attribute into IIFE client script — 2026-05-07
+
+**Decision:** The client token is embedded in a `data-token` attribute on a container element at template render time and read from the DOM inside the upload script. It is not injected as a GAS scriptlet variable.
+
+**Context:** The upload script is assembled from fragment files and wrapped in an IIFE by the esbuild build step. A GAS scriptlet (`<?= token ?>`) injects values into the outer page scope at render time. Variables in the outer page scope are not accessible inside an IIFE closure — `token` was `undefined` inside the script, causing every `uploadVaccinationRecord` call to receive no token.
+
+**Alternatives considered:**
+
+- Scriptlet variable injection — incompatible with IIFE scope; variables injected into the outer page scope are not visible inside the closure
+- Pass token as a function argument from outside the IIFE — would require restructuring the assembly so the IIFE exposes an init function callable from the outer scope; more complex
+- Global variable on `window` — works but pollutes the global namespace; data attribute is the standard pattern for this
+
+**Rationale:** Reading from a DOM data attribute inside the IIFE is the established pattern for passing server-rendered values into encapsulated client scripts. It requires no structural changes to the assembly model and keeps the value scoped to the element that owns it.
+
+**Consequences:** Any additional server-rendered values needed by the upload script should follow the same pattern — embed in a data attribute, read from the DOM inside the IIFE. Scriptlet injection into variables is not viable with the current assembly model.
+
+**Status:** Decided
+
+---
+
+## Batch upload notification via stored Drive URLs — 2026-05-07
+
+**Decision:** `uploadVaccinationRecord` does not send a notification email. Instead, it stores the Drive file URL in the `uploads` array in the token payload. A separate `sendBatchUploadNotification(token)` function reads all stored URLs from the payload and sends one email listing them all. The client calls it after the full upload queue completes.
+
+**Context:** Multi-file upload (issue #145) caused per-file notification emails — one email per file per batch. With clients uploading up to 5 files, this created inbox spam for the business owner. The server-side upload function has no visibility into when a batch ends — only the client knows when `processQueue` is done.
+
+**Alternatives considered:**
+
+- Send one email per file — original behavior; unacceptable at scale with multi-file batches
+- Server-side debounce via time-based GAS trigger — would delay the email by a fixed window and adds trigger lifecycle management complexity not warranted here
+- Return the Drive URL from `uploadVaccinationRecord` and pass it from client to notification call — would require changing the return type and client-side accumulation; storing in the payload is simpler since the payload is already written on each upload
+
+**Rationale:** Storing the Drive URL in the uploads array is zero additional storage cost — the payload is already written to PropertiesService on each upload. `sendBatchUploadNotification` reads what is already there. The client is the natural place to signal batch completion since it controls `processQueue`.
+
+**Consequences:** `TokenPayload.uploads` entries now include `fileUrl?: string`. `sendUploadNotificationEmail` accepts `fileUrls: string[]` instead of a single `fileUrl`. `sendBatchUploadNotification` is exposed to the GAS runtime via the esbuild banner. If the client tab is closed mid-batch, the remaining files are not uploaded and no notification is sent for that session — acceptable given uploads are sequential and the owner sees Drive folder contents regardless.
+
+**Status:** Decided
+
+---
+
 ## Single retry on GAS bandwidth quota errors — 2026-04-29
 
 **Decision:** `UrlFetchApp` calls in `fetchFromMoeGo` and `postToMoeGo` are retried once after a 2-second sleep when the error message includes "Bandwidth quota exceeded". All other errors propagate immediately without retry.

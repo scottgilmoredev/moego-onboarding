@@ -98,9 +98,33 @@ await esbuild.build({
   outfile: 'dist/server.js',
   platform: 'neutral',
   target: 'es2019',
-  format: 'cjs',
+  format: 'iife',
+  globalName: 'exports',
+  banner: {
+    js: `
+      function doPost(e) { return exports.doPost(e); }
+      function doGet(e) { return exports.doGet(e); }
+    `,
+  },
 });
 ```
+
+### Adding a new `google.script.run`-callable function
+
+**Every function callable from the client via `google.script.run` must have an explicit wrapper in the esbuild banner.** Exporting the function from `server.ts` is not enough — the IIFE bundle wraps all exports and they are invisible to the GAS runtime unless declared as top-level globals in the banner.
+
+When adding a new server-callable function:
+
+1. Export the function from `server.ts` as normal.
+2. Add a wrapper to the `banner.js` string in `esbuild.config.js`:
+
+```javascript
+function myNewFunction(arg1, arg2) {
+  return exports.myNewFunction(arg1, arg2);
+}
+```
+
+Omitting this step causes `google.script.run.myNewFunction` to fail silently on the client — no error is thrown, the failure handler is called with no message, and no server execution occurs.
 
 ---
 
@@ -156,7 +180,17 @@ The GitHub Actions deploy workflow handles deployments automatically:
 | Merge to `main`     | Staging    | No                |
 | Publish release tag | Production | Yes (reviewer)    |
 
-To deploy to production, publish a GitHub release with a `v*` tag (e.g. `v1.2.0`) from `main`. The workflow will pause for reviewer approval before pushing to GAS.
+To deploy to production, create a GitHub Release from `main` using the CLI:
+
+```bash
+git tag -a v1.2.0 -m "Release v1.2.0"
+git push origin v1.2.0
+gh release create v1.2.0 --title "v1.2.0" --notes "Brief description of changes."
+```
+
+> **Important:** Pushing a git tag alone does not trigger the workflow. The trigger is `release: [published]` — the `gh release create` command is what fires it. Creating a release via the GitHub UI (Releases → Draft a new release → Publish release) has the same effect.
+
+The workflow will pause for reviewer approval before pushing to GAS.
 
 ### Manual push (local override)
 
