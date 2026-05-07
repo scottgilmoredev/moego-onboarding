@@ -636,7 +636,7 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
 
   // Missing, invalid, or expired token — render error page
   if (!payload) {
-    logger.warn('doGet', 'invalid or expired token', { token: token ?? 'missing' });
+    logger.warn('doGet', 'invalid or expired token', { hasToken: token != null });
     const errorTemplate = HtmlService.createTemplateFromFile('error');
     const errorVars = errorTemplate as unknown as Record<string, unknown>;
 
