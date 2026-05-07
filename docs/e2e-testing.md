@@ -132,7 +132,23 @@ The Executions tab shows all log output for recent runs. Useful for inspecting i
 
 **Cloud Logging — Log Explorer**
 
-Full log history is available in GCP Console → Logging → Log Explorer. Log entries appear as `textPayload` (GAS `console` methods do not produce `jsonPayload`). Filter and search options:
+Full log history is available in GCP Console → Logging → Log Explorer. Log entries appear under `resource.type="app_script_function"` with the structured JSON entry serialized as a string in `jsonPayload.message`. Filter and search options:
+
+Filter by resource type (required — narrows to GAS executions):
+
+```text
+resource.type="app_script_function"
+```
+
+Filter by environment using the `project_key` label (staging and production share the same GCP project but have different project keys). To find the value for each environment, open any execution log entry and copy `labels."script.googleapis.com/project_key"`:
+
+```text
+labels."script.googleapis.com/project_key"="<PROJECT_KEY_STAGING>"
+```
+
+```text
+labels."script.googleapis.com/project_key"="<PROJECT_KEY_PROD>"
+```
 
 Filter by severity:
 
@@ -140,28 +156,18 @@ Filter by severity:
 severity=ERROR
 ```
 
-Filter by environment (staging and production share the same GCP project):
-
-```text
-resource.labels.script_id="<SCRIPT_ID_STAGING>"
-```
-
-```text
-resource.labels.script_id="<SCRIPT_ID_PROD>"
-```
-
-Script IDs are in `.clasp.staging.json` and `.clasp.prod.json` at the repo root.
-
 Text search within log entries (e.g. to trace a specific client):
 
 ```text
-"cus_123"
+jsonPayload.message=~"cus_123"
 ```
 
 Combine filters:
 
 ```text
-resource.labels.script_id="<SCRIPT_ID_PROD>" severity=ERROR
+resource.type="app_script_function"
+labels."script.googleapis.com/project_key"="<PROJECT_KEY_PROD>"
+severity=ERROR
 ```
 
 **Log-based alerting**
