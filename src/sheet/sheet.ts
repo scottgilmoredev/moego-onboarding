@@ -1,5 +1,3 @@
-/* eslint-disable no-console */
-
 /**
  * Google Sheets Client
  *
@@ -9,6 +7,7 @@
 
 import type { MoeGoCustomer } from '#/types/moego.js';
 import { getConfig } from '#/utils/config.js';
+import { logger } from '#/utils/logger.js';
 
 type SheetCellValue = string | number | boolean;
 
@@ -83,7 +82,9 @@ export function writeVaccinationRecord({
   const rowIndex = allRows.findIndex((r, i) => i > 0 && r[3] === customerId);
 
   if (rowIndex === -1) {
-    console.log(`writeVaccinationRecord: customerId ${customerId} not found in sheet — skipping`);
+    logger.warn('writeVaccinationRecord', 'customerId not found in sheet — skipping', {
+      customerId,
+    });
     return;
   }
 

@@ -1,5 +1,3 @@
-/* eslint-disable no-console */
-
 /**
  * Server
  *
@@ -38,6 +36,7 @@ import {
 } from '#/email/email.js';
 import { getConfig } from '#/utils/config.js';
 import { SUPPORTED_EVENT_TYPES } from '#/utils/constants.js';
+import { logger } from '#/utils/logger.js';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -104,7 +103,10 @@ export function fetchOnboardingLinks({
       apiKey,
     });
   } catch (err) {
-    console.log(`fetchOnboardingLinks: serviceAgreementUrl failed — ${String(err)}`);
+    logger.error('fetchOnboardingLinks', 'serviceAgreementUrl failed', {
+      customerId,
+      error: String(err),
+    });
   }
 
   // Get the SMS Agreement sign link
@@ -116,14 +118,17 @@ export function fetchOnboardingLinks({
       apiKey,
     });
   } catch (err) {
-    console.log(`fetchOnboardingLinks: smsAgreementUrl failed — ${String(err)}`);
+    logger.error('fetchOnboardingLinks', 'smsAgreementUrl failed', {
+      customerId,
+      error: String(err),
+    });
   }
 
   // Get the card-on-file link
   try {
     cofUrl = getCofLink({ customerId, apiKey });
   } catch (err) {
-    console.log(`fetchOnboardingLinks: cofUrl failed — ${String(err)}`);
+    logger.error('fetchOnboardingLinks', 'cofUrl failed', { customerId, error: String(err) });
   }
 
   return { serviceAgreementUrl, smsAgreementUrl, cofUrl };
@@ -145,7 +150,7 @@ export function fetchCustomer(customerId: string, apiKey: string): MoeGoCustomer
   try {
     return getCustomer({ customerId, apiKey });
   } catch (err) {
-    console.log(`fetchCustomer: failed — ${String(err)}`);
+    logger.error('fetchCustomer', 'customer fetch failed', { customerId, error: String(err) });
     return null;
   }
 }
@@ -176,6 +181,9 @@ export function uploadVaccinationRecord(
   const normalizedMimeType = mimeType.toLowerCase();
 
   if (!ALLOWED_MIME_TYPES.includes(normalizedMimeType as (typeof ALLOWED_MIME_TYPES)[number])) {
+    logger.warn('uploadVaccinationRecord', 'rejected — disallowed MIME type', {
+      mimeType: normalizedMimeType,
+    });
     throw new Error('Invalid file type');
   }
 
@@ -190,6 +198,9 @@ export function uploadVaccinationRecord(
   const hasValidSignature = sig.every((byte, i) => (bytes[i] & 0xff) === byte);
 
   if (!hasValidSignature) {
+    logger.warn('uploadVaccinationRecord', 'rejected — magic byte mismatch', {
+      mimeType: normalizedMimeType,
+    });
     throw new Error('Invalid file type');
   }
 
@@ -206,6 +217,10 @@ export function uploadVaccinationRecord(
   const uploadCount = payload?.uploadCount ?? 0;
 
   if (uploadCount >= 5) {
+    logger.warn('uploadVaccinationRecord', 'rejected — upload cap reached', {
+      customerId: payload?.customerId,
+      uploadCount,
+    });
     throw new Error('Upload limit reached');
   }
 
@@ -232,6 +247,12 @@ export function uploadVaccinationRecord(
       customerId: payload.customerId,
       fileUrl,
     });
+
+    logger.info('uploadVaccinationRecord', 'file uploaded', {
+      customerId: payload.customerId,
+      mimeType: normalizedMimeType,
+      uploadCount: uploadCount + 1,
+    });
   }
 }
 
@@ -249,18 +270,31 @@ export function uploadVaccinationRecord(
 export function sendBatchUploadNotification(token: string): void {
   const payload = getToken(token);
 
-  if (!payload) return;
+  if (!payload) {
+    logger.warn('sendBatchUploadNotification', 'token not found — notification skipped');
+    return;
+  }
 
   const fileUrls = (payload.uploads ?? [])
     .map((u: { fileUrl?: string }) => u.fileUrl)
     .filter((url: string | undefined): url is string => Boolean(url));
 
-  if (fileUrls.length === 0) return;
+  if (fileUrls.length === 0) {
+    logger.warn('sendBatchUploadNotification', 'no file URLs in payload — notification skipped', {
+      customerId: payload.customerId,
+    });
+    return;
+  }
 
   sendUploadNotificationEmail({
     firstName: payload.firstName,
     lastName: payload.lastName,
     fileUrls,
+  });
+
+  logger.info('sendBatchUploadNotification', 'batch notification sent', {
+    customerId: payload.customerId,
+    fileCount: fileUrls.length,
   });
 }
 
@@ -291,12 +325,16 @@ export function retriggerOnboarding(customerId: string): void {
     landingPageUrl,
   } = getConfig();
 
+  logger.info('retriggerOnboarding', 'triggered', { customerId });
+
   const customer = fetchCustomer(customerId, moegoApiKey);
 
   if (!customer) {
     sendFullFailureEmail({ firstName: 'Unknown', lastName: 'Unknown', customerId });
     return;
   }
+
+  logger.info('retriggerOnboarding', 'customer fetched', { customerId });
 
   const { serviceAgreementUrl, smsAgreementUrl, cofUrl } = fetchOnboardingLinks({
     customerId,
@@ -315,6 +353,8 @@ export function retriggerOnboarding(customerId: string): void {
     return;
   }
 
+  logger.info('retriggerOnboarding', 'onboarding links fetched', { customerId });
+
   const token = generateToken();
 
   storeToken(token, {
@@ -327,6 +367,8 @@ export function retriggerOnboarding(customerId: string): void {
     cofUrl,
   });
 
+  logger.info('retriggerOnboarding', 'token generated and stored', { customerId });
+
   const fullUrl = `${landingPageUrl}?token=${token}`;
 
   let shortUrl: string;
@@ -334,7 +376,10 @@ export function retriggerOnboarding(customerId: string): void {
   try {
     shortUrl = shortenUrlStrict(fullUrl);
   } catch (err) {
-    console.log(`retriggerOnboarding: shortenUrlStrict failed — ${String(err)}`);
+    logger.error('retriggerOnboarding', 'shortenUrlStrict failed', {
+      customerId,
+      error: String(err),
+    });
 
     sendShortIoFailureEmail({
       firstName: customer.firstName,
@@ -346,6 +391,8 @@ export function retriggerOnboarding(customerId: string): void {
     return;
   }
 
+  logger.info('retriggerOnboarding', 'URL shortened', { customerId });
+
   try {
     const updated = updateClientOnboardingLink({ customerId, shortUrl });
 
@@ -353,7 +400,7 @@ export function retriggerOnboarding(customerId: string): void {
       writeClientRow({ customer, shortUrl });
     }
   } catch (err) {
-    console.log(`retriggerOnboarding: sheet write failed — ${String(err)}`);
+    logger.error('retriggerOnboarding', 'sheet write failed', { customerId, error: String(err) });
 
     sendSheetWriteFailureEmail({
       firstName: customer.firstName,
@@ -365,11 +412,15 @@ export function retriggerOnboarding(customerId: string): void {
     return;
   }
 
+  logger.info('retriggerOnboarding', 'sheet row written', { customerId });
+
   sendSuccessEmail({
     firstName: customer.firstName,
     lastName: customer.lastName,
     shortUrl,
   });
+
+  logger.info('retriggerOnboarding', 'success email sent', { customerId });
 }
 
 // ============================================================================
@@ -401,6 +452,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
   // Ignore events for other companies
   if (event.companyId !== moegoCompanyId) {
+    logger.warn('doPost', 'company ID mismatch — ignored', { companyId: event.companyId });
     return ContentService.createTextOutput('OK');
   }
 
@@ -410,10 +462,17 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
   );
 
   if (!isSupportedEvent) {
+    logger.warn('doPost', 'unsupported event type — ignored', { eventType: event.type });
     return ContentService.createTextOutput('OK');
   }
 
   const { appointment } = event;
+
+  logger.info('doPost', 'webhook received', {
+    eventType: event.type,
+    appointmentId: appointment.id,
+    customerId: appointment.customerId,
+  });
 
   // Retrieve customer details — required to check onboarding status and for email delivery
   const customer = fetchCustomer(appointment.customerId, moegoApiKey);
@@ -429,6 +488,8 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     return ContentService.createTextOutput('OK');
   }
 
+  logger.info('doPost', 'customer fetched', { customerId: appointment.customerId });
+
   // Skip returning clients — any finished appointment confirms prior onboarding
   let returningClient: boolean;
 
@@ -440,7 +501,10 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
       apiKey: moegoApiKey,
     });
   } catch (err) {
-    console.log(`doPost: hasFinishedAppointments failed — ${String(err)}`);
+    logger.error('doPost', 'hasFinishedAppointments failed', {
+      customerId: appointment.customerId,
+      error: String(err),
+    });
 
     sendFullFailureEmail({
       firstName: customer.firstName,
@@ -452,6 +516,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
   }
 
   if (returningClient) {
+    logger.warn('doPost', 'returning client skipped', { customerId: appointment.customerId });
     return ContentService.createTextOutput('OK');
   }
 
@@ -475,6 +540,8 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     return ContentService.createTextOutput('OK');
   }
 
+  logger.info('doPost', 'onboarding links fetched', { customerId: appointment.customerId });
+
   // Generate and store a token with the client's onboarding links
   const token = generateToken();
 
@@ -488,6 +555,8 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     cofUrl,
   });
 
+  logger.info('doPost', 'token generated and stored', { customerId: appointment.customerId });
+
   // Build the full landing page URL for this client
   const fullUrl = `${landingPageUrl}?token=${token}`;
 
@@ -497,7 +566,10 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
   try {
     shortUrl = shortenUrlStrict(fullUrl);
   } catch (err) {
-    console.log(`doPost: shortenUrlStrict failed — ${String(err)}`);
+    logger.error('doPost', 'shortenUrlStrict failed', {
+      customerId: appointment.customerId,
+      error: String(err),
+    });
 
     sendShortIoFailureEmail({
       firstName: customer.firstName,
@@ -509,11 +581,16 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     return ContentService.createTextOutput('OK');
   }
 
+  logger.info('doPost', 'URL shortened', { customerId: appointment.customerId });
+
   // Write the sheet row — failure triggers sheet write failure email
   try {
     writeClientRow({ customer, shortUrl });
   } catch (err) {
-    console.log(`doPost: writeClientRow failed — ${String(err)}`);
+    logger.error('doPost', 'writeClientRow failed', {
+      customerId: appointment.customerId,
+      error: String(err),
+    });
 
     sendSheetWriteFailureEmail({
       firstName: customer.firstName,
@@ -525,12 +602,16 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
     return ContentService.createTextOutput('OK');
   }
 
+  logger.info('doPost', 'sheet row written', { customerId: appointment.customerId });
+
   // All steps succeeded — notify the owner
   sendSuccessEmail({
     firstName: customer.firstName,
     lastName: customer.lastName,
     shortUrl,
   });
+
+  logger.info('doPost', 'success email sent', { customerId: appointment.customerId });
 
   return ContentService.createTextOutput('OK');
 }
@@ -555,6 +636,7 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
 
   // Missing, invalid, or expired token — render error page
   if (!payload) {
+    logger.warn('doGet', 'invalid or expired token', { token: token ?? 'missing' });
     const errorTemplate = HtmlService.createTemplateFromFile('error');
     const errorVars = errorTemplate as unknown as Record<string, unknown>;
 
@@ -564,6 +646,8 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.H
 
     return errorTemplate.evaluate();
   }
+
+  logger.info('doGet', 'landing page served', { customerId: payload.customerId });
 
   // Valid token — pass payload and business config to template and render landing page
   const landingTemplate = HtmlService.createTemplateFromFile('landing');

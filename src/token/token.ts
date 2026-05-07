@@ -6,6 +6,8 @@
  * for use in onboarding landing page URLs.
  */
 
+import { logger } from '#/utils/logger.js';
+
 /**
  * Token payload stored per client in ScriptProperties.
  *
@@ -67,6 +69,9 @@ export function purgeExpiredTokens(): void {
 
       if (typeof payload.expiresAt === 'number' && Date.now() > payload.expiresAt) {
         props.deleteProperty(key);
+        logger.info('purgeExpiredTokens', 'expired token purged', {
+          customerId: payload.customerId,
+        });
       }
     } catch {
       // not a token entry — skip
