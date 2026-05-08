@@ -240,14 +240,14 @@ All other properties (`MOEGO_API_KEY`, `MOEGO_COMPANY_ID`, `BUSINESS_*`, `SHORTI
 
 The deploy workflow requires the following secrets configured per environment in **GitHub → Settings → Environments**:
 
-| Secret              | Environment | Value                                             |
-| ------------------- | ----------- | ------------------------------------------------- |
-| `CLASP_TOKEN`          | staging     | Contents of `~/.clasprc.json` after `clasp login`                        |
-| `CLASP_TOKEN`          | prod        | Same as above                                                            |
-| `SCRIPT_ID_STAGING`    | staging     | Script ID from the staging GAS project                                   |
-| `SCRIPT_ID_PROD`       | prod        | Script ID from the production GAS project                                |
-| `DEPLOYMENT_ID_STAGING`| staging     | Deployment ID from the staging GAS project (Deploy → Manage deployments) |
-| `DEPLOYMENT_ID_PROD`   | prod        | Deployment ID from the production GAS project                            |
+| Secret                  | Environment | Value                                                                    |
+| ----------------------- | ----------- | ------------------------------------------------------------------------ |
+| `CLASP_TOKEN`           | staging     | Contents of `~/.clasprc.json` after `clasp login`                        |
+| `CLASP_TOKEN`           | prod        | Same as above                                                            |
+| `SCRIPT_ID_STAGING`     | staging     | Script ID from the staging GAS project                                   |
+| `SCRIPT_ID_PROD`        | prod        | Script ID from the production GAS project                                |
+| `DEPLOYMENT_ID_STAGING` | staging     | Deployment ID from the staging GAS project (Deploy → Manage deployments) |
+| `DEPLOYMENT_ID_PROD`    | prod        | Deployment ID from the production GAS project                            |
 
 To generate `~/.clasprc.json`, run `clasp login` locally and complete the OAuth flow. Then copy the file contents as the `CLASP_TOKEN` secret value.
 
