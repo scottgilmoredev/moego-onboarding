@@ -113,7 +113,11 @@ def main() -> None:
     # event payload — the release body is read from here to avoid shell escaping
     # issues that arise when passing multi-line strings through env vars.
     with open(os.environ["GITHUB_EVENT_PATH"]) as f:
-        release_body = json.load(f)["release"]["body"]
+        release_body = json.load(f).get("release", {}).get("body") or ""
+
+    if not release_body:
+        print(f"Release body is empty for {version} — skipping changelog update.")
+        sys.exit(0)
 
     try:
         entries = call_haiku(api_key, release_body)
