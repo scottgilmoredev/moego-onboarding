@@ -1,5 +1,64 @@
 # Decision Log — moego-onboarding
 
+## Automated CHANGELOG updates via Haiku on release publish — 2026-05-08
+
+**Decision:** A GitHub Actions workflow calls `claude-haiku-4-5` on every published release to convert Release Drafter output into Keep a Changelog format entries and commit the result to `CHANGELOG.md` on `main`.
+
+**Context:** Maintaining a `CHANGELOG.md` manually adds friction to the release process. Release Drafter already auto-generates release notes from PR titles and labels, but that output is raw and unsuitable for a polished changelog — entries need to be rewritten from the user's perspective, grouped by section, and stripped of internal-only changes. Manual curation was the only alternative without introducing automation.
+
+**Alternatives considered:**
+
+- Manual curation — accurate but requires developer effort on every release; easy to skip or deprioritize
+- `semantic-release` or `conventional-changelog` — full-featured but opinionated toolchains that require commit message conventions and significant pipeline restructuring; disproportionate for a solo project
+- GitHub auto-generated release notes — too raw for a changelog; lists every commit or PR title without summarization or grouping
+
+**Rationale:** Haiku handles the summarization and reformatting task well at low cost. The release body from Release Drafter is already structured by label category, giving the model clean input. The GitHub Actions event payload provides the release body without shell escaping issues. Python stdlib (`urllib.request`, `json`, `re`) avoids adding any new dependencies to the pipeline.
+
+**Consequences:** `CHANGELOG.md` is committed directly to `main` by `github-actions[bot]` on each release. If branch protection requiring PRs is ever enforced on `main`, the workflow will need to open a PR instead of pushing directly. `ANTHROPIC_API_KEY` must be set as a GitHub Actions secret. The Python script lives in `.github/scripts/update_changelog.py` — update the prompt there if the changelog format or categorization rules change.
+
+**Status:** Decided
+
+---
+
+## Programmatic GAS deployment versioning via `clasp deploy` in CI — 2026-05-08
+
+**Decision:** The deploy workflow runs `clasp deploy -i "$DEPLOYMENT_ID"` after `clasp push --force` to update the live GAS deployment to the newly pushed code automatically. Previously, updating the live deployment required manually clicking **Deploy → Manage deployments → Edit → New version** in the GAS editor after every CI push.
+
+**Context:** `clasp push` only updates the HEAD of the script project — it does not affect the versioned deployment that serves live traffic. Without an explicit `clasp deploy` call, the URL continues to serve the code from whatever version was last manually deployed. This gap was discovered when CI appeared to deploy successfully but live behavior did not reflect the new code.
+
+**Alternatives considered:**
+
+- Manual "Edit deployment" after each merge — error-prone; easy to forget; creates drift between what CI pushed and what users are served
+- Head deployment URL for live traffic — always runs latest saved code without versioning; not suitable for production as it requires a logged-in Google session and is undocumented behavior
+
+**Rationale:** `clasp deploy -i <deploymentId>` updates an existing deployment in place, incrementing the GAS version number while preserving the deployment URL. This closes the gap between what CI pushes and what the live app serves. Deployment IDs are stable per environment and stored as GitHub secrets (`DEPLOYMENT_ID_STAGING`, `DEPLOYMENT_ID_PROD`).
+
+**Consequences:** Two new secrets required per environment in GitHub → Settings → Environments. The deployment description is set to `"staging @ <sha>"` for staging and the release tag name for prod — visible in the GAS editor under Manage deployments for traceability. If a deployment ID changes (e.g. environment rebuild), the corresponding GitHub secret must be updated.
+
+**Status:** Decided
+
+---
+
+## Release Drafter for automated release note generation — 2026-05-08
+
+**Decision:** Release Drafter is used to automatically draft GitHub release notes by aggregating merged PR titles and organizing them by label category. The draft is updated on every merge to `main` and is reviewed and published manually when a release is cut.
+
+**Context:** Release notes were being written entirely by hand at release time. With no automation, entries had to be reconstructed from git log or PR history, which was time-consuming and easy to miss. A structured approach to release notes was needed that aligned with the existing label conventions.
+
+**Alternatives considered:**
+
+- Manual release notes — already in place; required reviewing all merged PRs at release time with no drafting aid
+- `semantic-release` — fully automated version bumping and publishing; too opinionated for this project's release cadence and requires strict conventional commit enforcement
+- GitHub auto-generated release notes — built-in GitHub feature; produces a flat list of PR titles with no categorization or version resolution
+
+**Rationale:** Release Drafter integrates directly with the existing label set (`feat`, `fix`, `refactor`, etc.) to categorize entries automatically. Version resolution is driven by labels — `feat` bumps minor, everything else bumps patch. The draft is always current so release notes require only a review pass, not reconstruction. Configuration lives in `.github/release-drafter.yml`.
+
+**Consequences:** PRs must be consistently labeled for Release Drafter to categorize them correctly — unlabeled PRs appear in an Uncategorized section. The version resolver uses a `breaking` label for major bumps; this label is in the standard set. Release Drafter output feeds the automated CHANGELOG workflow — the two are coupled; changes to Release Drafter category names may require updates to the Haiku prompt in `.github/scripts/update_changelog.py`.
+
+**Status:** Decided
+
+---
+
 ## Upload metadata persisted in token payload for client-side pre-population — 2026-05-07
 
 **Decision:** Each successful upload appends a `{ name, size, type }` entry to a `uploads` array in the token payload stored in ScriptProperties. On page reload, `doGet` passes the array to the template, which uses it to pre-populate the file row list with previously uploaded files.
