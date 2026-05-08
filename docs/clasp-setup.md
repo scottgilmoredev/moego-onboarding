@@ -180,15 +180,14 @@ The GitHub Actions deploy workflow handles deployments automatically:
 | Merge to `main`     | Staging    | No                |
 | Publish release tag | Production | Yes (reviewer)    |
 
-To deploy to production, create a GitHub Release from `main` using the CLI:
+To deploy to production, publish the Release Drafter draft from the GitHub UI:
 
-```bash
-git tag -a v1.2.0 -m "Release v1.2.0"
-git push origin v1.2.0
-gh release create v1.2.0 --title "v1.2.0" --notes "Brief description of changes."
-```
+1. Go to the repository → **Releases**
+2. Find the draft release — Release Drafter keeps it current on every merge to `main`
+3. Review the release notes and confirm the version number
+4. Click **Publish release**
 
-> **Important:** Pushing a git tag alone does not trigger the workflow. The trigger is `release: [published]` — the `gh release create` command is what fires it. Creating a release via the GitHub UI (Releases → Draft a new release → Publish release) has the same effect.
+The `release: [published]` event fires the prod deploy workflow and the changelog update workflow automatically.
 
 The workflow will pause for reviewer approval before pushing to GAS.
 
