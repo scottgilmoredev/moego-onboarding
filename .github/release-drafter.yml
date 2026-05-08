@@ -1,0 +1,57 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: 'Features'
+    labels:
+      - 'feat'
+  - title: 'Bug Fixes'
+    labels:
+      - 'fix'
+  - title: 'Refactoring'
+    labels:
+      - 'refactor'
+  - title: 'Performance'
+    labels:
+      - 'perf'
+  - title: 'Tests'
+    labels:
+      - 'test'
+  - title: 'Documentation'
+    labels:
+      - 'docs'
+  - title: 'Style'
+    labels:
+      - 'style'
+  - title: 'CI/CD'
+    labels:
+      - 'ci'
+  - title: 'Maintenance'
+    labels:
+      - 'chore'
+
+version-resolver:
+  major:
+    labels:
+      - 'breaking'
+  minor:
+    labels:
+      - 'feat'
+  patch:
+    labels:
+      - 'fix'
+      - 'refactor'
+      - 'perf'
+      - 'docs'
+      - 'style'
+      - 'test'
+      - 'ci'
+      - 'chore'
+  default: patch
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
