@@ -47,6 +47,11 @@ jobs:
       - name: Build and push
         run: pnpm build && clasp push --force
 
+      - name: Deploy new version
+        env:
+          DEPLOYMENT_ID: ${{ secrets.DEPLOYMENT_ID_STAGING }}
+        run: clasp deploy -i "$DEPLOYMENT_ID" -d "staging @ ${GITHUB_SHA:0:7}"
+
   deploy-prod:
     if: github.event_name == 'release' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
@@ -85,3 +90,8 @@ jobs:
 
       - name: Build and push
         run: pnpm build && clasp push --force
+
+      - name: Deploy new version
+        env:
+          DEPLOYMENT_ID: ${{ secrets.DEPLOYMENT_ID_PROD }}
+        run: clasp deploy -i "$DEPLOYMENT_ID" -d "${GITHUB_REF_NAME}"
